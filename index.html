@@ -126,11 +126,22 @@ footer{background:#fffbe6;border-top:1px solid rgba(200,160,0,.25);padding:28px 
 
 @media(max-width:768px){
   .hero-inner,.detail-grid,.steps{grid-template-columns:1fr}
-  .hdr,.detail-strip{padding-left:20px;padding-right:20px}
-  .detail-grid{padding:24px 20px}
-  .hero{padding:50px 20px}
-  .section{padding:44px 20px}
+  .hdr,.detail-strip{padding-left:16px;padding-right:16px}
+  .hdr{height:56px}
+  .logo-img{height:34px}
+  .detail-grid{padding:20px 16px}
+  .hero{padding:40px 16px}
+  .hero h1{font-size:2.2rem}
+  .section{padding:40px 16px}
   .admin-body{padding:20px}
+  .modal{width:calc(100vw - 32px);padding:24px 20px;border-radius:16px}
+  .fleet-grid{grid-template-columns:1fr}
+  .price-grid{grid-template-columns:1fr}
+  .btn-md{padding:12px 20px;font-size:.88rem}
+  .btn-sm{padding:7px 14px;font-size:.78rem}
+  .steps{grid-template-columns:1fr}
+  .step{border-right:none;border-bottom:1px solid var(--b)}
+  .step:last-child{border-bottom:none}
 }
 /* NAV */
 .nav-link{font-size:.83rem;font-weight:600;color:#555;cursor:pointer;padding:4px 10px;border-radius:8px;transition:color .15s}
@@ -205,8 +216,8 @@ footer{background:#fffbe6;border-top:1px solid rgba(200,160,0,.25);padding:28px 
 
 /* RESPONSIVE ADDITIONS */
 @media(max-width:900px){.features-grid{grid-template-columns:repeat(2,1fr)}.testi-grid{grid-template-columns:1fr}}
-@media(max-width:768px){.features-sec,.testi-sec,.faq-sec{padding:44px 20px}.mob-cta{display:block}.wa-float{bottom:82px}.footer-inner{flex-direction:column;text-align:center}.nav-link{display:none}}
-@media(max-width:480px){.features-grid{grid-template-columns:1fr}.trust-strip{gap:20px;padding:14px 20px}}
+@media(max-width:768px){.features-sec,.testi-sec,.faq-sec{padding:40px 16px}.mob-cta{display:block}.wa-float{bottom:82px}.footer-inner{flex-direction:column;text-align:center}.footer-links{justify-content:center}.nav-link{display:none}.trust-strip{display:none}}
+@media(max-width:480px){.features-grid{grid-template-columns:1fr}.trust-strip{gap:20px;padding:14px 20px}.date-grid{grid-template-columns:1fr !important}.testi-grid{grid-template-columns:1fr}.hero h1{font-size:1.9rem}}
 
 /* PROFILE PAGE */
 .profile-hero{background:linear-gradient(135deg,#fff8d0,#fffbe6);padding:44px 40px 32px;border-bottom:1px solid var(--b);text-align:center}
@@ -296,13 +307,13 @@ footer{background:#fffbe6;border-top:1px solid rgba(200,160,0,.25);padding:28px 
   </div>
 
   <!-- SEARCH -->
-  <section style="padding:56px 40px;background:var(--wg)" id="search-sec">
+  <section style="padding:56px 40px;background:var(--wg)" id="search-sec" class="section">
     <div style="max-width:860px;margin:0 auto">
       <div class="tag">Step 1</div>
       <div class="sec-title fade-up" style="font-size:1.7rem">When do you need a car?</div>
       <p style="color:var(--ts);font-size:.9rem;margin-bottom:24px" class="fade-up">Pick your pickup and drop date and time to see available cars.</p>
       <div class="card fade-up" style="padding:26px 28px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+        <div class="date-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
           <div><label class="lbl">Pickup Date and Time</label><input type="datetime-local" id="h-pickup" class="inp"></div>
           <div><label class="lbl">Drop Date and Time</label><input type="datetime-local" id="h-drop" class="inp"></div>
         </div>
@@ -312,7 +323,7 @@ footer{background:#fffbe6;border-top:1px solid rgba(200,160,0,.25);padding:28px 
   </section>
 
   <!-- FLEET -->
-  <section style="padding:56px 40px;background:var(--ow)" id="fleet-sec">
+  <section style="padding:56px 40px;background:var(--ow)" id="fleet-sec" class="section">
     <div style="max-width:1100px;margin:0 auto">
       <div class="tag" id="fleet-label">Our Fleet</div>
       <div class="sec-title fade-up" style="font-size:1.7rem" id="fleet-heading">Choose Your Car</div>
@@ -590,7 +601,8 @@ window.addEventListener('scroll',function(){
         <div class="success-box">
           <div style="font-size:2.8rem;margin-bottom:14px">🎉</div>
           <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;color:#1a7a3c;margin-bottom:8px">Booking Confirmed!</div>
-          <div style="font-size:.84rem;color:#555;margin-bottom:8px">Payment received. Our team has been notified.</div>
+          <div style="font-size:.84rem;color:#555;margin-bottom:8px">Booking confirmed! Please notify us on WhatsApp to complete your reservation.</div>
+          <button class="btn btn-green btn-lg" onclick="window.open('https://wa.me/'+WHATSAPP+'?text='+encodeURIComponent(window._lastBookingMsg||'New booking - DriveDilSe'),'_blank')" style="margin-bottom:12px">&#128172; Notify Admin on WhatsApp</button>
           <div style="font-size:.82rem;color:#555;margin-bottom:20px">Complete your profile verification so our representative can hand over the vehicle and provide the Check-In OTP.</div>
           <button class="btn btn-y btn-lg" onclick="openVerifyModal()" style="margin-bottom:10px">Complete Profile Verification →</button>
           <button class="btn btn-g btn-sm" onclick="goHome()" style="width:100%">Do it later</button>
@@ -657,8 +669,10 @@ window.addEventListener('scroll',function(){
       <div style="font-size:3rem;margin-bottom:14px">🎉</div>
       <div style="font-family:Georgia,serif;font-size:1.2rem;font-weight:900;color:#1a7a3c;margin-bottom:8px">Verification Submitted!</div>
       <div style="font-size:.84rem;color:#555;margin-bottom:8px">Our team will review your documents and contact you on WhatsApp.</div>
-      <div style="font-size:.78rem;color:var(--ts);margin-bottom:20px">Verification usually takes under 30 minutes. The Check-In OTP will be given by our representative at vehicle handover.</div>
-      <button class="btn btn-y btn-md" onclick="closeModal('verify-modal');goHome()">Back to Home</button>
+      <div style="font-size:.78rem;color:var(--ts);margin-bottom:16px">Send your documents to our team on WhatsApp to complete verification. Usually under 30 minutes.</div>
+      <button class="btn btn-green btn-lg" onclick="window.open('https://wa.me/'+WHATSAPP+'?text='+encodeURIComponent(window._lastVerifyMsg||'Profile verification - DriveDilSe'),'_blank')" style="margin-bottom:10px">&#128172; Send Documents on WhatsApp</button>
+      <button class="btn btn-y btn-md" onclick="closeModal('verify-modal');showProfile()" style="width:100%;margin-bottom:8px">View My Profile</button>
+      <button class="btn btn-g btn-sm" onclick="closeModal('verify-modal');goHome()" style="width:100%">Back to Home</button>
     </div>
   </div>
 </div>
@@ -1014,7 +1028,7 @@ function payNow(){
     "Total Paid: " + inr(priceResult.total) + "\n" +
     "Damage Deductible: \u20B92,000 acknowledged\n\n" +
     "\u2705 Payment completed. Booking allotted.";
-  window.open("https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(msg), "_blank");
+  window._lastBookingMsg = msg;
   var newId = "BK" + Date.now().toString().slice(-4);
   BOOKINGS.push({
     id: newId, carId: selCar.id, car: selCar.name,
@@ -1140,7 +1154,7 @@ function vmSubmit(){
   var msg = "\uD83D\uDCCB Profile Verification \u2014 DriveDilSe\n\n" +
     "Name: " + name + "\nPhone: " + phone + "\nDOB: " + dob + "\n" +
     "Aadhaar: Uploaded \u2705\nDriving Licence: Verified (18+) \u2705\n\nPlease verify and send Check-In OTP.";
-  window.open("https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(msg), "_blank");
+  window._lastVerifyMsg = msg;
   userVerified = true; userProfile.name=name; userProfile.phone=phone; userProfile.dob=dob; userProfile.phoneVerified=vmOtpVerified; userProfile.aadhaarUploaded=aadhaarSet; userProfile.dlVerified=dlVerified;
   BOOKINGS.forEach(function(b){ if(myBookingIds.indexOf(b.id)>-1){ b.phone=phone; b.customer=name; } });
   document.getElementById("vm-form-wrap").style.display = "none";

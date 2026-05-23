@@ -461,6 +461,7 @@ window.addEventListener('scroll',function(){
   cta.style.display=hero.getBoundingClientRect().bottom<0?'block':'none';
 });
 </script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 
 <!-- ======== CUSTOMER PROFILE ======== -->
@@ -751,31 +752,66 @@ window.addEventListener('scroll',function(){
 <script>
 // ── DATA ──
 // ← REPLACE WHATSAPP number above before going live
-var FLEET = [
-  {id:1, name:"Maruti Suzuki Ignis",         cat:"Hatchback", tm:"MT", fuel:"Petrol", seats:5, rate:1526, color:"#f5c518", emoji:"🚗", active:true, paused:[]},
-  {id:2, name:"Hyundai Grand i10 Nios",       cat:"Hatchback", tm:"AT", fuel:"Petrol", seats:5, rate:1628, color:"#e8b800", emoji:"🚙", active:true, paused:[]},
-  {id:3, name:"Maruti Suzuki Baleno",         cat:"Hatchback", tm:"AT", fuel:"Petrol", seats:5, rate:1628, color:"#ffd700", emoji:"🚙", active:true, paused:[]},
-  {id:4, name:"Maruti Suzuki Grand Vitara",   cat:"SUV",       tm:"MT", fuel:"Petrol", seats:5, rate:2645, color:"#f5c518", emoji:"🛻", active:true, paused:[]},
-  {id:5, name:"Mahindra XUV 300",             cat:"SUV",       tm:"MT", fuel:"Petrol", seats:5, rate:2645, color:"#e8b800", emoji:"🛻", active:true, paused:[]},
-  {id:6, name:"Maruti Suzuki Ertiga",         cat:"MPV",       tm:"AT", fuel:"Petrol", seats:7, rate:2238, color:"#ffd700", emoji:"🚐", active:true, paused:[]},
-  {id:7, name:"Maruti Suzuki XL6",            cat:"MPV",       tm:"MT", fuel:"Petrol", seats:6, rate:2238, color:"#f5c518", emoji:"🚐", active:true, paused:[]},
-];
-var BOOKINGS = [
-  {id:"BK001", carId:6, car:"Maruti Suzuki Ertiga",   customer:"Rahul Sharma", phone:"9876543210", pickup:"2025-05-20T10:00", drop:"2025-05-21T10:00", total:5263, status:"ongoing",   checkinOtp:"4821", checkoutOtp:"7365"},
-  {id:"BK002", carId:1, car:"Maruti Suzuki Ignis",    customer:"Priya Patel",  phone:"9123456789", pickup:"2025-05-24T09:00", drop:"2025-05-26T09:00", total:3594, status:"upcoming",  checkinOtp:"3190", checkoutOtp:"6274"},
-  {id:"BK003", carId:3, car:"Maruti Suzuki Baleno",   customer:"Amit Kumar",   phone:"9988776655", pickup:"2025-04-10T08:00", drop:"2025-04-11T08:00", total:3836, status:"completed", checkinOtp:"1122", checkoutOtp:"3344"},
-];
-var CUSTOMERS = [
-  {name:"Rahul Sharma", phone:"9876543210", email:"rahul@example.com", age:29, bookings:2, spent:9099,  verified:true},
-  {name:"Priya Patel",  phone:"9123456789", email:"priya@example.com", age:26, bookings:1, spent:5263,  verified:true},
-  {name:"Amit Kumar",   phone:"9988776655", email:"amit@example.com",  age:31, bookings:1, spent:3836,  verified:false},
-];
-var WHATSAPP = "919999999999"; // ← REPLACE with your number e.g. "917012345678"
+// ── API CONFIG — change this to your Render.com URL after deploying ──
+var API = "https://drivedilse-api.onrender.com";
+var WHATSAPP = "919999999999"; // ← your WhatsApp number
+var authToken = localStorage.getItem("dds_token") || "";
+var adminToken = "";
+
+var FLEET = [];     // populated from API on load
+var BOOKINGS = [];  // admin only
+var CUSTOMERS = []; // admin only
+
 var selCar = null, priceResult = null;
 var userVerified = null;
 var userProfile = {name:"",phone:"",dob:"",phoneVerified:false,aadhaarUploaded:false,dlVerified:false};
 var myBookingIds = [];
 var vmOtpVerified = false, aadhaarSet = false, dlVerified = false, vmDummyOtp = "";
+
+function mapApiCar(c){
+  var emojiMap = {Hatchback:"🚗",Sedan:"🚙",SUV:"🛻",MPV:"🚐"};
+  var colorMap  = {Hatchback:"#f5c518",Sedan:"#e8b800",SUV:"#ffd700",MPV:"#f5c518"};
+  return {
+    id: c._id, name: c.name, cat: c.category,
+    tm: c.transmission==="Automatic"?"AT":"MT",
+    fuel: c.fuel, seats: c.seats,
+    rate: c.pricePerDay, deposit: c.deposit||0,
+    color: colorMap[c.category]||"#f5c518",
+    emoji: emojiMap[c.category]||"🚗",
+    active: c.active,
+    paused: (c.pauses||[]).map(function(p){ return {start:p.from,end:p.to}; })
+  };
+}
+
+function apiFetch(path, opts){
+  opts = opts || {};
+  opts.headers = opts.headers || {};
+  if(authToken) opts.headers["Authorization"] = "Bearer " + authToken;
+  return fetch(API + path, opts).then(function(r){
+    if(!r.ok) return r.json().then(function(e){ throw new Error(e.error||"Request failed"); });
+    return r.json();
+  });
+}
+
+async function loadFleet(){
+  try {
+    var cars = await apiFetch("/api/fleet");
+    FLEET = cars.map(mapApiCar);
+    renderFleet("","",false);
+  } catch(e){
+    console.warn("Fleet API unavailable, using fallback", e.message);
+    FLEET = [
+      {id:"local1",name:"Maruti Suzuki Ignis",   cat:"Hatchback",tm:"MT",fuel:"Petrol",seats:5,rate:1526,deposit:5000,color:"#f5c518",emoji:"🚗",active:true,paused:[]},
+      {id:"local2",name:"Hyundai Grand i10 Nios", cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:5000,color:"#e8b800",emoji:"🚙",active:true,paused:[]},
+      {id:"local3",name:"Maruti Suzuki Baleno",   cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:5000,color:"#ffd700",emoji:"🚙",active:true,paused:[]},
+      {id:"local4",name:"Maruti Suzuki Grand Vitara",cat:"SUV",   tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:8000,color:"#f5c518",emoji:"🛻",active:true,paused:[]},
+      {id:"local5",name:"Mahindra XUV 300",        cat:"SUV",    tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:8000,color:"#e8b800",emoji:"🛻",active:true,paused:[]},
+      {id:"local6",name:"Maruti Suzuki Ertiga",    cat:"MPV",    tm:"AT",fuel:"Petrol",seats:7,rate:2238,deposit:8000,color:"#ffd700",emoji:"🚐",active:true,paused:[]},
+      {id:"local7",name:"Maruti Suzuki XL6",       cat:"MPV",    tm:"MT",fuel:"Petrol",seats:6,rate:2238,deposit:8000,color:"#f5c518",emoji:"🚐",active:true,paused:[]},
+    ];
+    renderFleet("","",false);
+  }
+}
 
 // ── UTILS ──
 function inr(n){ return "\u20B9" + Number(n).toLocaleString("en-IN"); }
@@ -797,65 +833,107 @@ function openModal(id){ document.getElementById(id).classList.add("open"); }
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }
 function goHome(){ showPage("pg-home"); }
 function showProfile(){ renderProfile(); showPage("pg-profile"); window.scrollTo(0,0); }
-function renderProfile(){
-  var p=userProfile, v=userVerified;
+async function renderProfile(){
+  var p = userProfile, v = userVerified;
+
+  // Try to fetch live data from API
+  if(authToken){
+    try {
+      var [apiUser, apiBookings] = await Promise.all([
+        apiFetch("/api/auth/profile"),
+        apiFetch("/api/bookings")
+      ]);
+      p = {
+        name:            apiUser.name || "",
+        phone:           apiUser.phone || "",
+        dob:             apiUser.dob || "",
+        phoneVerified:   apiUser.phoneVerified,
+        aadhaarUploaded: apiUser.kyc && apiUser.kyc.aadhaarUploaded,
+        dlVerified:      apiUser.kyc && apiUser.kyc.dlVerified,
+        kycStatus:       apiUser.kyc && apiUser.kyc.status,
+      };
+      v = apiUser.phoneVerified;
+      userProfile = p; userVerified = v;
+      // Render bookings from API
+      var bb = document.getElementById("prof-bookings-body");
+      if(apiBookings.length){
+        bb.innerHTML = apiBookings.map(function(b){
+          var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up"};
+          return '<div class="bk-row">' +
+            '<span class="bk-id">' + b.bookingId + '</span>' +
+            '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
+            '<div class="bk-date">' + new Date(b.pickup.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(b.drop.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
+            '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + b.status + '</span>' +
+          '</div>';
+        }).join("");
+      } else {
+        bb.innerHTML = '<div class="profile-empty">No bookings yet. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>';
+      }
+    } catch(e){ console.warn("Profile API error:", e.message); }
+  }
+
   // Avatar & name
-  var av=document.getElementById("prof-avatar");
-  var nm=document.getElementById("prof-name");
-  if(p.name){av.textContent=p.name[0].toUpperCase();nm.textContent=p.name;}
-  else{av.textContent="?";nm.textContent="My Profile";}
+  var av = document.getElementById("prof-avatar");
+  var nm = document.getElementById("prof-name");
+  if(p.name){ av.textContent = p.name[0].toUpperCase(); nm.textContent = p.name; }
+  else { av.textContent = "?"; nm.textContent = "My Profile"; }
+
   // Status badge
-  var sb=document.getElementById("prof-status-badge");
-  var tl=document.getElementById("prof-tagline");
+  var sb = document.getElementById("prof-status-badge");
+  var tl = document.getElementById("prof-tagline");
   if(v){
-    sb.innerHTML='<span class="profile-badge verified">&#10003; Verified</span>';
-    tl.textContent="Your profile is complete. You're ready to drive!";
-    document.getElementById("prof-verify-btn").textContent="Update Verification";
+    sb.innerHTML = '<span class="profile-badge verified">&#10003; Verified</span>';
+    tl.textContent = "Your profile is complete. You're ready to drive!";
+    document.getElementById("prof-verify-btn").textContent = "Update Verification";
   } else {
-    sb.innerHTML='<span class="profile-badge pending">&#9888; Not Verified</span>';
-    tl.textContent="Complete verification to book a car.";
-    document.getElementById("prof-verify-btn").textContent="Complete Profile Verification →";
+    sb.innerHTML = '<span class="profile-badge pending">&#9888; Not Verified</span>';
+    tl.textContent = "Complete verification to book a car.";
+    document.getElementById("prof-verify-btn").textContent = "Complete Profile Verification →";
   }
+
   // Personal info card
-  var ib=document.getElementById("prof-info-body");
-  if(p.name||p.phone){
-    var dob=p.dob?new Date(p.dob).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}):"—";
-    ib.innerHTML=
-      '<div class="profile-row"><span class="profile-row-lbl">Full Name</span><span class="profile-row-val">'+(p.name||"—")+'</span></div>'+
-      '<div class="profile-row"><span class="profile-row-lbl">Phone</span><span class="profile-row-val">'+(p.phone?"+91 "+p.phone:"—")+'</span></div>'+
-      '<div class="profile-row"><span class="profile-row-lbl">Date of Birth</span><span class="profile-row-val">'+dob+'</span></div>';
+  var ib = document.getElementById("prof-info-body");
+  if(p.name || p.phone){
+    var dob = p.dob ? new Date(p.dob).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+    ib.innerHTML =
+      '<div class="profile-row"><span class="profile-row-lbl">Full Name</span><span class="profile-row-val">' + (p.name||"—") + '</span></div>' +
+      '<div class="profile-row"><span class="profile-row-lbl">Phone</span><span class="profile-row-val">' + (p.phone?"+91 "+p.phone:"—") + '</span></div>' +
+      '<div class="profile-row"><span class="profile-row-lbl">Date of Birth</span><span class="profile-row-val">' + dob + '</span></div>';
   } else {
-    ib.innerHTML='<div class="profile-empty">No profile data yet. Complete verification to get started.</div>';
+    ib.innerHTML = '<div class="profile-empty">No profile data yet. Complete verification to get started.</div>';
   }
+
   // KYC icons
   function setKyc(iconId,statusId,done,doneText,noText){
-    var ic=document.getElementById(iconId),st=document.getElementById(statusId);
-    if(done){ic.className="kyc-icon kyc-ok";ic.textContent="✅";st.className="kyc-status-ok";st.textContent=doneText||"Verified";}
-    else{ic.className="kyc-icon kyc-no";ic.textContent=ic.dataset.icon||"❓";st.className="kyc-status-no";st.textContent=noText||"Not Done";}
+    var ic=document.getElementById(iconId), st=document.getElementById(statusId);
+    if(done){ ic.className="kyc-icon kyc-ok"; ic.textContent="✅"; st.className="kyc-status-ok"; st.textContent=doneText||"Verified"; }
+    else { ic.className="kyc-icon kyc-no"; ic.textContent=ic.dataset.icon||"❓"; st.className="kyc-status-no"; st.textContent=noText||"Not Done"; }
   }
-  document.getElementById("kyc-phone-icon").dataset.icon="📱";
-  document.getElementById("kyc-aadhaar-icon").dataset.icon="📄";
-  document.getElementById("kyc-dl-icon").dataset.icon="🚗";
-  setKyc("kyc-phone-icon","kyc-phone-status",p.phoneVerified,"Verified","Not Verified");
-  setKyc("kyc-aadhaar-icon","kyc-aadhaar-status",p.aadhaarUploaded,"Uploaded","Not Uploaded");
-  setKyc("kyc-dl-icon","kyc-dl-status",p.dlVerified,"Verified","Not Uploaded");
-  // Bookings (show bookings for this phone number)
-  var bb=document.getElementById("prof-bookings-body");
-  var myBks=BOOKINGS.filter(function(b){return myBookingIds.indexOf(b.id)>-1||(p.phone&&b.phone===p.phone);});
-  if(myBks.length){
-    bb.innerHTML=myBks.map(function(b){
-      var statusMap={ongoing:"sb-on",upcoming:"sb-up",completed:"sb-done"};
-      return '<div class="bk-row">'+
-        '<span class="bk-id">'+b.id+'</span>'+
-        '<div><div class="bk-car">'+b.car+'</div><div class="bk-date">'+new Date(b.pickup).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+' → '+new Date(b.drop).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+'</div></div>'+
-        '<span class="sbadge '+(statusMap[b.status]||"sb-done")+'">'+b.status+'</span>'+
-      '</div>';
-    }).join("");
-  } else {
-    bb.innerHTML='<div class="profile-empty">No bookings found. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>';
+  document.getElementById("kyc-phone-icon").dataset.icon  = "📱";
+  document.getElementById("kyc-aadhaar-icon").dataset.icon = "📄";
+  document.getElementById("kyc-dl-icon").dataset.icon     = "🚗";
+  setKyc("kyc-phone-icon",  "kyc-phone-status",   p.phoneVerified,   "Verified",  "Not Verified");
+  setKyc("kyc-aadhaar-icon","kyc-aadhaar-status",  p.aadhaarUploaded, "Uploaded",  "Not Uploaded");
+  setKyc("kyc-dl-icon",     "kyc-dl-status",       p.dlVerified,      "Verified",  "Not Uploaded");
+
+  // Bookings (fallback for offline mode)
+  if(!authToken){
+    var bb2 = document.getElementById("prof-bookings-body");
+    var myBks = BOOKINGS.filter(function(b){ return myBookingIds.indexOf(b.id)>-1||(p.phone&&b.phone===p.phone); });
+    if(myBks.length){
+      bb2.innerHTML = myBks.map(function(b){
+        var statusMap={ongoing:"sb-on",upcoming:"sb-up",completed:"sb-done"};
+        return '<div class="bk-row">' +
+          '<span class="bk-id">' + b.id + '</span>' +
+          '<div><div class="bk-car">' + b.car + '</div><div class="bk-date">' + new Date(b.pickup).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(b.drop).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
+          '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + b.status + '</span>' +
+        '</div>';
+      }).join("");
+    } else {
+      bb2.innerHTML = '<div class="profile-empty">No bookings found. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>';
+    }
   }
 }
-
 // ── INIT ──
 document.getElementById("h-pickup").value = nowFmt(0);
 document.getElementById("h-drop").value   = nowFmt(86400000);
@@ -911,19 +989,29 @@ function renderFleet(pickup, drop, searched){
     g.appendChild(div);
   });
 }
-renderFleet("","",false);
+loadFleet();
 
-function doSearch(){
+async function doSearch(){
   var p = document.getElementById("h-pickup").value;
   var d = document.getElementById("h-drop").value;
   if(!p || !d){ alert("Please select pickup and drop dates."); return; }
   if(new Date(d) <= new Date(p)){ alert("Drop must be after pickup."); return; }
   if((new Date(d) - new Date(p)) / 3600000 < 6){ alert("Minimum booking is 6 hours."); return; }
   document.getElementById("fleet-label").textContent   = "Step 2 — Available Cars";
-  document.getElementById("fleet-heading").textContent = FLEET.length + " cars available for your dates";
-  document.getElementById("fleet-sub").textContent     = "Click a car to view details and book.";
-  renderFleet(p, d, true);
+  document.getElementById("fleet-heading").textContent = "Checking availability...";
+  document.getElementById("fleet-sub").textContent     = "";
   goTo("fleet-sec");
+  try {
+    var cars = await apiFetch("/api/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d));
+    FLEET = cars.map(mapApiCar);
+    document.getElementById("fleet-heading").textContent = FLEET.length + " cars available for your dates";
+    document.getElementById("fleet-sub").textContent = "Click a car to view details and book.";
+    renderFleet(p, d, true);
+  } catch(e){
+    document.getElementById("fleet-heading").textContent = FLEET.length + " cars (offline mode)";
+    document.getElementById("fleet-sub").textContent = "Live availability check failed. Shown cars may not reflect real-time status.";
+    renderFleet(p, d, true);
+  }
 }
 
 // ── CAR DETAIL ──
@@ -1016,33 +1104,67 @@ function calcPrice(){
 }
 
 // ── PAY ──
-function payNow(){
+async function payNow(){
   if(!priceResult){ alert("Please calculate price first."); return; }
   if(!document.getElementById("chk-ded").checked){ alert("Please acknowledge the ₹2,000 damage deductible clause."); return; }
   if(!document.getElementById("chk-tnc").checked){ alert("Please accept the Terms & Conditions."); return; }
-  var msg = "\uD83D\uDE97 New Booking \u2014 DriveDilSe\n\n" +
-    "Car: " + selCar.name + "\n" +
-    "Pickup: " + new Date(priceResult.pickup).toLocaleString("en-IN") + "\n" +
-    "Drop: "   + new Date(priceResult.drop).toLocaleString("en-IN")   + "\n" +
-    "Duration: " + priceResult.dlbl + "\n" +
-    "Total Paid: " + inr(priceResult.total) + "\n" +
-    "Damage Deductible: \u20B92,000 acknowledged\n\n" +
-    "\u2705 Payment completed. Booking allotted.";
-  window._lastBookingMsg = msg;
-  var newId = "BK" + Date.now().toString().slice(-4);
-  BOOKINGS.push({
-    id: newId, carId: selCar.id, car: selCar.name,
-    customer: userProfile.name || "Pending Verification", phone: userProfile.phone || "",
-    pickup: priceResult.pickup, drop: priceResult.drop,
-    total: priceResult.total, status: "upcoming",
-    checkinOtp: String(Math.floor(1000 + Math.random() * 9000)),
-    checkoutOtp: String(Math.floor(1000 + Math.random() * 9000))
-  });
-  myBookingIds.push(newId);
-  document.getElementById("booking-form").style.display    = "none";
-  document.getElementById("success-section").style.display = "block";
-}
+  if(!authToken){ alert("Please complete profile verification (OTP login) before booking."); openVerifyModal(); return; }
 
+  var isLocalCar = String(selCar.id).startsWith("local");
+  if(isLocalCar){
+    var newId = "DS" + Date.now().toString(36).toUpperCase();
+    myBookingIds.push(newId);
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\nNote: Backend offline - contact admin to confirm.";
+    document.getElementById("booking-form").style.display    = "none";
+    document.getElementById("success-section").style.display = "block";
+    return;
+  }
+
+  try {
+    var order = await apiFetch("/api/payment/order", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        carId: selCar.id,
+        pickupDate: priceResult.pickup,
+        dropDate:   priceResult.drop,
+        pickupLocation: "Pune",
+        dropLocation:   "Pune"
+      })
+    });
+    var rzp = new Razorpay({
+      key:         order.keyId,
+      amount:      order.amount * 100,
+      currency:    "INR",
+      name:        "DriveDilSe",
+      description: selCar.name + " - " + order.days + " day(s)",
+      order_id:    order.orderId,
+      prefill:     { name: userProfile.name, contact: "91" + userProfile.phone },
+      theme:       { color: "#f5c518" },
+      handler: async function(resp){
+        try {
+          var result = await apiFetch("/api/payment/verify", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+              razorpayOrderId:   resp.razorpay_order_id,
+              razorpayPaymentId: resp.razorpay_payment_id,
+              razorpaySignature: resp.razorpay_signature,
+              carId: selCar.id,
+              pickupDate: priceResult.pickup,
+              dropDate:   priceResult.drop
+            })
+          });
+          myBookingIds.push(result.bookingId);
+          window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
+          document.getElementById("booking-form").style.display    = "none";
+          document.getElementById("success-section").style.display = "block";
+        } catch(e){ alert("Payment received but booking failed. Contact support.\n" + e.message); }
+      }
+    });
+    rzp.open();
+  } catch(e){ alert("Could not initiate payment: " + e.message); }
+}
 // ── VERIFY MODAL ──
 function openVerifyModal(){
   // Reset
@@ -1086,23 +1208,47 @@ document.getElementById("vm-dob").addEventListener("change", function(){
   else { el.textContent = "✓ Age " + age + " — eligible"; el.style.color = "#1a7a3c"; }
 });
 
-function vmSendOtp(){
-  var ph = document.getElementById("vm-phone").value;
-  if(!ph || ph.length < 10){ alert("Enter a valid 10-digit phone number."); return; }
-  vmDummyOtp = String(Math.floor(100000 + Math.random() * 900000));
-  alert("Demo OTP: " + vmDummyOtp);
-  document.getElementById("vm-otp-row").style.display = "block";
-  document.getElementById("vm-otp-btn").textContent   = "Resend";
-  document.getElementById("vm-otp-msg").innerHTML     = '<span style="color:#1a5fa8">OTP sent! Enter below.</span>';
+async function vmSendOtp(){
+  var ph = document.getElementById("vm-phone").value.trim();
+  if(!ph || !/^[6-9]\d{9}$/.test(ph)){ alert("Enter a valid 10-digit Indian mobile number."); return; }
+  var btn = document.getElementById("vm-otp-btn");
+  var msg = document.getElementById("vm-otp-msg");
+  btn.textContent = "Sending..."; btn.disabled = true;
+  try {
+    await apiFetch("/api/auth/send-otp", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ phone: ph })
+    });
+    document.getElementById("vm-otp-row").style.display = "block";
+    btn.textContent = "Resend"; btn.disabled = false;
+    msg.innerHTML = '<span style="color:#1a5fa8">OTP sent to +91 ' + ph + '</span>';
+  } catch(e){
+    btn.textContent = "Send OTP"; btn.disabled = false;
+    msg.innerHTML = '<span style="color:#c0392b">Failed: ' + e.message + '</span>';
+  }
 }
-function vmVerifyOtp(){
-  if(document.getElementById("vm-otp").value === vmDummyOtp){
+async function vmVerifyOtp(){
+  var ph  = document.getElementById("vm-phone").value.trim();
+  var otp = document.getElementById("vm-otp").value.trim();
+  if(!otp){ alert("Enter the OTP."); return; }
+  try {
+    var resp = await apiFetch("/api/auth/verify-otp", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ phone: ph, otp: otp })
+    });
+    authToken = resp.token;
+    localStorage.setItem("dds_token", authToken);
+    if(resp.user){ userProfile.name=resp.user.name||""; userProfile.phone=resp.user.phone; userProfile.phoneVerified=true; }
     vmOtpVerified = true;
     document.getElementById("vm-otp-btn").textContent = "✅ Verified";
     document.getElementById("vm-otp-btn").className   = "btn btn-gr btn-sm";
     document.getElementById("vm-otp-row").style.display = "none";
     document.getElementById("vm-otp-msg").innerHTML   = '<span style="color:#1a7a3c">✅ Phone verified!</span>';
-  } else { alert("Incorrect OTP. Try again."); }
+  } catch(e){
+    document.getElementById("vm-otp-msg").innerHTML = '<span style="color:#c0392b">❌ ' + e.message + '</span>';
+  }
 }
 function setAadhaar(input){
   if(!input.files || !input.files[0]) return;
@@ -1129,7 +1275,7 @@ function vmVerifyDL(input){
     bar.className = "dl-bar dl-ok"; bar.textContent   = "✅ Age verified — you are eligible to rent a vehicle.";
   }, 2000);
 }
-function vmSubmit(){
+async function vmSubmit(){
   var errs = [];
   var name  = document.getElementById("vm-name").value.trim();
   var dob   = document.getElementById("vm-dob").value;
@@ -1138,7 +1284,7 @@ function vmSubmit(){
   if(!dob)                errs.push("Enter your date of birth");
   else {
     var today = new Date(), birth = new Date(dob), age = today.getFullYear() - birth.getFullYear();
-    if(today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--;
+    if(today.getMonth()<birth.getMonth()||(today.getMonth()===birth.getMonth()&&today.getDate()<birth.getDate())) age--;
     if(age < 18)          errs.push("You must be 18 or older");
   }
   if(!phone || phone.length < 10) errs.push("Enter a valid phone number");
@@ -1151,24 +1297,63 @@ function vmSubmit(){
     errEl.style.display = "block"; return;
   }
   errEl.style.display = "none";
-  var msg = "\uD83D\uDCCB Profile Verification \u2014 DriveDilSe\n\n" +
-    "Name: " + name + "\nPhone: " + phone + "\nDOB: " + dob + "\n" +
-    "Aadhaar: Uploaded \u2705\nDriving Licence: Verified (18+) \u2705\n\nPlease verify and send Check-In OTP.";
-  window._lastVerifyMsg = msg;
-  userVerified = true; userProfile.name=name; userProfile.phone=phone; userProfile.dob=dob; userProfile.phoneVerified=vmOtpVerified; userProfile.aadhaarUploaded=aadhaarSet; userProfile.dlVerified=dlVerified;
-  BOOKINGS.forEach(function(b){ if(myBookingIds.indexOf(b.id)>-1){ b.phone=phone; b.customer=name; } });
+
+  // Upload KYC to backend
+  try {
+    var fd = new FormData();
+    fd.append("name",  name);
+    fd.append("dob",   dob);
+    var aadhaarFile = document.getElementById("aadhaar-input") ? document.getElementById("aadhaar-input").files[0] : null;
+    var dlFile      = document.getElementById("dl-input")      ? document.getElementById("dl-input").files[0]      : null;
+    if(aadhaarFile) fd.append("aadhaar", aadhaarFile);
+    if(dlFile)      fd.append("dl",      dlFile);
+
+    var resp = await fetch(API + "/api/auth/profile", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + authToken },
+      body: fd
+    });
+    if(!resp.ok){ var e = await resp.json(); throw new Error(e.error||"Upload failed"); }
+  } catch(e){
+    console.warn("KYC upload failed:", e.message);
+  }
+
+  userVerified = true;
+  userProfile.name=name; userProfile.phone=phone; userProfile.dob=dob;
+  userProfile.phoneVerified=vmOtpVerified; userProfile.aadhaarUploaded=aadhaarSet; userProfile.dlVerified=dlVerified;
+
+  window._lastVerifyMsg = "Profile Verification - DriveDilSe\n\nName: "+name+"\nPhone: "+phone+"\nDOB: "+dob+"\nAadhaar: Uploaded\nDriving Licence: Verified (18+)\n\nPlease verify and send Check-In OTP.";
   document.getElementById("vm-form-wrap").style.display = "none";
   document.getElementById("vm-done-wrap").style.display = "block";
 }
-
 // ── ADMIN ──
 function showAdminLogin(){ openModal("admin-login-modal"); }
-function doAdminLogin(){
-  if(document.getElementById("adm-pass").value === "drivedilse2024"){
+async function doAdminLogin(){
+  var pass = document.getElementById("adm-pass").value;
+  try {
+    var resp = await fetch(API + "/api/admin/login", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ password: pass })
+    });
+    var data = await resp.json();
+    if(!resp.ok) throw new Error(data.error||"Invalid password");
+    adminToken = data.token;
+    localStorage.setItem("dds_admin_token", adminToken);
     closeModal("admin-login-modal");
     showPage("pg-admin");
     renderTab("dashboard");
-  } else { alert("Incorrect password. Demo: drivedilse2024"); }
+  } catch(e){
+    // Fallback to local check for demo
+    if(pass === "drivedilse2024"){
+      adminToken = "local-admin";
+      closeModal("admin-login-modal");
+      showPage("pg-admin");
+      renderTab("dashboard");
+    } else {
+      alert("Incorrect password.");
+    }
+  }
 }
 function switchTab(tab, btn){
   document.querySelectorAll(".atab").forEach(function(b){ b.classList.remove("on"); });
@@ -1176,131 +1361,159 @@ function switchTab(tab, btn){
   renderTab(tab);
 }
 function badge(s){
-  var m = {ongoing:"sb-on", upcoming:"sb-up", completed:"sb-done", active:"sb-act"};
+  var m = {ongoing:"sb-on",upcoming:"sb-up",completed:"sb-done",active:"sb-act",confirmed:"sb-up",cancelled:"sb-done",pending:"sb-pend"};
   return '<span class="sbadge ' + (m[s]||"sb-done") + '">' + s + '</span>';
 }
-function bkTable(bks, showOtp){
+function bkTable(bks, showActions){
   if(!bks.length) return '<div style="padding:32px;text-align:center;color:var(--ts)">No bookings</div>';
-  var otpHdr = showOtp ? "<th>OTP (Admin Only)</th>" : "";
   var rows = bks.map(function(b){
-    var otpCell = "";
-    if(showOtp){
-      if(b.status === "upcoming")
-        otpCell = '<td><div style="display:flex;align-items:center;gap:8px"><span class="otp-pill">' + b.checkinOtp + '</span><span style="font-size:.7rem;color:var(--ts);font-weight:500">Check-In OTP<br><span style="color:#c0392b;font-size:.65rem">Give to representative only</span></span></div></td>';
-      else if(b.status === "ongoing")
-        otpCell = '<td><div style="display:flex;align-items:center;gap:8px"><span class="otp-pill blue">' + b.checkoutOtp + '</span><span style="font-size:.7rem;color:var(--ts);font-weight:500">Check-Out OTP<br><span style="color:#1a5fa8;font-size:.65rem">Give to representative only</span></span></div></td>';
-      else
-        otpCell = '<td><span style="font-size:.72rem;color:#1a7a3c;font-weight:600">✅ Complete</span></td>';
-    }
+    var carName  = b.carName || (b.car && b.car.name) || "—";
+    var custName = b.customer || (b.user && b.user.name) || "—";
+    var phone    = b.phone    || (b.user && b.user.phone) || "—";
+    var pickup   = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
+    var drop     = b.drop   && b.drop.date   ? b.drop.date   : b.drop;
+    var actCell  = showActions ?
+      '<td><select onchange="updateBookingStatus(\''+b._id+'\',this.value)" style="font-size:.75rem;border:1px solid var(--b);border-radius:6px;padding:2px 6px">' +
+        ['pending','confirmed','active','completed','cancelled'].map(function(s){ return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>'; }).join('') +
+      '</select></td>' : '';
     return '<tr>' +
-      '<td style="font-weight:700;color:var(--yd)">' + b.id + '</td>' +
-      '<td>' + b.car + '</td>' +
-      '<td>' + b.customer + '</td>' +
-      '<td>' + b.phone + '</td>' +
-      '<td style="color:var(--ts);font-size:.77rem;white-space:nowrap">' + new Date(b.pickup).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) + '</td>' +
-      '<td style="color:var(--ts);font-size:.77rem;white-space:nowrap">' + new Date(b.drop).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) + '</td>' +
+      '<td style="font-weight:700;color:var(--yd)">' + (b.bookingId||b._id||"—") + '</td>' +
+      '<td>' + carName + '</td>' +
+      '<td>' + custName + '</td>' +
+      '<td>' + phone + '</td>' +
+      '<td style="color:var(--ts);font-size:.77rem;white-space:nowrap">' + new Date(pickup).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) + '</td>' +
+      '<td style="color:var(--ts);font-size:.77rem;white-space:nowrap">' + new Date(drop).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) + '</td>' +
       '<td style="font-weight:700">' + inr(b.total) + '</td>' +
       '<td>' + badge(b.status) + '</td>' +
-      otpCell +
+      actCell +
     '</tr>';
   }).join("");
+  var actHdr = showActions ? '<th>Action</th>' : '';
   return '<div style="overflow-x:auto"><table class="adm-table"><thead><tr>' +
-    '<th>ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th>' + otpHdr +
+    '<th>ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th>' + actHdr +
     '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
-function renderTab(tab){
+async function updateBookingStatus(id, status){
+  try {
+    await fetch(API + "/api/admin/bookings/" + id + "/status", {
+      method: "PUT",
+      headers: {"Content-Type":"application/json","Authorization":"Bearer "+adminToken},
+      body: JSON.stringify({ status: status })
+    });
+  } catch(e){ alert("Failed to update: " + e.message); }
+}
+async function renderTab(tab){
   var c = document.getElementById("admin-content");
-  var rev = BOOKINGS.reduce(function(s,b){ return s + b.total; }, 0);
-  var ongoing   = BOOKINGS.filter(function(b){ return b.status === "ongoing"; });
-  var upcoming  = BOOKINGS.filter(function(b){ return b.status === "upcoming"; });
-  var completed = BOOKINGS.filter(function(b){ return b.status === "completed"; });
+  c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ts)">Loading...</div>';
+  var isLocal = adminToken === "local-admin";
+
   if(tab === "dashboard"){
-    var stats = [
-      [FLEET.length,   "Total Vehicles", "🚗"],
-      [FLEET.filter(function(c){ return c.active; }).length, "Active", "✅"],
-      [ongoing.length,  "Ongoing",   "🟢"],
-      [upcoming.length, "Upcoming",  "🟡"],
-      [completed.length,"Completed", "✅"],
-      [inr(rev),        "Revenue",   "💰"]
-    ];
+    var stats, ongoing=[], upcoming=[], completed=[];
+    if(!isLocal){
+      try {
+        var dash = await fetch(API+"/api/admin/dashboard",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var bks  = await fetch(API+"/api/admin/bookings", {headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        ongoing   = bks.filter(function(b){ return b.status==="active"; });
+        upcoming  = bks.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; });
+        completed = bks.filter(function(b){ return b.status==="completed"; });
+        stats = [
+          [dash.totalCars,   "Total Vehicles", "🚗"],
+          [dash.totalBookings, "Total Bookings", "📋"],
+          [ongoing.length,   "Active Drives",  "🟢"],
+          [upcoming.length,  "Upcoming",       "🟡"],
+          [completed.length, "Completed",      "✅"],
+          [inr(dash.revenue), "Revenue",       "💰"]
+        ];
+      } catch(e){ isLocal = true; }
+    }
+    if(isLocal){
+      stats = [[FLEET.length,"Total Vehicles","🚗"],[0,"Bookings","📋"],[0,"Active","🟢"],[0,"Upcoming","🟡"],[0,"Completed","✅"],[inr(0),"Revenue","💰"]];
+    }
     c.innerHTML =
       '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">Overview</div>' +
       '<div class="stat-grid">' +
-        stats.map(function(s){ return '<div class="card stat-card"><div style="font-size:1.4rem;margin-bottom:6px">' + s[2] + '</div><div class="stat-num">' + s[0] + '</div><div style="font-size:.72rem;color:var(--ts)">' + s[1] + '</div></div>'; }).join("") +
+        stats.map(function(s){ return '<div class="card stat-card"><div style="font-size:1.4rem;margin-bottom:6px">'+s[2]+'</div><div class="stat-num">'+s[0]+'</div><div style="font-size:.72rem;color:var(--ts)">'+s[1]+'</div></div>'; }).join("") +
       '</div>' +
-      '<div style="font-family:Georgia,serif;font-size:1.05rem;font-weight:900;margin-bottom:12px">🟢 Ongoing Drives</div>' +
-      '<div class="card" style="margin-bottom:24px;overflow:hidden">' + bkTable(ongoing, true) + '</div>' +
-      '<div style="font-family:Georgia,serif;font-size:1.05rem;font-weight:900;margin-bottom:12px">🟡 Upcoming Bookings — Check-In OTPs</div>' +
-      '<div class="card" style="overflow:hidden">' + bkTable(upcoming, true) + '</div>';
-  } else if(tab === "ongoing"){
-    c.innerHTML = '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:8px">Ongoing Drives</div><p style="color:var(--ts);font-size:.88rem;margin-bottom:20px">Check-Out OTPs are shown below. Give to your representative at vehicle return.</p><div class="card" style="overflow:hidden">' + bkTable(ongoing, true) + '</div>';
-  } else if(tab === "upcoming"){
-    c.innerHTML = '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:8px">Upcoming Bookings</div><p style="color:var(--ts);font-size:.88rem;margin-bottom:20px">Check-In OTPs are shown below. Give to your representative to hand over at vehicle pickup. <strong style="color:#c0392b">Do not share with customers directly.</strong></p><div class="card" style="overflow:hidden">' + bkTable(upcoming, true) + '</div>';
-  } else if(tab === "completed"){
-    c.innerHTML = '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">Completed Bookings (' + completed.length + ')</div><div class="card" style="overflow:hidden">' + bkTable(completed, false) + '</div>';
+      (ongoing.length  ? '<div style="font-family:Georgia,serif;font-size:1.05rem;font-weight:900;margin-bottom:12px">🟢 Active Drives</div><div class="card" style="margin-bottom:24px;overflow:hidden">'+bkTable(ongoing,true)+'</div>' : '') +
+      (upcoming.length ? '<div style="font-family:Georgia,serif;font-size:1.05rem;font-weight:900;margin-bottom:12px">🟡 Upcoming Bookings</div><div class="card" style="overflow:hidden">'+bkTable(upcoming,true)+'</div>' : '');
+  } else if(tab === "ongoing"||tab === "upcoming"||tab === "completed"){
+    if(!isLocal){
+      try {
+        var bks2 = await fetch(API+"/api/admin/bookings",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var statusFilter = {ongoing:"active",upcoming:["confirmed","pending"],completed:"completed"};
+        var filtered = bks2.filter(function(b){
+          var sf = statusFilter[tab];
+          return Array.isArray(sf) ? sf.indexOf(b.status)>-1 : b.status===sf;
+        });
+        var titles = {ongoing:"Active Drives",upcoming:"Upcoming Bookings",completed:"Completed Bookings"};
+        c.innerHTML = '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">'+titles[tab]+'</div><div class="card" style="overflow:hidden">'+bkTable(filtered,true)+'</div>';
+      } catch(e){ c.innerHTML = '<div style="padding:40px;text-align:center;color:#c0392b">Error loading bookings: '+e.message+'</div>'; }
+    } else {
+      c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ts)">Connect backend to view live bookings.</div>';
+    }
   } else if(tab === "vehicles"){
-    var cards = FLEET.map(function(car){
-      var pauses = car.paused.map(function(p, i){
-        return '<div class="pause-period">' +
-          '<span style="font-size:.78rem">⏸ ' + new Date(p.start).toLocaleDateString("en-IN",{day:"2-digit",month:"short"}) + ' ' + p.startTime + ' → ' + new Date(p.end).toLocaleDateString("en-IN",{day:"2-digit",month:"short"}) + ' ' + p.endTime + '</span>' +
-          '<button onclick="removePause(' + car.id + ',' + i + ')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:700;font-size:.85rem">✕</button>' +
-        '</div>';
-      }).join("");
+    var carsData = FLEET;
+    if(!isLocal){
+      try {
+        var apiCars = await fetch(API+"/api/admin/fleet",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        carsData = apiCars.map(mapApiCar).map(function(c,i){ c._id=apiCars[i]._id; return c; });
+      } catch(e){}
+    }
+    var cards = carsData.map(function(car){
       return '<div class="v-card">' +
-        '<div class="v-img" style="background:linear-gradient(135deg,' + car.color + ',' + car.color + '66)">' +
-          '<span style="font-size:3rem">' + car.emoji + '</span>' +
-          '<div style="position:absolute;top:10px;right:10px"><span class="sbadge ' + (car.active ? "sb-act" : "sb-pend") + '">' + (car.active ? "Active" : "Inactive") + '</span></div>' +
+        '<div class="v-img" style="background:linear-gradient(135deg,'+car.color+','+car.color+'66)">' +
+          '<span style="font-size:3rem">'+car.emoji+'</span>' +
+          '<div style="position:absolute;top:10px;right:10px"><span class="sbadge '+(car.active?"sb-act":"sb-pend")+'">'+(car.active?"Active":"Inactive")+'</span></div>' +
         '</div>' +
         '<div class="v-body">' +
-          '<div style="font-size:.9rem;font-weight:800;margin-bottom:4px">' + car.name + '</div>' +
-          '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:8px">' + inr(car.rate) + '/day</div>' +
+          '<div style="font-size:.9rem;font-weight:800;margin-bottom:4px">'+car.name+'</div>' +
+          '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:8px">'+inr(car.rate)+'/day</div>' +
           '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">' +
-            '<span class="pill">⚙️ ' + car.tm + '</span><span class="pill">⛽ ' + car.fuel + '</span><span class="pill">💺 ' + car.seats + '</span>' +
+            '<span class="pill">⚙️ '+car.tm+'</span><span class="pill">⛽ '+car.fuel+'</span><span class="pill">💺 '+car.seats+'</span>' +
           '</div>' +
-          (pauses ? '<div style="margin-bottom:10px">' + pauses + '</div>' : '') +
           '<div style="display:flex;gap:8px">' +
-            '<button class="btn btn-y btn-sm" style="flex:1;font-size:.75rem" onclick="openPause(' + car.id + ')">⏸ Pause</button>' +
-            '<button class="btn btn-g btn-sm" style="flex:1;font-size:.75rem" onclick="toggleActive(' + car.id + ')">' + (car.active ? "Deactivate" : "Activate") + '</button>' +
+            '<button class="btn btn-g btn-sm" style="flex:1;font-size:.75rem" onclick="adminToggleCar(\''+car.id+'\')">'+(car.active?"Deactivate":"Activate")+'</button>' +
           '</div>' +
         '</div>' +
       '</div>';
     }).join("");
-    c.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-        '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900">Fleet Management</div>' +
-        '<button class="btn btn-y btn-sm">+ Add Vehicle</button>' +
-      '</div>' +
-      '<div class="v-grid">' + cards + '</div>';
+    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900">Fleet Management</div></div><div class="v-grid">'+cards+'</div>';
   } else if(tab === "customers"){
-    var rows = CUSTOMERS.map(function(u){
-      return '<tr>' +
-        '<td><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:var(--y);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0">' + u.name[0] + '</div><span style="font-weight:700">' + u.name + '</span></div></td>' +
-        '<td>' + u.phone + '</td>' +
-        '<td style="color:var(--ts)">' + u.email + '</td>' +
-        '<td>' + u.age + ' yrs</td>' +
-        '<td style="font-weight:700;color:var(--yd)">' + u.bookings + '</td>' +
-        '<td style="font-weight:700">' + inr(u.spent) + '</td>' +
-        '<td>' + (u.verified ? '<span class="sbadge sb-act">Verified</span>' : '<span class="sbadge sb-pend">Pending</span>') + '</td>' +
-      '</tr>';
-    }).join("");
-    c.innerHTML =
-      '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">Registered Customers</div>' +
-      '<div class="card" style="overflow:hidden"><table class="adm-table"><thead><tr>' +
-        '<th>Customer</th><th>Phone</th><th>Email</th><th>Age</th><th>Bookings</th><th>Spent</th><th>KYC</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+    if(!isLocal){
+      try {
+        var custs = await fetch(API+"/api/admin/customers",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var rows = custs.map(function(u){
+          return '<tr>' +
+            '<td><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:var(--y);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0">'+(u.name?u.name[0]:"?")+'</div><span style="font-weight:700">'+(u.name||"—")+'</span></div></td>' +
+            '<td>'+u.phone+'</td>' +
+            '<td style="color:var(--ts)">'+(u.email||"—")+'</td>' +
+            '<td>'+(u.kyc&&u.kyc.status?u.kyc.status:"pending")+'</td>' +
+            '<td>' + (u.kyc&&u.kyc.status==="uploaded" ?
+              '<button class="btn btn-y btn-sm" onclick="approveKyc(\''+u._id+'\')">Approve KYC</button>' :
+              (u.kyc&&u.kyc.status==="verified"?'<span class="sbadge sb-act">Verified</span>':'<span class="sbadge sb-pend">Pending</span>')) + '</td>' +
+          '</tr>';
+        }).join("");
+        c.innerHTML = '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">Customers ('+custs.length+')</div><div class="card" style="overflow:hidden"><table class="adm-table"><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>KYC Status</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      } catch(e){ c.innerHTML = '<div style="padding:40px;text-align:center;color:#c0392b">Error: '+e.message+'</div>'; }
+    } else {
+      c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ts)">Connect backend to view customers.</div>';
+    }
   }
 }
-function toggleActive(id){
-  for(var i=0; i<FLEET.length; i++){ if(FLEET[i].id === id){ FLEET[i].active = !FLEET[i].active; break; } }
+async function adminToggleCar(id){
+  if(adminToken !== "local-admin"){
+    try { await fetch(API+"/api/admin/fleet/"+id+"/toggle",{method:"PUT",headers:{"Authorization":"Bearer "+adminToken}}); } catch(e){}
+  } else {
+    for(var i=0;i<FLEET.length;i++){ if(FLEET[i].id===id){ FLEET[i].active=!FLEET[i].active; break; } }
+  }
   renderTab("vehicles");
 }
-function removePause(carId, idx){
-  for(var i=0; i<FLEET.length; i++){ if(FLEET[i].id === carId){ FLEET[i].paused.splice(idx, 1); break; } }
-  renderTab("vehicles");
-  var car = FLEET.find(function(c){ return c.id === carId; });
-  if(car) renderExistingPauses(car);
+async function approveKyc(userId){
+  try {
+    await fetch(API+"/api/admin/customers/"+userId+"/kyc",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+adminToken},body:JSON.stringify({status:"verified"})});
+    renderTab("customers");
+  } catch(e){ alert("Failed: "+e.message); }
 }
-
 // ── PAUSE CALENDAR ──
 var pauseCarId = null;
 var calYear = new Date().getFullYear(), calMonth = new Date().getMonth();

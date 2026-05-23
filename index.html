@@ -760,6 +760,7 @@ var WHATSAPP = "919999999999"; // ← REPLACE with your number e.g. "91701234567
 var selCar = null, priceResult = null;
 var userVerified = null;
 var userProfile = {name:"",phone:"",dob:"",phoneVerified:false,aadhaarUploaded:false,dlVerified:false};
+var myBookingIds = [];
 var vmOtpVerified = false, aadhaarSet = false, dlVerified = false, vmDummyOtp = "";
 
 // ── UTILS ──
@@ -826,7 +827,7 @@ function renderProfile(){
   setKyc("kyc-dl-icon","kyc-dl-status",p.dlVerified,"Verified","Not Uploaded");
   // Bookings (show bookings for this phone number)
   var bb=document.getElementById("prof-bookings-body");
-  var myBks=p.phone?BOOKINGS.filter(function(b){return b.phone===p.phone;}):[];
+  var myBks=BOOKINGS.filter(function(b){return myBookingIds.indexOf(b.id)>-1||(p.phone&&b.phone===p.phone);});
   if(myBks.length){
     bb.innerHTML=myBks.map(function(b){
       var statusMap={ongoing:"sb-on",upcoming:"sb-up",completed:"sb-done"};
@@ -1017,12 +1018,13 @@ function payNow(){
   var newId = "BK" + Date.now().toString().slice(-4);
   BOOKINGS.push({
     id: newId, carId: selCar.id, car: selCar.name,
-    customer: "Pending Verification", phone: "",
+    customer: userProfile.name || "Pending Verification", phone: userProfile.phone || "",
     pickup: priceResult.pickup, drop: priceResult.drop,
     total: priceResult.total, status: "upcoming",
     checkinOtp: String(Math.floor(1000 + Math.random() * 9000)),
     checkoutOtp: String(Math.floor(1000 + Math.random() * 9000))
   });
+  myBookingIds.push(newId);
   document.getElementById("booking-form").style.display    = "none";
   document.getElementById("success-section").style.display = "block";
 }
@@ -1140,6 +1142,7 @@ function vmSubmit(){
     "Aadhaar: Uploaded \u2705\nDriving Licence: Verified (18+) \u2705\n\nPlease verify and send Check-In OTP.";
   window.open("https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(msg), "_blank");
   userVerified = true; userProfile.name=name; userProfile.phone=phone; userProfile.dob=dob; userProfile.phoneVerified=vmOtpVerified; userProfile.aadhaarUploaded=aadhaarSet; userProfile.dlVerified=dlVerified;
+  BOOKINGS.forEach(function(b){ if(myBookingIds.indexOf(b.id)>-1){ b.phone=phone; b.customer=name; } });
   document.getElementById("vm-form-wrap").style.display = "none";
   document.getElementById("vm-done-wrap").style.display = "block";
 }

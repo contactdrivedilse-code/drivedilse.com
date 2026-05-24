@@ -6,9 +6,12 @@ const cors = require("cors");
 const app = express();
 
 const allowedOrigins = [
-  process.env.FRONTEND_URL || "https://contact-drivedilse.github.io",
+  process.env.FRONTEND_URL || "https://contactdrivedilse-code.github.io",
+  "https://contactdrivedilse-code.github.io",
+  "https://contact-drivedilse.github.io",
   "http://localhost:5500",
   "http://127.0.0.1:5500",
+  "http://localhost:3000",
 ];
 
 app.use(cors({

@@ -251,8 +251,11 @@ footer{background:#fffbe6;border-top:1px solid rgba(200,160,0,.25);padding:32px 
 .ci-photo-status{font-size:.7rem;color:#15803d;min-height:14px}
 .ci-window-badge{display:inline-block;background:#fef9c3;border:1.5px solid var(--yd);color:var(--yd);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px}
 .ci-window-badge.open{background:#dcfce7;border-color:#16a34a;color:#15803d}
-.bkd-ext-opt{background:#fff;border:1.5px solid var(--b);border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Inter',sans-serif}
-.bkd-ext-opt:hover{border-color:var(--yd);background:rgba(245,197,24,.08)}
+.ext-mode-btn{background:none;border:none;border-radius:16px;padding:5px 16px;font-size:.78rem;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;color:#888;transition:all .15s}
+.ext-mode-active{background:#fff;color:var(--yd);box-shadow:0 1px 5px rgba(0,0,0,.1)}
+.ext-slider{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:#ede9db;outline:none;cursor:pointer;transition:background .1s}
+.ext-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--y);cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.18);border:2px solid #fff}
+.ext-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--y);cursor:pointer;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .pause-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .pause-modal-bg.open{display:flex}
 .pause-modal{background:var(--w);border-radius:22px;padding:32px;width:540px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.3)}
@@ -915,18 +918,31 @@ window.addEventListener('scroll',function(){
 
     <!-- Extension section -->
     <div id="bkd-extend-section" style="display:none">
-      <div style="font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">Extend Booking</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px" id="bkd-extend-opts"></div>
-      <div id="bkd-extend-summary" style="display:none;background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:14px 16px;margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:.85rem;font-weight:700" id="bkd-ext-desc"></div>
-            <div style="font-size:.72rem;color:var(--ts);margin-top:3px" id="bkd-ext-new-drop"></div>
-          </div>
-          <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;font-weight:900;color:var(--yd)" id="bkd-ext-cost"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts)">Extend Booking</div>
+        <div style="display:flex;background:#f4f1e8;border-radius:20px;padding:3px;gap:2px">
+          <button id="bkd-mode-hr" class="ext-mode-btn ext-mode-active" onclick="setExtMode('hour')">Hour</button>
+          <button id="bkd-mode-day" class="ext-mode-btn" onclick="setExtMode('day')">Day</button>
         </div>
       </div>
-      <button class="btn btn-y btn-lg" id="bkd-ext-pay-btn" onclick="payExtension()" style="display:none">Pay & Extend →</button>
+      <!-- Slider card -->
+      <div style="background:#faf9f6;border:1px solid #ede9db;border-radius:14px;padding:16px 18px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+          <div style="font-weight:800;font-size:1.05rem" id="bkd-slider-val">+1 hour</div>
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:900;color:var(--yd)" id="bkd-slider-cost">₹—</div>
+        </div>
+        <input type="range" class="ext-slider" id="bkd-ext-slider" min="1" max="23" value="1" step="1" oninput="onExtSlider()">
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:.68rem;color:var(--ts)">
+          <span id="bkd-slider-min">1 hr</span>
+          <span id="bkd-slider-max">23 hrs</span>
+        </div>
+      </div>
+      <!-- New drop preview -->
+      <div id="bkd-extend-summary" style="background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:12px 16px;margin-bottom:12px">
+        <div style="font-size:.8rem;font-weight:700;margin-bottom:2px" id="bkd-ext-desc"></div>
+        <div style="font-size:.75rem;color:var(--ts)" id="bkd-ext-new-drop"></div>
+      </div>
+      <button class="btn btn-y btn-lg" id="bkd-ext-pay-btn" onclick="payExtension()">Pay & Extend →</button>
     </div>
   </div>
 </div>
@@ -2392,8 +2408,9 @@ function openBookingDetails(id) {
   document.getElementById("bkd-drop-loc").textContent = (b.drop && b.drop.location) || "Pune";
 
   var diffDays = Math.max(1, Math.ceil((dropDate - pickupDate) / (1000*60*60*24)));
-  var ppd      = b.pricePerDay || 0;
-  var pph      = Math.round(ppd / 24);
+  // Fallback: derive pricePerDay from total if field is missing/zero
+  var ppd = b.pricePerDay || Math.round((b.total || 0) / Math.max(1, b.days || diffDays));
+  var pph = Math.round(ppd / 24);
   document.getElementById("bkd-dur").textContent    = diffDays + (diffDays === 1 ? " day" : " days");
   document.getElementById("bkd-rate").innerHTML     = "₹" + ppd.toLocaleString("en-IN") + "/day<br><span style='font-size:.68rem;color:var(--ts)'>₹" + pph.toLocaleString("en-IN") + "/hr</span>";
   document.getElementById("bkd-deposit").textContent = b.deposit ? "₹" + b.deposit.toLocaleString("en-IN") : "—";
@@ -2411,20 +2428,8 @@ function openBookingDetails(id) {
   document.getElementById("bkd-payment-rows").innerHTML = rows;
 
   var canExtend = b.status === "confirmed" || b.status === "active";
-  var extSec = document.getElementById("bkd-extend-section");
-  extSec.style.display = canExtend ? "block" : "none";
-  if(canExtend){
-    var opts = [{h:2,label:"+2 hrs"},{h:6,label:"+6 hrs"},{h:12,label:"+12 hrs"},{h:24,label:"+1 day"},{h:72,label:"+3 days"},{h:168,label:"+7 days"}];
-    document.getElementById("bkd-extend-opts").innerHTML = opts.map(function(o){
-      var cost = o.h < 24 ? pph * o.h : ppd * (o.h / 24);
-      return '<button class="bkd-ext-opt" onclick="selectExtension('+o.h+')" data-h="'+o.h+'">' +
-        '<div style="font-weight:800;font-size:.85rem">'+o.label+'</div>' +
-        '<div style="font-size:.72rem;color:var(--ts);margin-top:2px">₹'+Math.round(cost).toLocaleString("en-IN")+'</div>' +
-        '</button>';
-    }).join("");
-    document.getElementById("bkd-extend-summary").style.display = "none";
-    document.getElementById("bkd-ext-pay-btn").style.display    = "none";
-  }
+  document.getElementById("bkd-extend-section").style.display = canExtend ? "block" : "none";
+  if(canExtend){ extMode = 'hour'; setExtMode('hour'); }
   openModal("bk-detail-modal");
 }
 
@@ -2432,28 +2437,54 @@ function bkdRow(label, value){
   return '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid var(--b)"><span style="color:var(--ts)">'+label+'</span><span style="font-weight:700">'+value+'</span></div>';
 }
 
-function selectExtension(hours){
+var extMode = 'hour';
+
+function setExtMode(mode){
+  extMode = mode;
+  var slider = document.getElementById("bkd-ext-slider");
+  if(mode === 'hour'){
+    slider.min = 1; slider.max = 23;
+    slider.value = Math.min(parseInt(slider.value) || 1, 23);
+    document.getElementById("bkd-slider-min").textContent = "1 hr";
+    document.getElementById("bkd-slider-max").textContent = "23 hrs";
+  } else {
+    slider.min = 1; slider.max = 7;
+    slider.value = Math.min(parseInt(slider.value) || 1, 7);
+    document.getElementById("bkd-slider-min").textContent = "1 day";
+    document.getElementById("bkd-slider-max").textContent = "7 days";
+  }
+  document.getElementById("bkd-mode-hr").className  = "ext-mode-btn" + (mode==="hour" ? " ext-mode-active" : "");
+  document.getElementById("bkd-mode-day").className = "ext-mode-btn" + (mode==="day"  ? " ext-mode-active" : "");
+  onExtSlider();
+}
+
+function onExtSlider(){
   var b = window._bkdCurrent;
   if(!b) return;
+  var slider = document.getElementById("bkd-ext-slider");
+  var val    = parseInt(slider.value);
+  var hours  = extMode === 'hour' ? val : val * 24;
   window._bkdSelected = hours;
-  var ppd  = b.pricePerDay || 0;
-  var pph  = Math.round(ppd / 24);
-  var cost = hours < 24 ? pph * hours : ppd * (hours / 24);
 
-  document.querySelectorAll(".bkd-ext-opt").forEach(function(btn){
-    btn.style.background  = ""; btn.style.borderColor = ""; btn.style.color = "";
-  });
-  var sel = document.querySelector(".bkd-ext-opt[data-h='"+hours+"']");
-  if(sel){ sel.style.background="rgba(245,197,24,.15)"; sel.style.borderColor="var(--yd)"; sel.style.color="var(--yd)"; }
+  var ppd  = b.pricePerDay || Math.round((b.total||0) / Math.max(1, b.days||1));
+  var pph  = Math.round(ppd / 24);
+  var cost = extMode === 'hour' ? pph * val : ppd * val;
+
+  var label = extMode === 'hour'
+    ? val + " hour" + (val > 1 ? "s" : "")
+    : val + " day"  + (val > 1 ? "s" : "");
+
+  document.getElementById("bkd-slider-val").textContent  = "+" + label;
+  document.getElementById("bkd-slider-cost").textContent = "₹" + Math.round(cost).toLocaleString("en-IN");
+
+  // Track fill
+  var pct = ((val - parseInt(slider.min)) / (parseInt(slider.max) - parseInt(slider.min))) * 100;
+  slider.style.background = "linear-gradient(to right,var(--y) 0%,var(--y) "+pct+"%,#ede9db "+pct+"%,#ede9db 100%)";
 
   var dropDate = b.drop && b.drop.date ? new Date(b.drop.date) : new Date(b.drop);
   var newDrop  = new Date(dropDate.getTime() + hours * 3600000);
-  var label = hours < 24 ? hours + " hour" + (hours>1?"s":"") : (hours/24) + " day" + (hours>24?"s":"");
   document.getElementById("bkd-ext-desc").textContent     = "Extending by " + label;
   document.getElementById("bkd-ext-new-drop").textContent = "New drop: " + newDrop.toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
-  document.getElementById("bkd-ext-cost").textContent     = "₹" + Math.round(cost).toLocaleString("en-IN");
-  document.getElementById("bkd-extend-summary").style.display = "flex";
-  document.getElementById("bkd-ext-pay-btn").style.display    = "block";
 }
 
 async function payExtension(){
@@ -2461,7 +2492,7 @@ async function payExtension(){
   var hours = window._bkdSelected;
   if(!b || !hours) return;
   var id   = b._id || b.bookingId;
-  var ppd  = b.pricePerDay || 0;
+  var ppd  = b.pricePerDay || Math.round((b.total||0) / Math.max(1, b.days||1));
   var pph  = Math.round(ppd / 24);
   var cost = hours < 24 ? pph * hours : ppd * (hours / 24);
   var btn  = document.getElementById("bkd-ext-pay-btn");

@@ -1132,9 +1132,15 @@ async function renderProfile(){
           '</div>' + syncNote +
         '</div>';
       }).join("") +
-      '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin()">Log in →</span></div>';
+      '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin(renderProfile)">Log in →</span></div>';
     } else {
-      bb2.innerHTML = '<div class="profile-empty">No bookings found. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>';
+      bb2.innerHTML =
+        '<div style="text-align:center;padding:24px 0">' +
+          '<div style="font-size:.9rem;font-weight:700;margin-bottom:6px">Log in to see your bookings</div>' +
+          '<div style="font-size:.8rem;color:var(--ts);margin-bottom:16px">Enter your phone number to fetch your booking history.</div>' +
+          '<button class="btn btn-y btn-md" style="width:100%;max-width:260px" onclick="openQuickLogin(renderProfile)">Log in with Phone →</button>' +
+          '<div style="margin-top:14px;font-size:.75rem;color:var(--ts)">New here? <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>' +
+        '</div>';
     }
   }
 }
@@ -2069,8 +2075,11 @@ async function coVerifyOtp() {
   }
 }
 
-// ── QUICK OTP LOGIN (pre-payment) ──
-function openQuickLogin(){
+// ── QUICK OTP LOGIN ──
+var _qlAfterLogin = null; // what to do after successful login
+
+function openQuickLogin(afterLoginFn){
+  _qlAfterLogin = afterLoginFn || null;
   document.getElementById("ql-phone").value  = userProfile.phone || "";
   document.getElementById("ql-otp").value    = "";
   document.getElementById("ql-otp-row").style.display = "none";
@@ -2119,7 +2128,7 @@ async function qlVerifyAndPay(){
     userProfile.phone = ph;
     if(resp.user && resp.user.name) userProfile.name = resp.user.name;
     closeModal("quick-login-modal");
-    payNow(); // re-trigger now that we have a token
+    if(_qlAfterLogin){ _qlAfterLogin(); } else { payNow(); }
   } catch(e){
     document.getElementById("ql-msg").innerHTML = '<span style="color:#c0392b">❌ ' + e.message + '</span>';
     btn.textContent = "Verify & Pay →"; btn.disabled = false;

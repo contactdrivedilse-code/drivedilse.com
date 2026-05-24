@@ -931,6 +931,9 @@ window.addEventListener('scroll',function(){
       <div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:16px;margin-bottom:20px;font-size:.85rem;line-height:1.6">
         <strong>Get the Check-Out OTP from the DriveDilSe representative</strong> to close your booking and mark it as completed.
       </div>
+      <div id="co-demo-hint" style="display:none;background:#fff3cd;border:1.5px solid #f5c518;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#856404">
+        ⚡ Demo mode — use OTP <strong>123456</strong>
+      </div>
       <div style="margin-bottom:16px">
         <label class="lbl">Check-Out OTP</label>
         <input class="inp" type="number" id="co-otp-input" placeholder="Enter 6-digit OTP" style="font-size:1.2rem;letter-spacing:4px;text-align:center">
@@ -1149,7 +1152,7 @@ async function renderProfile(){
             ? '<button onclick="cancelBooking(\''+b._id+'\',\''+(b.bookingId||"").replace(/'/g,"")+'\')" style="margin-top:8px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600;transition:all .15s" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
             : '';
           window._bkdMap[b._id] = b;
-          var detailBtn = '<button onclick="openBookingDetails(\''+b._id+'\')" style="margin-top:6px;font-size:.73rem;color:#444;background:none;border:1.5px solid #ede9db;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#faf9f6\'" onmouseout="this.style.background=\'none\'">View Details →</button>';
+          var detailBtn = '<button onclick="openBookingDetails(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + b.bookingId + '</span>' +
@@ -1186,7 +1189,7 @@ async function renderProfile(){
             ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
             : '';
           var bkd3key = b._id||b.bookingId; window._bkdMap[bkd3key] = b;
-          var detailBtn3 = '<button onclick="openBookingDetails(\''+bkd3key+'\')" style="margin-top:6px;font-size:.73rem;color:#444;background:none;border:1.5px solid #ede9db;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#faf9f6\'" onmouseout="this.style.background=\'none\'">View Details →</button>';
+          var detailBtn3 = '<button onclick="openBookingDetails(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -1271,7 +1274,7 @@ async function renderProfile(){
           ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
           : '';
         var bkd2key = b._id||b.bookingId; window._bkdMap[bkd2key] = b;
-        var detailBtn2 = '<button onclick="openBookingDetails(\''+bkd2key+'\')" style="margin-top:6px;font-size:.73rem;color:#444;background:none;border:1.5px solid #ede9db;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#faf9f6\'" onmouseout="this.style.background=\'none\'">View Details →</button>';
+        var detailBtn2 = '<button onclick="openBookingDetails(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
         return '<div class="bk-row" style="display:block;padding:14px 0">' +
           '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
             '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -2224,6 +2227,8 @@ function openCheckout(bookingId, carName) {
   document.getElementById("co-otp-step").style.display  = "block";
   document.getElementById("co-success-step").style.display = "none";
   document.getElementById("co-booking-lbl").textContent = carName + " · Enter OTP from representative to close booking.";
+  // Show demo hint when no live connection available
+  document.getElementById("co-demo-hint").style.display = (!authToken || (authToken && authToken.startsWith("demo_"))) ? "block" : "none";
   openModal("checkout-modal");
 }
 
@@ -2246,8 +2251,17 @@ async function coVerifyOtp() {
     document.getElementById("co-otp-step").style.display    = "none";
     document.getElementById("co-success-step").style.display = "block";
   } catch(e) {
-    document.getElementById("co-otp-err").textContent = e.message;
-    document.getElementById("co-otp-err").style.display = "block";
+    // Demo / offline — accept 123456 and mark booking completed in cache
+    if(otp === "123456"){
+      var cache = getCachedBookings();
+      var idx = cache.findIndex(function(x){ return x._id === coBookingId || x.bookingId === coBookingId; });
+      if(idx > -1){ cache[idx].status = "completed"; localStorage.setItem("dds_bk_cache", JSON.stringify(cache)); }
+      document.getElementById("co-otp-step").style.display    = "none";
+      document.getElementById("co-success-step").style.display = "block";
+    } else {
+      document.getElementById("co-otp-err").textContent = "Incorrect OTP. In demo mode use 123456.";
+      document.getElementById("co-otp-err").style.display = "block";
+    }
   }
 }
 

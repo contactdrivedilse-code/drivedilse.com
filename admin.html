@@ -228,6 +228,66 @@ var adminToken  = localStorage.getItem("dds_admin_token") || "";
 var pauseCarId  = null;
 var allBookings = [], allCars = [], allCustomers = [];
 
+var DEMO_BOOKINGS = [
+  { _id:"demo_bk_001", bookingId:"DS1K8X2A", carName:"Maruti Swift",   customer:"Rahul Sharma",  phone:"9876543210",
+    pickup:{date:"2026-05-20T09:00:00Z",location:"Pune Airport"},   drop:{date:"2026-05-27T09:00:00Z",location:"Pune Airport"},
+    days:7,  pricePerDay:900,  total:5670,  deposit:5000,  status:"active",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo001"},
+    checkin:{otp:"4821",otpVerified:true,checkedInAt:"2026-05-20T10:15:00Z",photosUploadedAt:"2026-05-20T09:50:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:{otp:"7364",otpVerified:false,checkedOutAt:null} },
+  { _id:"demo_bk_002", bookingId:"DS1K9Y3B", carName:"Hyundai i20",    customer:"Priya Patel",   phone:"9823456789",
+    pickup:{date:"2026-05-28T10:00:00Z",location:"Hinjewadi"},      drop:{date:"2026-06-03T10:00:00Z",location:"Hinjewadi"},
+    days:6,  pricePerDay:1000, total:5400,  deposit:5000,  status:"confirmed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo002"},
+    checkin:null, checkout:null },
+  { _id:"demo_bk_003", bookingId:"DS1KAZ4C", carName:"Tata Nexon",     customer:"Amit Kumar",    phone:"9765432101",
+    pickup:{date:"2026-06-01T08:00:00Z",location:"Baner"},          drop:{date:"2026-06-05T08:00:00Z",location:"Baner"},
+    days:4,  pricePerDay:1800, total:7200,  deposit:10000, status:"confirmed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo003"},
+    checkin:{otp:"9214",otpVerified:false,checkedInAt:null,photosUploadedAt:"2026-06-01T07:30:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:null },
+  { _id:"demo_bk_004", bookingId:"DS1K7W1Z", carName:"Maruti Baleno",  customer:"Sneha Joshi",   phone:"9812345678",
+    pickup:{date:"2026-05-10T11:00:00Z",location:"Wakad"},          drop:{date:"2026-05-15T11:00:00Z",location:"Wakad"},
+    days:5,  pricePerDay:1100, total:5500,  deposit:6000,  status:"completed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo004"},
+    checkin:{otp:"6743",otpVerified:true,checkedInAt:"2026-05-10T11:30:00Z",photosUploadedAt:"2026-05-10T11:10:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:{otp:"2891",otpVerified:true,checkedOutAt:"2026-05-15T11:45:00Z"} },
+  { _id:"demo_bk_005", bookingId:"DS1K6V0Y", carName:"Honda City",     customer:"Vikram Singh",  phone:"9898765432",
+    pickup:{date:"2026-05-01T09:00:00Z",location:"Koregaon Park"},  drop:{date:"2026-05-08T09:00:00Z",location:"Koregaon Park"},
+    days:7,  pricePerDay:1400, total:8820,  deposit:8000,  status:"completed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo005"},
+    checkin:{otp:"5132",otpVerified:true,checkedInAt:"2026-05-01T09:20:00Z",photosUploadedAt:"2026-05-01T09:05:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:{otp:"3647",otpVerified:true,checkedOutAt:"2026-05-08T09:30:00Z"} },
+  { _id:"demo_bk_006", bookingId:"DS1K5U9X", carName:"Hyundai Creta",  customer:"Anita Desai",   phone:"9845678901",
+    pickup:{date:"2026-05-18T12:00:00Z",location:"Kothrud"},        drop:{date:"2026-05-20T12:00:00Z",location:"Kothrud"},
+    days:2,  pricePerDay:2000, total:4000,  deposit:12000, status:"cancelled",
+    payment:{status:"pending"},
+    checkin:null, checkout:null }
+];
+
+var DEMO_FLEET = [
+  {_id:"demo_car_001",name:"Maruti Swift",  category:"Hatchback",transmission:"Manual",   fuel:"Petrol",seats:5,pricePerDay:900, deposit:5000, active:true, pauses:[]},
+  {_id:"demo_car_002",name:"Hyundai i20",  category:"Hatchback",transmission:"Manual",   fuel:"Petrol",seats:5,pricePerDay:1000,deposit:5000, active:true, pauses:[]},
+  {_id:"demo_car_003",name:"Maruti Baleno",category:"Hatchback",transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:1100,deposit:6000, active:true, pauses:[]},
+  {_id:"demo_car_004",name:"Honda City",   category:"Sedan",    transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:1400,deposit:8000, active:true, pauses:[]},
+  {_id:"demo_car_005",name:"Tata Nexon",   category:"SUV",      transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:1800,deposit:10000,active:true, pauses:[]},
+  {_id:"demo_car_006",name:"Hyundai Creta",category:"SUV",      transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:2000,deposit:12000,active:true, pauses:[]},
+  {_id:"demo_car_007",name:"Maruti Ertiga",category:"MPV",      transmission:"Manual",   fuel:"Petrol",seats:7,pricePerDay:1400,deposit:8000, active:false,pauses:[]}
+];
+
+var DEMO_CUSTOMERS = [
+  {_id:"demo_u_001",name:"Rahul Sharma",phone:"9876543210",email:"rahul@example.com", createdAt:"2026-04-12T08:00:00Z",kyc:{status:"verified", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_002",name:"Priya Patel", phone:"9823456789",email:"priya@example.com", createdAt:"2026-04-18T10:00:00Z",kyc:{status:"verified", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_003",name:"Amit Kumar",  phone:"9765432101",email:"",                  createdAt:"2026-05-02T09:00:00Z",kyc:{status:"uploaded", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_004",name:"Sneha Joshi", phone:"9812345678",email:"sneha@example.com", createdAt:"2026-03-25T11:00:00Z",kyc:{status:"verified", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_005",name:"Vikram Singh",phone:"9898765432",email:"",                  createdAt:"2026-04-30T07:00:00Z",kyc:{status:"uploaded", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_006",name:"Anita Desai", phone:"9845678901",email:"anita@example.com", createdAt:"2026-05-15T14:00:00Z",kyc:{status:"pending",  aadhaarUrl:null,dlUrl:null}}
+];
+
 function inr(n){ return "₹" + Number(n).toLocaleString("en-IN"); }
 
 function toast(msg, type){
@@ -345,13 +405,17 @@ async function renderDashboard(isLocal, c){
     } catch(e){ isLocal = true; }
   }
   if(isLocal){
+    allBookings  = DEMO_BOOKINGS.slice();
+    allCustomers = DEMO_CUSTOMERS.slice();
+    updateBadges();
+    var demoRev = DEMO_BOOKINGS.filter(function(b){ return b.payment&&b.payment.status==="paid"; }).reduce(function(s,b){ return s+b.total; },0);
     stats = [
-      {icon:"🚗",num:"—",lbl:"Active Vehicles"},
-      {icon:"📋",num:"—",lbl:"Total Bookings"},
-      {icon:"🟢",num:"—",lbl:"Active Drives"},
-      {icon:"🟡",num:"—",lbl:"Upcoming"},
-      {icon:"👥",num:"—",lbl:"Customers"},
-      {icon:"💰",num:"—",lbl:"Revenue"},
+      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles"},
+      {icon:"📋",num:DEMO_BOOKINGS.length,lbl:"Total Bookings"},
+      {icon:"🟢",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="active"; }).length,lbl:"Active Drives"},
+      {icon:"🟡",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; }).length,lbl:"Upcoming"},
+      {icon:"👥",num:DEMO_CUSTOMERS.length,lbl:"Customers"},
+      {icon:"💰",num:inr(demoRev),lbl:"Revenue Collected"},
     ];
   }
   var statHtml = stats.map(function(s){
@@ -359,7 +423,7 @@ async function renderDashboard(isLocal, c){
   }).join("");
 
   var recentHtml = "";
-  if(!isLocal && allBookings.length){
+  if(allBookings.length){
     var recent = allBookings.slice(0,8);
     recentHtml = '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">Recent Bookings</span><button class="btn btn-g btn-sm" onclick="navTo(\'bookings\',document.querySelector(\'[data-tab=bookings]\'))">View All →</button></div><div class="table-wrap">'+buildTable(recent, true)+'</div></div>';
   }
@@ -387,8 +451,11 @@ async function renderBookings(statusFilter, isLocal, c){
   }
 
   if(isLocal){
-    c.innerHTML = '<div class="page-title">'+title+'</div><div class="empty" style="margin-top:40px"><div class="empty-icon">🔌</div><div class="empty-msg">Connect backend to view live bookings.</div></div>';
-    return;
+    allBookings = DEMO_BOOKINGS.slice();
+    updateBadges();
+    bks = statusFilter === null ? allBookings :
+      Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
+      allBookings.filter(function(b){ return b.status===statusFilter; });
   }
 
   c.innerHTML =
@@ -504,6 +571,13 @@ function buildTable(bks, showActions){
 }
 
 async function updateStatus(id, status){
+  if(adminToken === "local"){
+    var b = allBookings.find(function(b){ return b._id===id; });
+    if(b) b.status = status;
+    toast("Status updated to " + status, "success");
+    updateBadges();
+    return;
+  }
   try {
     await adminFetch("/api/admin/bookings/"+id+"/status", {
       method: "PUT",
@@ -527,8 +601,8 @@ async function renderFleet(isLocal, c){
   }
 
   if(isLocal){
-    c.innerHTML = '<div class="page-title">Fleet</div><div class="empty" style="margin-top:40px"><div class="empty-icon">🔌</div><div class="empty-msg">Connect backend to manage fleet.</div></div>';
-    return;
+    cars   = DEMO_FLEET.slice();
+    allCars = cars;
   }
 
   var emojiMap={Hatchback:"🚗",Sedan:"🚙",SUV:"🛻",MPV:"🚐"};
@@ -567,6 +641,13 @@ async function renderFleet(isLocal, c){
 }
 
 async function toggleCar(id){
+  if(adminToken === "local"){
+    var car = DEMO_FLEET.find(function(c){ return c._id===id; });
+    if(car) car.active = !car.active;
+    toast("Car status updated.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    return;
+  }
   try {
     await adminFetch("/api/admin/fleet/"+id+"/toggle", { method: "PUT" });
     toast("Car status updated.", "success");
@@ -590,6 +671,14 @@ async function submitPause(){
   var note = document.getElementById("pm-note").value;
   if(!from||!to){ toast("Select from and to dates.", "error"); return; }
   if(new Date(to) <= new Date(from)){ toast("To date must be after from date.", "error"); return; }
+  if(adminToken === "local"){
+    var car = DEMO_FLEET.find(function(c){ return c._id===pauseCarId; });
+    if(car) car.pauses.push({ _id:"p_"+Date.now(), from:from, to:to, note:note });
+    toast("Pause added.", "success");
+    closePauseModal();
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    return;
+  }
   try {
     await adminFetch("/api/admin/fleet/"+pauseCarId+"/pause", {
       method: "POST",
@@ -604,6 +693,13 @@ async function submitPause(){
 
 async function removePause(carId, pauseId){
   if(!confirm("Remove this pause period?")) return;
+  if(adminToken === "local"){
+    var car = DEMO_FLEET.find(function(c){ return c._id===carId; });
+    if(car) car.pauses = car.pauses.filter(function(p){ return p._id!==pauseId; });
+    toast("Pause removed.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    return;
+  }
   try {
     await adminFetch("/api/admin/fleet/"+carId+"/pause/"+pauseId, { method: "DELETE" });
     toast("Pause removed.", "success");
@@ -622,8 +718,9 @@ async function renderCustomers(isLocal, c){
   }
 
   if(isLocal){
-    c.innerHTML = '<div class="page-title">Customers</div><div class="empty" style="margin-top:40px"><div class="empty-icon">🔌</div><div class="empty-msg">Connect backend to view customers.</div></div>';
-    return;
+    custs        = DEMO_CUSTOMERS.slice();
+    allCustomers = custs;
+    document.getElementById("nb-customers").textContent = custs.filter(function(u){ return u.kyc&&u.kyc.status==="uploaded"; }).length || "";
   }
 
   var rows = custs.map(function(u){
@@ -681,6 +778,13 @@ function filterCustomers(){
 }
 
 async function approveKyc(id){
+  if(adminToken === "local"){
+    var u = allCustomers.find(function(c){ return c._id===id; });
+    if(u&&u.kyc) u.kyc.status = "verified";
+    toast("KYC approved.", "success");
+    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    return;
+  }
   try {
     await adminFetch("/api/admin/customers/"+id+"/kyc", {
       method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"verified"})
@@ -690,6 +794,13 @@ async function approveKyc(id){
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 async function rejectKyc(id){
+  if(adminToken === "local"){
+    var u = allCustomers.find(function(c){ return c._id===id; });
+    if(u&&u.kyc) u.kyc.status = "rejected";
+    toast("KYC rejected.", "success");
+    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    return;
+  }
   try {
     await adminFetch("/api/admin/customers/"+id+"/kyc", {
       method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"rejected"})

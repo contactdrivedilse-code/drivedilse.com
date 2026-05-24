@@ -2029,8 +2029,12 @@ async function qlSendOtp(){
     btn.onclick = qlVerifyAndPay;
   } catch(e){
     // Offline fallback: skip OTP and proceed with a temp token
-    document.getElementById("ql-msg").innerHTML = '<span style="color:#c0392b">Could not send OTP (offline mode). <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="qlOfflineProceed()">Proceed anyway →</span></span>';
-    btn.textContent = "Send OTP →"; btn.disabled = false;
+    // Show demo OTP for testing when backend is offline
+    document.getElementById("ql-otp-row").style.display = "block";
+    document.getElementById("ql-otp").value = "123456";
+    document.getElementById("ql-msg").innerHTML = '<span style="color:#e67e22;font-weight:700">⚡ Demo OTP: <span style="font-family:monospace;letter-spacing:2px;font-size:1rem">123456</span> (server offline — for testing only)</span>';
+    btn.textContent = "Verify & Continue →"; btn.disabled = false;
+    btn.onclick = qlOfflineProceed;
   }
 }
 
@@ -2059,11 +2063,16 @@ async function qlVerifyAndPay(){
 }
 
 function qlOfflineProceed(){
-  // Offline mode: store phone locally and proceed
+  var nm = document.getElementById("ql-name").value.trim();
   var ph = document.getElementById("ql-phone").value.trim();
-  if(ph) { userProfile.phone = ph; }
+  // Create a local demo token so the rest of the flow works
+  var demoToken = "demo_" + ph + "_" + Date.now();
+  authToken = demoToken;
+  localStorage.setItem("dds_token", demoToken);
+  userProfile.name  = nm  || userProfile.name  || "Demo User";
+  userProfile.phone = ph  || userProfile.phone || "";
   closeModal("quick-login-modal");
-  payNow();
+  if(_qlAfterLogin){ _qlAfterLogin(); } else { payNow(); }
 }
 </script>
 </body>

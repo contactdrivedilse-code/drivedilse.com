@@ -545,7 +545,7 @@ async function renderFleet(isLocal, c){
       '</div>' +
       '<div class="v-body">' +
         '<div style="font-size:.95rem;font-weight:800;margin-bottom:4px">'+car.name+'</div>' +
-        '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:10px">'+inr(car.pricePerDay)+'/day &nbsp;·&nbsp; Deposit: '+inr(car.deposit)+'</div>' +
+        '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:10px">'+inr(Math.round(car.pricePerDay/24))+'/hr &nbsp;·&nbsp; Deposit: '+inr(car.deposit)+'</div>' +
         '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
           '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">⚙️ '+tm+'</span>' +
           '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">⛽ '+car.fuel+'</span>' +

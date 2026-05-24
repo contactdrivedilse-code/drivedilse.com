@@ -1043,7 +1043,30 @@ async function renderProfile(){
       } else {
         bb.innerHTML = '<div class="profile-empty">No bookings yet. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>';
       }
-    } catch(e){ console.warn("Profile API error:", e.message); }
+    } catch(e){
+      console.warn("Profile API error:", e.message);
+      // Backend unreachable — show cached bookings
+      var bb3 = document.getElementById("prof-bookings-body");
+      var cached3 = getCachedBookings();
+      if(cached3.length){
+        var statusMap3={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up",pending_sync:"sb-up"};
+        bb3.innerHTML = cached3.map(function(b){
+          var pickupDate = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
+          var dropDate   = b.drop   && b.drop.date   ? b.drop.date   : b.drop;
+          return '<div class="bk-row" style="display:block;padding:14px 0">' +
+            '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
+              '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
+              '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
+              '<div class="bk-date">' + new Date(pickupDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(dropDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
+              '<span class="sbadge ' + (statusMap3[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join("") +
+        '<div style="font-size:.72rem;color:#e67e22;margin-top:8px;text-align:center">⚠️ Showing locally saved data — server unreachable</div>';
+      } else {
+        bb3.innerHTML = '<div class="profile-empty">Could not connect to server. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="renderProfile()">Retry →</span></div>';
+      }
+    }
   }
 
   // Avatar & name
@@ -1090,19 +1113,26 @@ async function renderProfile(){
   setKyc("kyc-aadhaar-icon","kyc-aadhaar-status",  p.aadhaarUploaded, "Uploaded",  "Not Uploaded");
   setKyc("kyc-dl-icon",     "kyc-dl-status",       p.dlVerified,      "Verified",  "Not Uploaded");
 
-  // Bookings (fallback for offline mode)
+  // Bookings fallback — show locally-cached bookings when no API connection / no token
   if(!authToken){
     var bb2 = document.getElementById("prof-bookings-body");
-    var myBks = BOOKINGS.filter(function(b){ return myBookingIds.indexOf(b.id)>-1||(p.phone&&b.phone===p.phone); });
-    if(myBks.length){
-      bb2.innerHTML = myBks.map(function(b){
-        var statusMap={ongoing:"sb-on",upcoming:"sb-up",completed:"sb-done"};
-        return '<div class="bk-row">' +
-          '<span class="bk-id">' + b.id + '</span>' +
-          '<div><div class="bk-car">' + b.car + '</div><div class="bk-date">' + new Date(b.pickup).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(b.drop).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
-          '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + b.status + '</span>' +
+    var cached = getCachedBookings();
+    if(cached.length){
+      bb2.innerHTML = cached.map(function(b){
+        var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up",pending_sync:"sb-up"};
+        var pickupDate = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
+        var dropDate   = b.drop   && b.drop.date   ? b.drop.date   : b.drop;
+        var syncNote   = b.status === "pending_sync" ? '<div style="font-size:.7rem;color:#e67e22;margin-top:4px">⚠️ Awaiting server confirmation. Contact support if unsure.</div>' : '';
+        return '<div class="bk-row" style="display:block;padding:14px 0">' +
+          '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
+            '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
+            '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
+            '<div class="bk-date">' + new Date(pickupDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(dropDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
+            '<span class="sbadge ' + (statusMap[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
+          '</div>' + syncNote +
         '</div>';
-      }).join("");
+      }).join("") +
+      '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin()">Log in →</span></div>';
     } else {
       bb2.innerHTML = '<div class="profile-empty">No bookings found. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>';
     }
@@ -1279,6 +1309,21 @@ function calcPrice(){
   document.getElementById("price-section").style.display = "block";
 }
 
+// ── BOOKING CACHE (localStorage) ──
+function cacheBookingLocally(booking){
+  try {
+    var list = JSON.parse(localStorage.getItem("dds_bk_cache") || "[]");
+    // avoid duplicates by bookingId
+    list = list.filter(function(b){ return b.bookingId !== booking.bookingId; });
+    list.unshift(booking);
+    localStorage.setItem("dds_bk_cache", JSON.stringify(list.slice(0, 20)));
+  } catch(e){ /* ignore */ }
+}
+function getCachedBookings(){
+  try { return JSON.parse(localStorage.getItem("dds_bk_cache") || "[]"); }
+  catch(e){ return []; }
+}
+
 // ── PAY ──
 async function payNow(){
   if(!priceResult){ alert("Please calculate price first."); return; }
@@ -1338,6 +1383,7 @@ async function payNow(){
             });
             if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
             myBookingIds.push(result.bookingId);
+            cacheBookingLocally(result.booking || { bookingId: result.bookingId, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
             window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
             document.getElementById("booking-form").style.display    = "none";
             document.getElementById("success-section").style.display = "block";
@@ -1379,6 +1425,7 @@ async function payNow(){
           });
           if(result2.token){ authToken = result2.token; localStorage.setItem("dds_token", authToken); }
           myBookingIds.push(result2.bookingId);
+          cacheBookingLocally(result2.booking || { bookingId: result2.bookingId, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
           window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result2.bookingId+"\nCar: "+selCar.name+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
           document.getElementById("booking-form").style.display    = "none";
           document.getElementById("success-section").style.display = "block";
@@ -1391,6 +1438,7 @@ async function payNow(){
     console.warn("Guest order API failed:", e.message);
     var newId2 = "DS" + Date.now().toString(36).toUpperCase();
     myBookingIds.push(newId2);
+    cacheBookingLocally({ bookingId: newId2, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "pending_sync" });
     window._lastBookingMsg = "New Booking - DriveDilSe\n\nCar: "+selCar.name+"\nPhone: "+guestPhone+"\nTotal: "+inr(priceResult.total)+"\n\nContact admin to confirm.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";

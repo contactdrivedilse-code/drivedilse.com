@@ -1078,6 +1078,9 @@ async function renderProfile(){
               checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#1a7a3c;font-weight:700">✅ Photos uploaded — enter OTP from representative <button class="btn btn-y btn-sm" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')" style="margin-left:8px;font-size:.72rem">Enter OTP →</button></div>';
             }
           }
+          var cancelBtn = isConfirmed
+            ? '<button onclick="cancelBooking(\''+b._id+'\',\''+(b.bookingId||"").replace(/'/g,"")+'\')" style="margin-top:8px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600;transition:all .15s" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
+            : '';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + b.bookingId + '</span>' +
@@ -1086,6 +1089,7 @@ async function renderProfile(){
               '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + b.status + '</span>' +
             '</div>' +
             checkinBtn +
+            cancelBtn +
           '</div>';
         }).join("");
       } else {
@@ -2093,6 +2097,34 @@ async function coVerifyOtp() {
   } catch(e) {
     document.getElementById("co-otp-err").textContent = e.message;
     document.getElementById("co-otp-err").style.display = "block";
+  }
+}
+
+// ── CANCEL BOOKING ──
+async function cancelBooking(id, displayId){
+  if(!confirm("Cancel booking " + displayId + "?\n\nThis cannot be undone.")) return;
+  try {
+    var r = await fetch(API + "/api/bookings/" + id + "/cancel", {
+      method: "PUT",
+      headers: { "Authorization": "Bearer " + authToken }
+    });
+    var d = await r.json();
+    if(!r.ok) throw new Error(d.error || "Could not cancel");
+    // update local cache
+    var cache = getCachedBookings();
+    var i = cache.findIndex(function(b){ return b._id === id || b.bookingId === displayId; });
+    if(i > -1){ cache[i].status = "cancelled"; localStorage.setItem("dds_bk_cache", JSON.stringify(cache)); }
+    renderProfile();
+  } catch(e){
+    // offline / demo mode — cancel in cache only
+    if(authToken && authToken.startsWith("demo_")){
+      var cache2 = getCachedBookings();
+      var j = cache2.findIndex(function(b){ return b._id === id || b.bookingId === displayId; });
+      if(j > -1){ cache2[j].status = "cancelled"; localStorage.setItem("dds_bk_cache", JSON.stringify(cache2)); }
+      renderProfile();
+    } else {
+      alert("Could not cancel: " + e.message);
+    }
   }
 }
 

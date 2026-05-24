@@ -107,6 +107,24 @@ router.post("/:id/checkin/verify", protect, async (req, res) => {
   }
 });
 
+// PUT /api/bookings/:id/cancel — customer cancels a confirmed booking
+router.put("/:id/cancel", protect, async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ _id: req.params.id, user: req.user.id });
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+    if (booking.status !== "confirmed")
+      return res.status(400).json({ error: "Only confirmed bookings can be cancelled" });
+
+    booking.status      = "cancelled";
+    booking.cancelledAt = new Date();
+    await booking.save();
+
+    res.json({ success: true, message: "Booking cancelled." });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/bookings/:id/checkout/verify — rep shares checkout OTP, booking closes
 router.post("/:id/checkout/verify", protect, async (req, res) => {
   try {

@@ -64,7 +64,7 @@ router.post("/send-otp", async (req, res) => {
 // POST /api/auth/verify-otp
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { phone, otp } = req.body;
+    const { phone, otp, name } = req.body;
     const user = await User.findOne({ phone });
     if (!user || user.otp !== otp || !user.otpExpiry || user.otpExpiry < new Date())
       return res.status(400).json({ error: "Invalid or expired OTP" });
@@ -72,6 +72,7 @@ router.post("/verify-otp", async (req, res) => {
     user.otp          = "";
     user.otpExpiry    = null;
     user.phoneVerified = true;
+    if (name && !user.name) user.name = name;
     await user.save();
 
     const token = jwt.sign({ id: user._id, phone }, process.env.JWT_SECRET, { expiresIn: "30d" });

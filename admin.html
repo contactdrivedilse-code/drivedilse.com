@@ -111,6 +111,11 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .status-sel{font-size:.75rem;border:1.5px solid var(--b);border-radius:8px;padding:4px 8px;background:var(--w);font-family:'Inter',sans-serif;cursor:pointer;outline:none}
 .status-sel:focus{border-color:var(--yd)}
 
+/* ── CHECK-IN OTP ── */
+.adm-table td { max-width: 260px; }
+.otp-reveal { animation: pulse-border 1.5s ease-in-out infinite; }
+@keyframes pulse-border { 0%,100%{box-shadow:0 0 0 0 rgba(200,160,0,.4)} 50%{box-shadow:0 0 0 6px rgba(200,160,0,0)} }
+
 /* ── EMPTY STATE ── */
 .empty{padding:48px;text-align:center;color:var(--ts)}
 .empty-icon{font-size:2.5rem;margin-bottom:12px}
@@ -434,6 +439,27 @@ function buildTable(bks, showActions){
     var payBadge = b.payment&&b.payment.status==="paid"
       ? '<span class="sbadge sb-act">Paid</span>'
       : '<span class="sbadge sb-pend">Pending</span>';
+
+    // Check-in OTP column — shown when customer has uploaded photos
+    var otpCell = "";
+    var ci = b.checkin;
+    if(ci && ci.photosUploadedAt && !ci.otpVerified){
+      otpCell = '<td>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-family:monospace;font-size:1rem;font-weight:900;background:#fff8d0;border:2px solid var(--yd);padding:5px 12px;border-radius:10px;letter-spacing:3px;color:var(--yd)">'+ci.otp+'</span>' +
+          '<span style="font-size:.68rem;color:var(--ts);line-height:1.3">Check-In OTP<br><strong style="color:#c0392b">Share with rep only</strong></span>' +
+        '</div>' +
+        '<div style="margin-top:6px"><a href="'+ci.photos.front+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Front ↗</a>' +
+        '<a href="'+ci.photos.rear+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Rear ↗</a>' +
+        '<a href="'+ci.photos.passengerSide+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Psgr ↗</a>' +
+        '<a href="'+ci.photos.driverSide+'" target="_blank" style="font-size:.7rem;color:var(--yd)">Driver ↗</a></div>' +
+      '</td>';
+    } else if(ci && ci.otpVerified){
+      otpCell = '<td><span class="sbadge sb-act">✅ Checked In</span><div style="font-size:.7rem;color:var(--ts);margin-top:4px">'+new Date(ci.checkedInAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div></td>';
+    } else {
+      otpCell = '<td><span style="font-size:.75rem;color:var(--ts)">Awaiting photos</span></td>';
+    }
+
     var actCell = showActions
       ? '<td><select class="status-sel" onchange="updateStatus(\''+b._id+'\',this.value)">' +
           ['pending','confirmed','active','completed','cancelled'].map(function(s){
@@ -450,12 +476,13 @@ function buildTable(bks, showActions){
       '<td style="font-weight:700">'+inr(b.total)+'</td>' +
       '<td>'+badge(b.status)+'</td>' +
       '<td>'+payBadge+'</td>' +
+      otpCell +
       actCell +
     '</tr>';
   }).join("");
   var actHdr = showActions ? '<th>Change Status</th>' : '';
   return '<table class="adm-table"><thead><tr>' +
-    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th><th>Payment</th>' + actHdr +
+    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th><th>Payment</th><th>Check-In OTP</th>' + actHdr +
     '</tr></thead><tbody>'+rows+'</tbody></table>';
 }
 

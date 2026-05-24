@@ -106,7 +106,13 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t)}
 .pause-period{background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.78rem}
 
 /* CALENDAR */
-.pause-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center}
+.ci-photo-box{border:1.5px dashed var(--b);border-radius:14px;padding:14px 10px;text-align:center;background:var(--ow);transition:border-color .15s}
+.ci-photo-box.ok{border-color:#1a7a3c;background:#f0fdf4}
+.ci-photo-icon{font-size:1.8rem;margin-bottom:4px}
+.ci-photo-lbl{font-size:.78rem;font-weight:700;color:var(--t);margin-bottom:2px}
+.ci-photo-status{font-size:.7rem;color:#1a7a3c;min-height:14px}
+.ci-window-badge{display:inline-block;background:#fff8d0;border:1.5px solid var(--yd);color:var(--yd);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px}
+.ci-window-badge.open{background:#e6f9ee;border-color:#1a7a3c;color:#1a7a3c}.pause-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center}
 .pause-modal-bg.open{display:flex}
 .pause-modal{background:var(--w);border-radius:20px;padding:32px;width:540px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.2)}
 .cal-nav-btn{background:none;border:1px solid var(--b);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .15s}
@@ -692,6 +698,74 @@ window.addEventListener('scroll',function(){
 </div>
 
 <!-- ══════════ PAUSE CALENDAR MODAL ══════════ -->
+<!-- ══════════ CHECK-IN MODAL ══════════ -->
+<div class="modal-bg" id="checkin-modal">
+  <div class="modal" style="max-width:520px;width:calc(100vw - 32px)">
+    <button class="modal-close" onclick="closeModal('checkin-modal')">✕</button>
+    <div style="font-family:Georgia,serif;font-size:1.25rem;font-weight:900;margin-bottom:4px">Car Check-In</div>
+    <div style="font-size:.83rem;color:var(--ts);margin-bottom:20px" id="ci-booking-lbl">Upload photos of the car from all 4 sides, then enter the OTP from our representative.</div>
+
+    <!-- Step 1: Photos -->
+    <div id="ci-photo-step">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:14px">Step 1 — Photograph the car</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div class="ci-photo-box" id="ci-front-box">
+          <input type="file" accept="image/*" capture="environment" id="ci-front" onchange="ciPhotoSet('front',this)" style="display:none">
+          <div class="ci-photo-icon" id="ci-front-icon">📸</div>
+          <div class="ci-photo-lbl" id="ci-front-lbl">Front of Car</div>
+          <div class="ci-photo-status" id="ci-front-status"></div>
+          <label for="ci-front" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+        </div>
+        <div class="ci-photo-box" id="ci-rear-box">
+          <input type="file" accept="image/*" capture="environment" id="ci-rear" onchange="ciPhotoSet('rear',this)" style="display:none">
+          <div class="ci-photo-icon" id="ci-rear-icon">📸</div>
+          <div class="ci-photo-lbl" id="ci-rear-lbl">Rear of Car</div>
+          <div class="ci-photo-status" id="ci-rear-status"></div>
+          <label for="ci-rear" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+        </div>
+        <div class="ci-photo-box" id="ci-passengerSide-box">
+          <input type="file" accept="image/*" capture="environment" id="ci-passengerSide" onchange="ciPhotoSet('passengerSide',this)" style="display:none">
+          <div class="ci-photo-icon" id="ci-passengerSide-icon">📸</div>
+          <div class="ci-photo-lbl" id="ci-passengerSide-lbl">Passenger Side</div>
+          <div class="ci-photo-status" id="ci-passengerSide-status"></div>
+          <label for="ci-passengerSide" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+        </div>
+        <div class="ci-photo-box" id="ci-driverSide-box">
+          <input type="file" accept="image/*" capture="environment" id="ci-driverSide" onchange="ciPhotoSet('driverSide',this)" style="display:none">
+          <div class="ci-photo-icon" id="ci-driverSide-icon">📸</div>
+          <div class="ci-photo-lbl" id="ci-driverSide-lbl">Driver Side</div>
+          <div class="ci-photo-status" id="ci-driverSide-status"></div>
+          <label for="ci-driverSide" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+        </div>
+      </div>
+      <div id="ci-photo-err" style="color:#c0392b;font-size:.82rem;display:none;margin-bottom:12px"></div>
+      <button class="btn btn-y btn-lg" id="ci-upload-btn" onclick="ciUploadPhotos()">Upload Photos & Get OTP →</button>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="ci-otp-step" style="display:none">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:14px">Step 2 — Enter Check-In OTP</div>
+      <div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:16px;margin-bottom:20px;font-size:.85rem;line-height:1.6">
+        ✅ Photos uploaded! Your check-in OTP has been generated.<br>
+        <strong>Ask the DriveDilSe representative to share the OTP</strong> to activate your booking.
+      </div>
+      <div style="margin-bottom:16px">
+        <label class="lbl">Check-In OTP</label>
+        <input class="inp" type="number" id="ci-otp-input" placeholder="Enter 6-digit OTP" style="font-size:1.2rem;letter-spacing:4px;text-align:center">
+      </div>
+      <div id="ci-otp-err" style="color:#c0392b;font-size:.82rem;display:none;margin-bottom:12px"></div>
+      <button class="btn btn-y btn-lg" onclick="ciVerifyOtp()">Start My Booking →</button>
+    </div>
+
+    <!-- Step 3: Success -->
+    <div id="ci-success-step" style="display:none;text-align:center">
+      <div style="font-size:3rem;margin-bottom:12px">🎉</div>
+      <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:8px">Booking Activated!</div>
+      <div style="color:var(--ts);font-size:.88rem;margin-bottom:24px">Your booking is now active. Drive safe and enjoy!</div>
+      <button class="btn btn-y btn-lg" onclick="closeModal('checkin-modal');showProfile()">View My Bookings</button>
+    </div>
+  </div>
+</div>
 <div class="pause-modal-bg" id="pause-modal">
   <div class="pause-modal">
     <button class="modal-close" onclick="closeModal('pause-modal')">✕</button>
@@ -859,11 +933,28 @@ async function renderProfile(){
       if(apiBookings.length){
         bb.innerHTML = apiBookings.map(function(b){
           var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up"};
-          return '<div class="bk-row">' +
-            '<span class="bk-id">' + b.bookingId + '</span>' +
-            '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
-            '<div class="bk-date">' + new Date(b.pickup.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(b.drop.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
-            '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + b.status + '</span>' +
+          var pickupTime  = new Date(b.pickup.date).getTime();
+          var nowMs       = Date.now();
+          var windowMs    = 30 * 60 * 1000;
+          var windowOpen  = nowMs >= pickupTime - windowMs;
+          var isConfirmed = b.status === "confirmed";
+          var photosUp    = b.checkin && b.checkin.photosUploadedAt;
+          var checkinBtn  = "";
+          if(isConfirmed && !photosUp){
+            checkinBtn = windowOpen
+              ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')">Start Check-In →</button>'
+              : '<div style="margin-top:6px"><span class="ci-window-badge">Check-in opens '+new Date(pickupTime - windowMs).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})+'</span></div>';
+          } else if(isConfirmed && photosUp){
+            checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#1a7a3c;font-weight:700">✅ Photos uploaded — enter OTP from representative <button class="btn btn-y btn-sm" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')" style="margin-left:8px;font-size:.72rem">Enter OTP →</button></div>';
+          }
+          return '<div class="bk-row" style="display:block;padding:14px 0">' +
+            '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
+              '<span class="bk-id">' + b.bookingId + '</span>' +
+              '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
+              '<div class="bk-date">' + new Date(b.pickup.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ', ' + new Date(b.pickup.date).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}) + ' → ' + new Date(b.drop.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
+              '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + b.status + '</span>' +
+            '</div>' +
+            checkinBtn +
           '</div>';
         }).join("");
       } else {
@@ -1655,6 +1746,102 @@ function confirmPause(){
   // Refresh vehicles tab if open
   var activeTab = document.querySelector(".atab.on");
   if(activeTab && activeTab.textContent.indexOf("Vehicles") > -1) renderTab("vehicles");
+}
+
+// ── CHECK-IN FLOW ──
+var ciBookingId = null;
+var ciPhotos    = { front: null, rear: null, passengerSide: null, driverSide: null };
+
+function ciPhotoSet(side, input) {
+  if (!input.files || !input.files[0]) return;
+  ciPhotos[side] = input.files[0];
+  var icon   = document.getElementById("ci-" + side + "-icon");
+  var status = document.getElementById("ci-" + side + "-status");
+  var box    = document.getElementById("ci-" + side + "-box");
+  icon.textContent   = "✅";
+  status.textContent = input.files[0].name.slice(0, 20) + (input.files[0].name.length > 20 ? "…" : "");
+  box.classList.add("ok");
+}
+
+function openCheckin(bookingId, carName, pickupStr) {
+  ciBookingId = bookingId;
+  ciPhotos    = { front: null, rear: null, passengerSide: null, driverSide: null };
+
+  // Reset all steps
+  ["front","rear","passengerSide","driverSide"].forEach(function(side) {
+    document.getElementById("ci-" + side + "-icon").textContent   = "📸";
+    document.getElementById("ci-" + side + "-status").textContent = "";
+    document.getElementById("ci-" + side + "-box").classList.remove("ok");
+    document.getElementById("ci-" + side).value = "";
+  });
+  document.getElementById("ci-otp-input").value = "";
+  document.getElementById("ci-photo-err").style.display = "none";
+  document.getElementById("ci-otp-err").style.display   = "none";
+  document.getElementById("ci-photo-step").style.display   = "block";
+  document.getElementById("ci-otp-step").style.display     = "none";
+  document.getElementById("ci-success-step").style.display = "none";
+  document.getElementById("ci-booking-lbl").textContent = carName + " · Pickup: " + new Date(pickupStr).toLocaleString("en-IN", {dateStyle:"medium",timeStyle:"short"});
+  openModal("checkin-modal");
+}
+
+async function ciUploadPhotos() {
+  var missing = ["front","rear","passengerSide","driverSide"].filter(function(s){ return !ciPhotos[s]; });
+  if (missing.length) {
+    var errEl = document.getElementById("ci-photo-err");
+    errEl.textContent = "Please upload all 4 photos: " + missing.map(function(s){ return ({front:"Front",rear:"Rear",passengerSide:"Passenger Side",driverSide:"Driver Side"})[s]; }).join(", ");
+    errEl.style.display = "block";
+    return;
+  }
+  document.getElementById("ci-photo-err").style.display = "none";
+  var btn = document.getElementById("ci-upload-btn");
+  btn.textContent = "Uploading…"; btn.disabled = true;
+
+  var fd = new FormData();
+  fd.append("front",         ciPhotos.front);
+  fd.append("rear",          ciPhotos.rear);
+  fd.append("passengerSide", ciPhotos.passengerSide);
+  fd.append("driverSide",    ciPhotos.driverSide);
+
+  try {
+    var resp = await fetch(API + "/api/bookings/" + ciBookingId + "/checkin", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + authToken },
+      body: fd
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Upload failed");
+    document.getElementById("ci-photo-step").style.display = "none";
+    document.getElementById("ci-otp-step").style.display   = "block";
+  } catch(e) {
+    var errEl = document.getElementById("ci-photo-err");
+    errEl.textContent = e.message;
+    errEl.style.display = "block";
+    btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false;
+  }
+}
+
+async function ciVerifyOtp() {
+  var otp = document.getElementById("ci-otp-input").value.trim();
+  if (!otp || otp.length !== 6) {
+    document.getElementById("ci-otp-err").textContent = "Enter the 6-digit OTP from the representative.";
+    document.getElementById("ci-otp-err").style.display = "block";
+    return;
+  }
+  document.getElementById("ci-otp-err").style.display = "none";
+  try {
+    var resp = await fetch(API + "/api/bookings/" + ciBookingId + "/checkin/verify", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + authToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ otp: otp })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Verification failed");
+    document.getElementById("ci-otp-step").style.display     = "none";
+    document.getElementById("ci-success-step").style.display = "block";
+  } catch(e) {
+    document.getElementById("ci-otp-err").textContent = e.message;
+    document.getElementById("ci-otp-err").style.display = "block";
+  }
 }
 </script>
 </body>

@@ -626,8 +626,9 @@ window.addEventListener('scroll',function(){
           <div style="font-size:.84rem;color:#555;margin-bottom:8px">Payment received. Your booking is confirmed!</div>
           <button class="btn btn-green btn-lg" onclick="window.open('https://wa.me/'+WHATSAPP+'?text='+encodeURIComponent(window._lastBookingMsg||'New booking - DriveDilSe'),'_blank')" style="margin-bottom:12px">&#128172; Notify Admin on WhatsApp</button>
           <div style="font-size:.82rem;color:#555;margin-bottom:20px;background:#fff8d0;border:1.5px solid var(--yd);border-radius:10px;padding:12px">📋 <strong>One last step:</strong> Upload your Aadhaar &amp; Driving Licence below. Our representative needs this to hand over the car and give you the Check-In OTP.</div>
-          <button class="btn btn-y btn-lg" onclick="openVerifyModal()" style="margin-bottom:10px">Complete Profile Verification →</button>
-          <button class="btn btn-g btn-sm" onclick="goHome()" style="width:100%">Do it later</button>
+          <button class="btn btn-y btn-lg" onclick="showProfile()" style="margin-bottom:10px">View My Bookings →</button>
+          <button class="btn btn-y btn-lg" onclick="openVerifyModal()" style="margin-bottom:10px;background:#fff;border:2px solid var(--yd);color:#333">Complete Profile Verification →</button>
+          <button class="btn btn-g btn-sm" onclick="goHome()" style="width:100%">Back to Home</button>
           <div style="font-size:.7rem;color:var(--ts);margin-top:10px">⚠️ Check-In OTP is only given by our representative after profile is verified</div>
         </div>
       </div>
@@ -1335,6 +1336,7 @@ async function payNow(){
               method:"POST", headers:{"Content-Type":"application/json"},
               body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, carId:selCar.id, pickupDate:priceResult.pickup, dropDate:priceResult.drop })
             });
+            if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
             myBookingIds.push(result.bookingId);
             window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
             document.getElementById("booking-form").style.display    = "none";
@@ -1375,6 +1377,7 @@ async function payNow(){
             method:"POST", headers:{"Content-Type":"application/json"},
             body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, carId:selCar.id, pickupDate:priceResult.pickup, dropDate:priceResult.drop })
           });
+          if(result2.token){ authToken = result2.token; localStorage.setItem("dds_token", authToken); }
           myBookingIds.push(result2.bookingId);
           window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result2.bookingId+"\nCar: "+selCar.name+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
           document.getElementById("booking-form").style.display    = "none";

@@ -167,7 +167,11 @@ router.post("/verify", protect, async (req, res) => {
       status: "confirmed",
     });
 
-    res.json({ success: true, bookingId: booking.bookingId, booking });
+    // Issue / refresh a 30-day token so the frontend always has a long-lived session
+    const jwt   = require("jsonwebtoken");
+    const token = jwt.sign({ id: user._id, phone: user.phone }, process.env.JWT_SECRET, { expiresIn: "30d" });
+
+    res.json({ success: true, bookingId: booking.bookingId, booking, token });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

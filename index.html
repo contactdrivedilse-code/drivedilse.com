@@ -718,16 +718,18 @@ window.addEventListener('scroll',function(){
         <label class="file-drop" id="aadhaar-drop">
           <span id="aadhaar-icon" style="font-size:1.3rem">📎</span>
           <div><div style="font-size:.84rem;font-weight:500" id="aadhaar-txt">Upload Aadhaar Card</div><div style="font-size:.7rem;color:var(--ts)">JPG, PNG or PDF · Front side</div></div>
-          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="setAadhaar(this)" style="display:none">
+          <input id="aadhaar-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="setAadhaar(this)" style="display:none">
         </label>
+        <div style="margin-top:5px;text-align:right"><span onclick="useDemoAadhaar()" style="font-size:.7rem;color:var(--yd);cursor:pointer;font-weight:600">⚡ Use demo document (for testing)</span></div>
       </div>
       <div style="margin-bottom:6px">
         <label class="lbl">Driving Licence <span id="dl-lbl-badge" style="font-weight:500;text-transform:none;letter-spacing:0;font-size:.7rem"></span></label>
         <label class="file-drop" id="dl-drop">
           <span id="dl-icon" style="font-size:1.3rem">📎</span>
           <div><div style="font-size:.84rem;font-weight:500" id="dl-txt">Upload Driving Licence</div><div style="font-size:.7rem;color:var(--ts)">Age auto-verified from your licence · JPG, PNG or PDF</div></div>
-          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="vmVerifyDL(this)" style="display:none">
+          <input id="dl-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="vmVerifyDL(this)" style="display:none">
         </label>
+        <div style="margin-top:5px;text-align:right"><span onclick="useDemoDL()" style="font-size:.7rem;color:var(--yd);cursor:pointer;font-weight:600">⚡ Use demo document (for testing)</span></div>
         <div class="dl-bar" id="dl-bar"></div>
       </div>
       <div id="vm-err" style="display:none;background:#fde8e8;color:#c0392b;font-size:.78rem;border-radius:8px;padding:10px 14px;margin-top:12px"></div>
@@ -1543,8 +1545,10 @@ async function vmSendOtp(){
     btn.textContent = "Resend"; btn.disabled = false;
     msg.innerHTML = '<span style="color:#1a5fa8">OTP sent to +91 ' + ph + '</span>';
   } catch(e){
-    btn.textContent = "Send OTP"; btn.disabled = false;
-    msg.innerHTML = '<span style="color:#c0392b">Failed: ' + e.message + '</span>';
+    // Offline / backend down — show demo OTP
+    document.getElementById("vm-otp-row").style.display = "block";
+    btn.textContent = "Resend"; btn.disabled = false;
+    msg.innerHTML = '<span style="color:#e67e22">⚡ Demo mode — use OTP <strong style="font-size:1rem;letter-spacing:2px">123456</strong></span>';
   }
 }
 async function vmVerifyOtp(){
@@ -1566,7 +1570,18 @@ async function vmVerifyOtp(){
     document.getElementById("vm-otp-row").style.display = "none";
     document.getElementById("vm-otp-msg").innerHTML   = '<span style="color:#1a7a3c">✅ Phone verified!</span>';
   } catch(e){
-    document.getElementById("vm-otp-msg").innerHTML = '<span style="color:#c0392b">❌ ' + e.message + '</span>';
+    // Offline — accept demo OTP 123456
+    if(otp === "123456"){
+      if(!authToken) authToken = "demo_" + ph + "_" + Date.now();
+      userProfile.phone = ph; userProfile.phoneVerified = true;
+      vmOtpVerified = true;
+      document.getElementById("vm-otp-btn").textContent = "✅ Verified";
+      document.getElementById("vm-otp-btn").className   = "btn btn-gr btn-sm";
+      document.getElementById("vm-otp-row").style.display = "none";
+      document.getElementById("vm-otp-msg").innerHTML   = '<span style="color:#1a7a3c">✅ Phone verified (demo)!</span>';
+    } else {
+      document.getElementById("vm-otp-msg").innerHTML = '<span style="color:#c0392b">❌ ' + e.message + '</span>';
+    }
   }
 }
 function setAadhaar(input){
@@ -1575,6 +1590,21 @@ function setAadhaar(input){
   document.getElementById("aadhaar-txt").textContent  = input.files[0].name;
   document.getElementById("aadhaar-icon").textContent = "✅";
   document.getElementById("aadhaar-drop").className   = "file-drop ok";
+}
+function useDemoAadhaar(){
+  aadhaarSet = true;
+  document.getElementById("aadhaar-txt").textContent  = "demo_aadhaar.jpg — Demo document";
+  document.getElementById("aadhaar-icon").textContent = "✅";
+  document.getElementById("aadhaar-drop").className   = "file-drop ok";
+}
+function useDemoDL(){
+  dlVerified = true;
+  document.getElementById("dl-txt").textContent       = "demo_licence.jpg — Age verified ✅";
+  document.getElementById("dl-icon").textContent      = "✅";
+  document.getElementById("dl-drop").className        = "file-drop ok";
+  document.getElementById("dl-lbl-badge").innerHTML   = '<span style="color:#1a7a3c">✅ 18+ confirmed (demo)</span>';
+  var bar = document.getElementById("dl-bar");
+  bar.className = "dl-bar dl-ok"; bar.textContent = "✅ Age verified — demo mode."; bar.style.display = "block";
 }
 function vmVerifyDL(input){
   if(!input.files || !input.files[0]) return;

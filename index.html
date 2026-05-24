@@ -1075,7 +1075,7 @@ function renderFleet(pickup, drop, searched){
       '</div>';
     div.querySelector("button").addEventListener("click", function(){
       if(this.getAttribute("data-avail") === "false") return;
-      openCar(parseInt(this.getAttribute("data-carid")));
+      openCar(this.getAttribute("data-carid"));
     });
     g.appendChild(div);
   });
@@ -1108,7 +1108,7 @@ async function doSearch(){
 // ── CAR DETAIL ──
 function openCar(id){
   selCar = null;
-  for(var i=0; i<FLEET.length; i++){ if(FLEET[i].id === id){ selCar = FLEET[i]; break; } }
+  for(var i=0; i<FLEET.length; i++){ if(String(FLEET[i].id) === String(id)){ selCar = FLEET[i]; break; } }
   if(!selCar) return;
   priceResult = null;
   document.getElementById("d-name").textContent = selCar.name;
@@ -1616,7 +1616,7 @@ function openPause(id){
   pauseCarId = id;
   calStart = null; calEnd = null; calStep = 0;
   var car = null;
-  for(var i=0; i<FLEET.length; i++){ if(FLEET[i].id === id){ car = FLEET[i]; break; } }
+  for(var i=0; i<FLEET.length; i++){ if(String(FLEET[i].id) === String(id)){ car = FLEET[i]; break; } }
   document.getElementById("pause-car-lbl").textContent = car ? car.name : "";
   document.getElementById("cal-range-box").style.display = "none";
   document.getElementById("cal-hint").textContent = "Click a start date";
@@ -1729,7 +1729,7 @@ function updateDurBox(){
 function confirmPause(){
   if(!calStart || !calEnd){ alert("Select start and end dates."); return; }
   var car = null;
-  for(var i=0; i<FLEET.length; i++){ if(FLEET[i].id === pauseCarId){ car = FLEET[i]; break; } }
+  for(var i=0; i<FLEET.length; i++){ if(String(FLEET[i].id) === String(pauseCarId)){ car = FLEET[i]; break; } }
   if(!car) return;
   var st = document.getElementById("p-start-time").value;
   var et = document.getElementById("p-end-time").value;

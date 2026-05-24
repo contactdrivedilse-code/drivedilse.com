@@ -600,8 +600,23 @@ window.addEventListener('scroll',function(){
               <span style="font-size:.76rem;color:#555">I agree to the <strong style="color:var(--yd)">Terms & Conditions</strong> of DriveDilSe.</span>
             </label>
           </div>
-          <button class="btn btn-green btn-lg" onclick="payNow()">💳 Pay & Confirm Booking</button>
-          <div style="font-size:.7rem;color:var(--ts);text-align:center;margin-top:8px">Secure payment · Confirmed instantly</div>
+          <div id="guest-details-wrap" style="margin-bottom:16px;background:var(--ow);border:1.5px solid var(--b);border-radius:14px;padding:16px">
+            <div style="font-size:.72rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--ts);margin-bottom:12px">Your Details</div>
+            <div style="margin-bottom:10px">
+              <label class="lbl">Full Name</label>
+              <input class="inp" type="text" id="guest-name" placeholder="As on Aadhaar">
+            </div>
+            <div>
+              <label class="lbl">Mobile Number</label>
+              <div style="display:flex;gap:8px">
+                <span style="padding:12px 14px;background:var(--w);border:1.5px solid var(--b);border-radius:10px;font-size:.88rem;font-weight:700;color:var(--ts);white-space:nowrap">+91</span>
+                <input class="inp" type="tel" id="guest-phone" placeholder="10-digit number" maxlength="10" style="flex:1">
+              </div>
+            </div>
+            <div style="font-size:.72rem;color:var(--ts);margin-top:8px">&#128203; No OTP needed now &#183; Upload Aadhaar &amp; DL after payment to unlock check-in</div>
+          </div>
+          <button class="btn btn-green btn-lg" onclick="payNow()">&#128179; Pay &amp; Confirm Booking</button>
+          <div style="font-size:.7rem;color:var(--ts);text-align:center;margin-top:8px">Secure payment &#183; Confirmed instantly</div>
         </div>
       </div>
       <div id="success-section" style="display:none">
@@ -1172,6 +1187,10 @@ function openCar(id){
   document.getElementById("price-section").style.display  = "none";
   document.getElementById("success-section").style.display = "none";
   document.getElementById("booking-form").style.display   = "block";
+
+  // Pre-fill details if already logged in
+  if(userProfile.name)  document.getElementById("guest-name").value  = userProfile.name;
+  if(userProfile.phone) document.getElementById("guest-phone").value = userProfile.phone;
   document.getElementById("chk-ded").checked = false;
   document.getElementById("chk-tnc").checked = false;
 
@@ -1217,64 +1236,117 @@ function calcPrice(){
 // ── PAY ──
 async function payNow(){
   if(!priceResult){ alert("Please calculate price first."); return; }
-  if(!document.getElementById("chk-ded").checked){ alert("Please acknowledge the ₹2,000 damage deductible clause."); return; }
+  if(!document.getElementById("chk-ded").checked){ alert("Please acknowledge the damage deductible clause."); return; }
   if(!document.getElementById("chk-tnc").checked){ alert("Please accept the Terms & Conditions."); return; }
-  if(!authToken){ openQuickLogin(); return; }
+
+  // Collect details — pre-fill from profile if logged in, else from form
+  var guestName  = authToken && userProfile.name  ? userProfile.name  : (document.getElementById("guest-name").value.trim());
+  var guestPhone = authToken && userProfile.phone ? userProfile.phone : (document.getElementById("guest-phone").value.trim());
+
+  if(!guestPhone || !/^[6-9]\d{9}$/.test(guestPhone)){
+    document.getElementById("guest-phone").style.borderColor = "#e74c3c";
+    document.getElementById("guest-phone").focus();
+    alert("Please enter a valid 10-digit mobile number.");
+    return;
+  }
+  document.getElementById("guest-phone").style.borderColor = "";
+
+  // Store locally for profile display
+  if(!userProfile.phone) userProfile.phone = guestPhone;
+  if(!userProfile.name && guestName) userProfile.name = guestName;
 
   var isLocalCar = String(selCar.id).startsWith("local");
+
+  // ── OFFLINE MODE: no backend ──
   if(isLocalCar){
     var newId = "DS" + Date.now().toString(36).toUpperCase();
     myBookingIds.push(newId);
-    window._lastBookingMsg = "New Booking - DriveDilSe\n\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\nNote: Backend offline - contact admin to confirm.";
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\nPhone: "+guestPhone+"\n\nBackend offline - admin will confirm.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
     return;
   }
 
+  // ── ONLINE MODE: authenticated ──
+  if(authToken){
+    try {
+      var order = await apiFetch("/api/payment/order", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ carId: selCar.id, pickupDate: priceResult.pickup, dropDate: priceResult.drop, pickupLocation:"Pune", dropLocation:"Pune" })
+      });
+      var rzp = new Razorpay({
+        key:         order.keyId,
+        amount:      order.amount * 100,
+        currency:    "INR",
+        name:        "DriveDilSe",
+        description: selCar.name + " - " + order.days + " day(s)",
+        order_id:    order.orderId,
+        prefill:     { name: userProfile.name, contact: "91" + userProfile.phone },
+        theme:       { color: "#f5c518" },
+        handler: async function(resp){
+          try {
+            var result = await apiFetch("/api/payment/verify", {
+              method:"POST", headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, carId:selCar.id, pickupDate:priceResult.pickup, dropDate:priceResult.drop })
+            });
+            myBookingIds.push(result.bookingId);
+            window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
+            document.getElementById("booking-form").style.display    = "none";
+            document.getElementById("success-section").style.display = "block";
+          } catch(e){ alert("Payment received but booking failed. Contact support.\n" + e.message); }
+        }
+      });
+      rzp.open();
+    } catch(e){ alert("Could not initiate payment: " + e.message); }
+    return;
+  }
+
+  // ── ONLINE MODE: guest (no token) ──
   try {
-    var order = await apiFetch("/api/payment/order", {
+    var r = await fetch(API + "/api/payment/guest-order", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        carId: selCar.id,
-        pickupDate: priceResult.pickup,
-        dropDate:   priceResult.drop,
-        pickupLocation: "Pune",
-        dropLocation:   "Pune"
-      })
+      body: JSON.stringify({ phone: guestPhone, name: guestName, carId: selCar.id, pickupDate: priceResult.pickup, dropDate: priceResult.drop })
     });
-    var rzp = new Razorpay({
-      key:         order.keyId,
-      amount:      order.amount * 100,
+    var order2 = await r.json();
+    if(!r.ok) throw new Error(order2.error || "Order failed");
+
+    // Store guest token so verify step can authenticate
+    if(order2.guestToken){ authToken = order2.guestToken; localStorage.setItem("dds_token", authToken); }
+
+    var rzp2 = new Razorpay({
+      key:         order2.keyId,
+      amount:      order2.amount * 100,
       currency:    "INR",
       name:        "DriveDilSe",
-      description: selCar.name + " - " + order.days + " day(s)",
-      order_id:    order.orderId,
-      prefill:     { name: userProfile.name, contact: "91" + userProfile.phone },
+      description: selCar.name + " - " + order2.days + " day(s)",
+      order_id:    order2.orderId,
+      prefill:     { name: guestName, contact: "91" + guestPhone },
       theme:       { color: "#f5c518" },
       handler: async function(resp){
         try {
-          var result = await apiFetch("/api/payment/verify", {
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({
-              razorpayOrderId:   resp.razorpay_order_id,
-              razorpayPaymentId: resp.razorpay_payment_id,
-              razorpaySignature: resp.razorpay_signature,
-              carId: selCar.id,
-              pickupDate: priceResult.pickup,
-              dropDate:   priceResult.drop
-            })
+          var result2 = await apiFetch("/api/payment/verify", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, carId:selCar.id, pickupDate:priceResult.pickup, dropDate:priceResult.drop })
           });
-          myBookingIds.push(result.bookingId);
-          window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
+          myBookingIds.push(result2.bookingId);
+          window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result2.bookingId+"\nCar: "+selCar.name+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
           document.getElementById("booking-form").style.display    = "none";
           document.getElementById("success-section").style.display = "block";
         } catch(e){ alert("Payment received but booking failed. Contact support.\n" + e.message); }
       }
     });
-    rzp.open();
-  } catch(e){ alert("Could not initiate payment: " + e.message); }
+    rzp2.open();
+  } catch(e){
+    // Fallback: show offline success
+    console.warn("Guest order API failed:", e.message);
+    var newId2 = "DS" + Date.now().toString(36).toUpperCase();
+    myBookingIds.push(newId2);
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nCar: "+selCar.name+"\nPhone: "+guestPhone+"\nTotal: "+inr(priceResult.total)+"\n\nContact admin to confirm.";
+    document.getElementById("booking-form").style.display    = "none";
+    document.getElementById("success-section").style.display = "block";
+  }
 }
 // ── VERIFY MODAL ──
 function openVerifyModal(){

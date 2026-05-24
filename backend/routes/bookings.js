@@ -1,9 +1,16 @@
 const router     = require("express").Router();
+const crypto     = require("crypto");
 const cloudinary = require("cloudinary").v2;
 const multer     = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const Razorpay   = require("razorpay");
 const Booking    = require("../models/Booking");
 const { protect } = require("../middleware/auth");
+
+const razorpay = new Razorpay({
+  key_id:     process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 cloudinary.config({
   cloud_name:  process.env.CLOUDINARY_CLOUD_NAME,
@@ -102,6 +109,63 @@ router.post("/:id/checkin/verify", protect, async (req, res) => {
     await booking.save();
 
     res.json({ success: true, message: "Check-in complete! Enjoy your drive." });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/bookings/:id/extend/order — create Razorpay order for extension
+router.post("/:id/extend/order", protect, async (req, res) => {
+  try {
+    const { hours } = req.body;
+    if (!hours || hours <= 0) return res.status(400).json({ error: "Invalid hours" });
+
+    const booking = await Booking.findOne({ _id: req.params.id, user: req.user.id });
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+    if (!["confirmed", "active"].includes(booking.status))
+      return res.status(400).json({ error: "Can only extend confirmed or active bookings" });
+
+    const pph  = Math.round(booking.pricePerDay / 24);
+    const cost = hours < 24 ? pph * hours : booking.pricePerDay * (hours / 24);
+
+    const order = await razorpay.orders.create({
+      amount:   Math.round(cost) * 100,
+      currency: "INR",
+      receipt:  "EXT_" + booking.bookingId,
+      notes:    { bookingId: booking.bookingId, hours },
+    });
+
+    res.json({ orderId: order.id, amount: Math.round(cost), currency: "INR", keyId: process.env.RAZORPAY_KEY_ID });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/bookings/:id/extend/verify — verify payment and extend drop date
+router.post("/:id/extend/verify", protect, async (req, res) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, hours } = req.body;
+
+    const expected = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
+    if (expected !== razorpaySignature)
+      return res.status(400).json({ error: "Payment verification failed" });
+
+    const booking = await Booking.findOne({ _id: req.params.id, user: req.user.id });
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+
+    const pph  = Math.round(booking.pricePerDay / 24);
+    const cost = hours < 24 ? pph * hours : booking.pricePerDay * (hours / 24);
+
+    booking.drop.date = new Date(new Date(booking.drop.date).getTime() + hours * 3600000);
+    booking.days      = Math.max(1, Math.ceil((booking.drop.date - booking.pickup.date) / (1000 * 60 * 60 * 24)));
+    booking.total    += Math.round(cost);
+    booking.extensions.push({ hours, cost: Math.round(cost), razorpayOrderId, razorpayPaymentId, razorpaySignature, extendedAt: new Date() });
+
+    await booking.save();
+    res.json({ success: true, newDrop: booking.drop.date, booking });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

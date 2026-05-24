@@ -251,6 +251,8 @@ footer{background:#fffbe6;border-top:1px solid rgba(200,160,0,.25);padding:32px 
 .ci-photo-status{font-size:.7rem;color:#15803d;min-height:14px}
 .ci-window-badge{display:inline-block;background:#fef9c3;border:1.5px solid var(--yd);color:var(--yd);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px}
 .ci-window-badge.open{background:#dcfce7;border-color:#16a34a;color:#15803d}
+.bkd-ext-opt{background:#fff;border:1.5px solid var(--b);border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Inter',sans-serif}
+.bkd-ext-opt:hover{border-color:var(--yd);background:rgba(245,197,24,.08)}
 .pause-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .pause-modal-bg.open{display:flex}
 .pause-modal{background:var(--w);border-radius:22px;padding:32px;width:540px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.3)}
@@ -858,6 +860,65 @@ window.addEventListener('scroll',function(){
   </div>
 </div>
 
+<!-- BOOKING DETAIL MODAL -->
+<div class="modal-bg" id="bk-detail-modal">
+  <div class="modal" style="max-width:520px;width:calc(100vw - 32px)">
+    <button class="modal-close" onclick="closeModal('bk-detail-modal')">✕</button>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;font-weight:900;margin-bottom:3px">Booking Details</div>
+        <div style="font-size:.75rem;color:var(--ts);font-family:monospace;font-weight:700" id="bkd-id"></div>
+      </div>
+      <span class="sbadge" id="bkd-status-badge" style="margin-top:4px"></span>
+    </div>
+
+    <!-- Car + Dates -->
+    <div style="background:#faf9f6;border:1px solid #ede9db;border-radius:14px;padding:16px 18px;margin-bottom:14px">
+      <div style="font-size:1rem;font-weight:800;margin-bottom:12px" id="bkd-car"></div>
+      <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:6px;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ts);margin-bottom:4px">Pickup</div>
+          <div style="font-size:.84rem;font-weight:700;line-height:1.3" id="bkd-pickup"></div>
+          <div style="font-size:.7rem;color:var(--ts)" id="bkd-pickup-loc"></div>
+        </div>
+        <div style="text-align:center;color:var(--yd);font-size:1.1rem;font-weight:700">→</div>
+        <div>
+          <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ts);margin-bottom:4px">Drop</div>
+          <div style="font-size:.84rem;font-weight:700;line-height:1.3" id="bkd-drop"></div>
+          <div style="font-size:.7rem;color:var(--ts)" id="bkd-drop-loc"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;padding-top:10px;border-top:1px solid #ede9db">
+        <div><div style="font-size:.62rem;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;font-weight:600">Duration</div><div style="font-size:.84rem;font-weight:700;margin-top:2px" id="bkd-dur"></div></div>
+        <div><div style="font-size:.62rem;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;font-weight:600">Rate</div><div style="font-size:.84rem;font-weight:700;margin-top:2px" id="bkd-rate"></div></div>
+        <div><div style="font-size:.62rem;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;font-weight:600">Deposit</div><div style="font-size:.84rem;font-weight:700;margin-top:2px" id="bkd-deposit"></div></div>
+      </div>
+    </div>
+
+    <!-- Payment breakdown -->
+    <div style="border:1px solid #ede9db;border-radius:14px;overflow:hidden;margin-bottom:14px">
+      <div style="background:#faf9f6;padding:9px 16px;font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);border-bottom:1px solid #ede9db">Payment Breakdown</div>
+      <div style="padding:12px 16px" id="bkd-payment-rows"></div>
+    </div>
+
+    <!-- Extension section -->
+    <div id="bkd-extend-section" style="display:none">
+      <div style="font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">Extend Booking</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px" id="bkd-extend-opts"></div>
+      <div id="bkd-extend-summary" style="display:none;background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:.85rem;font-weight:700" id="bkd-ext-desc"></div>
+            <div style="font-size:.72rem;color:var(--ts);margin-top:3px" id="bkd-ext-new-drop"></div>
+          </div>
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;font-weight:900;color:var(--yd)" id="bkd-ext-cost"></div>
+        </div>
+      </div>
+      <button class="btn btn-y btn-lg" id="bkd-ext-pay-btn" onclick="payExtension()" style="display:none">Pay & Extend →</button>
+    </div>
+  </div>
+</div>
+
 <!-- CHECKOUT MODAL -->
 <div class="modal-bg" id="checkout-modal" style="display:none" onclick="if(event.target===this)closeModal('checkout-modal')">
   <div class="modal" style="max-width:480px;width:calc(100vw - 32px)">
@@ -953,6 +1014,7 @@ var API = "https://drivedilse-api.onrender.com";
 var WHATSAPP = "919999999999"; // ← your WhatsApp number
 var authToken = localStorage.getItem("dds_token") || "";
 var adminToken = "";
+window._bkdMap = {}; window._bkdSelected = null; window._bkdCurrent = null;
 
 var FLEET = [];     // populated from API on load
 var BOOKINGS = [];  // admin only
@@ -1086,6 +1148,8 @@ async function renderProfile(){
           var cancelBtn = isConfirmed
             ? '<button onclick="cancelBooking(\''+b._id+'\',\''+(b.bookingId||"").replace(/'/g,"")+'\')" style="margin-top:8px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600;transition:all .15s" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
             : '';
+          window._bkdMap[b._id] = b;
+          var detailBtn = '<button onclick="openBookingDetails(\''+b._id+'\')" style="margin-top:6px;font-size:.73rem;color:#444;background:none;border:1.5px solid #ede9db;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#faf9f6\'" onmouseout="this.style.background=\'none\'">View Details →</button>';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + b.bookingId + '</span>' +
@@ -1095,6 +1159,7 @@ async function renderProfile(){
             '</div>' +
             checkinBtn +
             cancelBtn +
+            detailBtn +
           '</div>';
         }).join("");
       } else {
@@ -1120,6 +1185,8 @@ async function renderProfile(){
           var cancelBtn3 = isConf3
             ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
             : '';
+          var bkd3key = b._id||b.bookingId; window._bkdMap[bkd3key] = b;
+          var detailBtn3 = '<button onclick="openBookingDetails(\''+bkd3key+'\')" style="margin-top:6px;font-size:.73rem;color:#444;background:none;border:1.5px solid #ede9db;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#faf9f6\'" onmouseout="this.style.background=\'none\'">View Details →</button>';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -1129,6 +1196,7 @@ async function renderProfile(){
             '</div>' +
             checkinBtn3 +
             cancelBtn3 +
+            detailBtn3 +
           '</div>';
         }).join("") +
         '<div style="font-size:.72rem;color:#e67e22;margin-top:8px;text-align:center">⚠️ Showing locally saved data — server unreachable</div>';
@@ -1202,13 +1270,15 @@ async function renderProfile(){
         var cancelBtn2 = isConf2
           ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
           : '';
+        var bkd2key = b._id||b.bookingId; window._bkdMap[bkd2key] = b;
+        var detailBtn2 = '<button onclick="openBookingDetails(\''+bkd2key+'\')" style="margin-top:6px;font-size:.73rem;color:#444;background:none;border:1.5px solid #ede9db;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#faf9f6\'" onmouseout="this.style.background=\'none\'">View Details →</button>';
         return '<div class="bk-row" style="display:block;padding:14px 0">' +
           '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
             '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
             '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
             '<div class="bk-date">' + new Date(pickupDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(dropDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
             '<span class="sbadge ' + (statusMap[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
-          '</div>' + syncNote + checkinBtn2 + cancelBtn2 +
+          '</div>' + syncNote + checkinBtn2 + cancelBtn2 + detailBtn2 +
         '</div>';
       }).join("") +
       '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin(renderProfile)">Log in →</span></div>';
@@ -2206,6 +2276,155 @@ async function cancelBooking(id, displayId){
     } else {
       alert("Could not cancel: " + e.message);
     }
+  }
+}
+
+// ── BOOKING DETAILS + EXTENSION ──
+function openBookingDetails(id) {
+  var b = window._bkdMap[id];
+  if (!b) return;
+  window._bkdCurrent  = b;
+  window._bkdSelected = null;
+
+  var statusLabels = { confirmed:"sb-up", active:"sb-on", completed:"sb-done", cancelled:"sb-done", pending:"sb-up" };
+  document.getElementById("bkd-id").textContent = b.bookingId || id;
+  var badge = document.getElementById("bkd-status-badge");
+  badge.textContent = b.status;
+  badge.className   = "sbadge " + (statusLabels[b.status] || "sb-up");
+  document.getElementById("bkd-car").textContent = b.carName || "Car";
+
+  var pickupDate = b.pickup && b.pickup.date ? new Date(b.pickup.date) : new Date(b.pickup);
+  var dropDate   = b.drop   && b.drop.date   ? new Date(b.drop.date)   : new Date(b.drop);
+  var fmt  = { day:"2-digit", month:"short", year:"numeric" };
+  var fmtT = { hour:"2-digit", minute:"2-digit" };
+
+  document.getElementById("bkd-pickup").innerHTML =
+    pickupDate.toLocaleDateString("en-IN", fmt) + "<br><span style='font-size:.75rem;color:var(--ts)'>" + pickupDate.toLocaleTimeString("en-IN", fmtT) + "</span>";
+  document.getElementById("bkd-pickup-loc").textContent = (b.pickup && b.pickup.location) || "Pune";
+  document.getElementById("bkd-drop").innerHTML =
+    dropDate.toLocaleDateString("en-IN", fmt) + "<br><span style='font-size:.75rem;color:var(--ts)'>" + dropDate.toLocaleTimeString("en-IN", fmtT) + "</span>";
+  document.getElementById("bkd-drop-loc").textContent = (b.drop && b.drop.location) || "Pune";
+
+  var diffDays = Math.max(1, Math.ceil((dropDate - pickupDate) / (1000*60*60*24)));
+  var ppd      = b.pricePerDay || 0;
+  var pph      = Math.round(ppd / 24);
+  document.getElementById("bkd-dur").textContent    = diffDays + (diffDays === 1 ? " day" : " days");
+  document.getElementById("bkd-rate").innerHTML     = "₹" + ppd.toLocaleString("en-IN") + "/day<br><span style='font-size:.68rem;color:var(--ts)'>₹" + pph.toLocaleString("en-IN") + "/hr</span>";
+  document.getElementById("bkd-deposit").textContent = b.deposit ? "₹" + b.deposit.toLocaleString("en-IN") : "—";
+
+  var extTotal = (b.extensions || []).reduce(function(s,e){ return s + (e.cost||0); }, 0);
+  var baseAmt  = (b.total||0) - extTotal;
+  var rows = bkdRow("Base booking (" + diffDays + (diffDays===1?" day":" days") + ")", "₹" + baseAmt.toLocaleString("en-IN"));
+  if(b.discount){ rows += bkdRow("Discount", "−₹" + b.discount.toLocaleString("en-IN")); }
+  if(b.extensions && b.extensions.length){
+    b.extensions.forEach(function(e,i){
+      rows += bkdRow("Extension #"+(i+1)+" ("+e.hours+"hr"+(e.hours>1?"s":"")+")", "₹"+(e.cost||0).toLocaleString("en-IN"));
+    });
+  }
+  rows += '<div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:4px;border-top:1.5px solid var(--b);font-weight:800;font-size:.9rem"><span>Total Paid</span><span style="color:var(--yd)">₹'+(b.total||0).toLocaleString("en-IN")+'</span></div>';
+  document.getElementById("bkd-payment-rows").innerHTML = rows;
+
+  var canExtend = b.status === "confirmed" || b.status === "active";
+  var extSec = document.getElementById("bkd-extend-section");
+  extSec.style.display = canExtend ? "block" : "none";
+  if(canExtend){
+    var opts = [{h:2,label:"+2 hrs"},{h:6,label:"+6 hrs"},{h:12,label:"+12 hrs"},{h:24,label:"+1 day"},{h:72,label:"+3 days"},{h:168,label:"+7 days"}];
+    document.getElementById("bkd-extend-opts").innerHTML = opts.map(function(o){
+      var cost = o.h < 24 ? pph * o.h : ppd * (o.h / 24);
+      return '<button class="bkd-ext-opt" onclick="selectExtension('+o.h+')" data-h="'+o.h+'">' +
+        '<div style="font-weight:800;font-size:.85rem">'+o.label+'</div>' +
+        '<div style="font-size:.72rem;color:var(--ts);margin-top:2px">₹'+Math.round(cost).toLocaleString("en-IN")+'</div>' +
+        '</button>';
+    }).join("");
+    document.getElementById("bkd-extend-summary").style.display = "none";
+    document.getElementById("bkd-ext-pay-btn").style.display    = "none";
+  }
+  openModal("bk-detail-modal");
+}
+
+function bkdRow(label, value){
+  return '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.82rem;border-bottom:1px solid var(--b)"><span style="color:var(--ts)">'+label+'</span><span style="font-weight:700">'+value+'</span></div>';
+}
+
+function selectExtension(hours){
+  var b = window._bkdCurrent;
+  if(!b) return;
+  window._bkdSelected = hours;
+  var ppd  = b.pricePerDay || 0;
+  var pph  = Math.round(ppd / 24);
+  var cost = hours < 24 ? pph * hours : ppd * (hours / 24);
+
+  document.querySelectorAll(".bkd-ext-opt").forEach(function(btn){
+    btn.style.background  = ""; btn.style.borderColor = ""; btn.style.color = "";
+  });
+  var sel = document.querySelector(".bkd-ext-opt[data-h='"+hours+"']");
+  if(sel){ sel.style.background="rgba(245,197,24,.15)"; sel.style.borderColor="var(--yd)"; sel.style.color="var(--yd)"; }
+
+  var dropDate = b.drop && b.drop.date ? new Date(b.drop.date) : new Date(b.drop);
+  var newDrop  = new Date(dropDate.getTime() + hours * 3600000);
+  var label = hours < 24 ? hours + " hour" + (hours>1?"s":"") : (hours/24) + " day" + (hours>24?"s":"");
+  document.getElementById("bkd-ext-desc").textContent     = "Extending by " + label;
+  document.getElementById("bkd-ext-new-drop").textContent = "New drop: " + newDrop.toLocaleString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  document.getElementById("bkd-ext-cost").textContent     = "₹" + Math.round(cost).toLocaleString("en-IN");
+  document.getElementById("bkd-extend-summary").style.display = "flex";
+  document.getElementById("bkd-ext-pay-btn").style.display    = "block";
+}
+
+async function payExtension(){
+  var b     = window._bkdCurrent;
+  var hours = window._bkdSelected;
+  if(!b || !hours) return;
+  var id   = b._id || b.bookingId;
+  var ppd  = b.pricePerDay || 0;
+  var pph  = Math.round(ppd / 24);
+  var cost = hours < 24 ? pph * hours : ppd * (hours / 24);
+  var btn  = document.getElementById("bkd-ext-pay-btn");
+  btn.disabled = true; btn.textContent = "Processing…";
+
+  try {
+    if(authToken && authToken.startsWith("demo_")) throw new Error("demo");
+    var r = await fetch(API + "/api/bookings/" + id + "/extend/order", {
+      method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},
+      body: JSON.stringify({ hours: hours })
+    });
+    var order = await r.json();
+    if(!r.ok) throw new Error(order.error || "Order failed");
+    var rzp = new Razorpay({
+      key: order.keyId, amount: order.amount*100, currency: order.currency,
+      name: "DriveDilSe", description: "Booking Extension", order_id: order.orderId,
+      handler: async function(resp){
+        var vr = await fetch(API + "/api/bookings/" + id + "/extend/verify", {
+          method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},
+          body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, hours:hours })
+        });
+        var vd = await vr.json();
+        if(!vr.ok){ alert("Payment verified but update failed. Contact support."); return; }
+        var cache = getCachedBookings();
+        var idx = cache.findIndex(function(x){ return x._id===id||x.bookingId===id; });
+        if(idx>-1){ cache[idx].drop=vd.booking.drop; cache[idx].total=vd.booking.total; cache[idx].extensions=vd.booking.extensions||[]; localStorage.setItem("dds_bk_cache",JSON.stringify(cache)); }
+        closeModal("bk-detail-modal"); renderProfile(); alert("✅ Booking extended!");
+      },
+      prefill:{ name:userProfile.name||"", contact:userProfile.phone?"+91"+userProfile.phone:"" },
+      theme:{ color:"#f5c518" }
+    });
+    rzp.open();
+    btn.disabled = false; btn.textContent = "Pay & Extend →";
+  } catch(e){
+    // Demo / offline fallback
+    var cache3 = getCachedBookings();
+    var idx3 = cache3.findIndex(function(x){ return x._id===id||x.bookingId===id; });
+    if(idx3 > -1){
+      var oldDrop = cache3[idx3].drop && cache3[idx3].drop.date ? cache3[idx3].drop.date : cache3[idx3].drop;
+      var newDropISO = new Date(new Date(oldDrop).getTime() + hours*3600000).toISOString();
+      if(cache3[idx3].drop && cache3[idx3].drop.date){ cache3[idx3].drop.date = newDropISO; } else { cache3[idx3].drop = newDropISO; }
+      cache3[idx3].total = (cache3[idx3].total||0) + Math.round(cost);
+      if(!cache3[idx3].extensions) cache3[idx3].extensions = [];
+      cache3[idx3].extensions.push({ hours:hours, cost:Math.round(cost), extendedAt:new Date().toISOString() });
+      localStorage.setItem("dds_bk_cache", JSON.stringify(cache3));
+    }
+    closeModal("bk-detail-modal"); renderProfile();
+    alert("✅ [Demo] Extended by " + (hours<24? hours+"hr(s)" : (hours/24)+"day(s)") + "!");
+    btn.disabled = false; btn.textContent = "Pay & Extend →";
   }
 }
 

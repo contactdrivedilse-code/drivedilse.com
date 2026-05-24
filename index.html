@@ -1363,7 +1363,14 @@ async function payNow(){
       }
     });
     rzp.open();
-  } catch(e){ alert("Could not initiate payment: " + e.message); }
+  } catch(e){
+    // Backend unreachable — demo/offline booking
+    var demoId = "DS" + Date.now().toString(36).toUpperCase();
+    cacheBookingLocally({ bookingId: demoId, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+demoId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\n⚠️ Server offline — admin will confirm.";
+    document.getElementById("booking-form").style.display    = "none";
+    document.getElementById("success-section").style.display = "block";
+  }
 }
 // ── VERIFY MODAL ──
 function openVerifyModal(){

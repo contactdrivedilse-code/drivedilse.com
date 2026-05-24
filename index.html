@@ -1144,12 +1144,24 @@ function isAvail(car, pickup, drop){
     var ps = new Date(car.paused[i].start), pe = new Date(car.paused[i].end);
     if(p < pe && d > ps) return false;
   }
+  // Check admin BOOKINGS list
   for(var j=0; j<BOOKINGS.length; j++){
     var b = BOOKINGS[j];
     if(b.carId === car.id && b.status !== "completed" && b.status !== "cancelled"){
       var bp = new Date(b.pickup), bd = new Date(b.drop);
       if(p < bd && d > bp) return false;
     }
+  }
+  // Check locally cached bookings (covers demo/offline mode)
+  var cached = getCachedBookings();
+  for(var k=0; k<cached.length; k++){
+    var cb = cached[k];
+    if(cb.status === "completed" || cb.status === "cancelled") continue;
+    var sameCar = cb.carId ? String(cb.carId) === String(car.id) : cb.carName === car.name;
+    if(!sameCar) continue;
+    var cbp = new Date(cb.pickup && cb.pickup.date ? cb.pickup.date : cb.pickup);
+    var cbd = new Date(cb.drop   && cb.drop.date   ? cb.drop.date   : cb.drop);
+    if(p < cbd && d > cbp) return false;
   }
   return true;
 }
@@ -1335,7 +1347,7 @@ async function payNow(){
   // Demo / offline mode — skip Razorpay entirely
   if(authToken.startsWith("demo_")){
     var demoId = "DS" + Date.now().toString(36).toUpperCase();
-    cacheBookingLocally({ bookingId: demoId, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
+    cacheBookingLocally({ bookingId: demoId, carId: selCar.id, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
     window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+demoId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\n⚠️ Demo booking — contact admin to confirm.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
@@ -1365,7 +1377,7 @@ async function payNow(){
           });
           if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
           myBookingIds.push(result.bookingId);
-          cacheBookingLocally(result.booking || { bookingId: result.bookingId, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
+          cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
           window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
           document.getElementById("booking-form").style.display    = "none";
           document.getElementById("success-section").style.display = "block";
@@ -1376,7 +1388,7 @@ async function payNow(){
   } catch(e){
     // Backend unreachable — demo/offline booking
     var demoId = "DS" + Date.now().toString(36).toUpperCase();
-    cacheBookingLocally({ bookingId: demoId, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
+    cacheBookingLocally({ bookingId: demoId, carId: selCar.id, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
     window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+demoId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\n⚠️ Server offline — admin will confirm.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";

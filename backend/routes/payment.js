@@ -78,6 +78,15 @@ router.post("/order", protect, async (req, res) => {
 
     const pickup = new Date(pickupDate);
     const drop   = new Date(dropDate);
+
+    // Check for conflicting confirmed/active bookings
+    const conflict = await Booking.findOne({
+      car: car._id,
+      status: { $in: ["confirmed", "active"] },
+      "pickup.date": { $lt: drop },
+      "drop.date":   { $gt: pickup },
+    });
+    if (conflict) return res.status(400).json({ error: "Car is already booked for these dates" });
     const days   = Math.max(1, Math.ceil((drop - pickup) / (1000 * 60 * 60 * 24)));
 
     let discount = 0;

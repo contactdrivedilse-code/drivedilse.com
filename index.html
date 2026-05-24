@@ -1172,7 +1172,7 @@ function renderFleet(pickup, drop, searched){
       '<div style="padding:16px 18px 18px">' +
         '<div class="car-cat">' + car.cat + '</div>' +
         '<div style="font-size:.98rem;font-weight:800;margin-bottom:4px">' + car.name + '</div>' +
-        '<div style="font-size:.86rem;color:var(--yd);font-weight:700;margin-bottom:10px">' + inr(car.rate) + '/day</div>' +
+        '<div style="font-size:.86rem;color:var(--yd);font-weight:700;margin-bottom:10px">' + inr(Math.round(car.rate/24)) + '/hr</div>' +
         '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">' +
           '<span class="pill">⚙️ ' + car.tm + '</span>' +
           '<span class="pill">⛽ ' + car.fuel + '</span>' +
@@ -1221,7 +1221,7 @@ function openCar(id){
   if(!selCar) return;
   priceResult = null;
   document.getElementById("d-name").textContent = selCar.name;
-  document.getElementById("d-rate").innerHTML   = inr(selCar.rate) + '<span style="font-size:.9rem;color:var(--ts);font-weight:400">/day</span>';
+  document.getElementById("d-rate").innerHTML   = inr(Math.round(selCar.rate/24)) + '<span style="font-size:.9rem;color:var(--ts);font-weight:400">/hr</span>';
   document.getElementById("d-pills").innerHTML  =
     '<span class="pill">⚙️ ' + selCar.tm + '</span>' +
     '<span class="pill">⛽ ' + selCar.fuel + '</span>' +
@@ -1684,7 +1684,7 @@ async function renderTab(tab){
         '</div>' +
         '<div class="v-body">' +
           '<div style="font-size:.9rem;font-weight:800;margin-bottom:4px">'+car.name+'</div>' +
-          '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:8px">'+inr(car.rate)+'/day</div>' +
+          '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:8px">'+inr(Math.round(car.rate/24))+'/hr</div>' +
           '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">' +
             '<span class="pill">⚙️ '+car.tm+'</span><span class="pill">⛽ '+car.fuel+'</span><span class="pill">💺 '+car.seats+'</span>' +
           '</div>' +

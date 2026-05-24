@@ -367,7 +367,7 @@ footer{background:#fffbe6;border-top:1px solid rgba(200,160,0,.25);padding:28px 
       <div class="steps">
         <div class="step"><div class="step-num">01</div><div style="font-size:.9rem;font-weight:700;margin-bottom:5px">Pick Your Dates</div><div style="font-size:.76rem;color:var(--ts);line-height:1.65">Enter pickup and drop to instantly see available cars in your window.</div></div>
         <div class="step"><div class="step-num">02</div><div style="font-size:.9rem;font-weight:700;margin-bottom:5px">Choose and Pay</div><div style="font-size:.76rem;color:var(--ts);line-height:1.65">Select a car, review the transparent price breakdown, pay securely online.</div></div>
-        <div class="step"><div class="step-num">03</div><div style="font-size:.9rem;font-weight:700;margin-bottom:5px">Verify and Drive</div><div style="font-size:.76rem;color:var(--ts);line-height:1.65">Complete one-time profile verification. Our rep provides the OTP at handover.</div></div>
+        <div class="step"><div class="step-num">03</div><div style="font-size:.9rem;font-weight:700;margin-bottom:5px">Verify and Drive</div><div style="font-size:.76rem;color:var(--ts);line-height:1.65">Upload Aadhaar &amp; Driving Licence after booking. Our rep provides the Check-In OTP at vehicle handover.</div></div>
       </div>
     </div>
   </section>
@@ -483,7 +483,7 @@ window.addEventListener('scroll',function(){
     <div class="profile-avatar" id="prof-avatar">?</div>
     <div class="profile-name-big" id="prof-name">My Profile</div>
     <div id="prof-status-badge" style="margin-top:8px"><span class="profile-badge pending">Not Verified</span></div>
-    <p style="font-size:.82rem;color:var(--ts);margin-top:10px" id="prof-tagline">Complete verification to book a car.</p>
+    <p style="font-size:.82rem;color:var(--ts);margin-top:10px" id="prof-tagline">Upload Aadhaar &amp; Driving Licence to enable check-in.</p>
   </div>
 
   <div class="profile-body">
@@ -608,9 +608,9 @@ window.addEventListener('scroll',function(){
         <div class="success-box">
           <div style="font-size:2.8rem;margin-bottom:14px">🎉</div>
           <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;color:#1a7a3c;margin-bottom:8px">Booking Confirmed!</div>
-          <div style="font-size:.84rem;color:#555;margin-bottom:8px">Booking confirmed! Please notify us on WhatsApp to complete your reservation.</div>
+          <div style="font-size:.84rem;color:#555;margin-bottom:8px">Payment received. Your booking is confirmed!</div>
           <button class="btn btn-green btn-lg" onclick="window.open('https://wa.me/'+WHATSAPP+'?text='+encodeURIComponent(window._lastBookingMsg||'New booking - DriveDilSe'),'_blank')" style="margin-bottom:12px">&#128172; Notify Admin on WhatsApp</button>
-          <div style="font-size:.82rem;color:#555;margin-bottom:20px">Complete your profile verification so our representative can hand over the vehicle and provide the Check-In OTP.</div>
+          <div style="font-size:.82rem;color:#555;margin-bottom:20px;background:#fff8d0;border:1.5px solid var(--yd);border-radius:10px;padding:12px">📋 <strong>One last step:</strong> Upload your Aadhaar &amp; Driving Licence below. Our representative needs this to hand over the car and give you the Check-In OTP.</div>
           <button class="btn btn-y btn-lg" onclick="openVerifyModal()" style="margin-bottom:10px">Complete Profile Verification →</button>
           <button class="btn btn-g btn-sm" onclick="goHome()" style="width:100%">Do it later</button>
           <div style="font-size:.7rem;color:var(--ts);margin-top:10px">⚠️ Check-In OTP is only given by our representative after profile is verified</div>
@@ -698,6 +698,28 @@ window.addEventListener('scroll',function(){
 </div>
 
 <!-- ══════════ PAUSE CALENDAR MODAL ══════════ -->
+<!-- ══════════ QUICK OTP LOGIN MODAL ══════════ -->
+<div class="modal-bg" id="quick-login-modal">
+  <div class="modal" style="max-width:400px;width:calc(100vw - 32px)">
+    <button class="modal-close" onclick="closeModal('quick-login-modal')">✕</button>
+    <div style="font-family:Georgia,serif;font-size:1.2rem;font-weight:900;margin-bottom:4px">Confirm Your Number</div>
+    <div style="font-size:.82rem;color:var(--ts);margin-bottom:20px">Enter your phone to receive the booking confirmation. Takes 30 seconds.</div>
+    <div style="margin-bottom:14px">
+      <label class="lbl">Mobile Number</label>
+      <div style="display:flex;gap:8px">
+        <span style="padding:12px 14px;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;font-size:.9rem;font-weight:700;color:var(--ts)">+91</span>
+        <input class="inp" type="tel" id="ql-phone" placeholder="10-digit number" maxlength="10" style="flex:1" onkeydown="if(event.key==='Enter')qlSendOtp()">
+      </div>
+    </div>
+    <div id="ql-otp-row" style="display:none;margin-bottom:14px">
+      <label class="lbl">OTP</label>
+      <input class="inp" type="number" id="ql-otp" placeholder="6-digit OTP" onkeydown="if(event.key==='Enter')qlVerifyAndPay()">
+    </div>
+    <div id="ql-msg" style="font-size:.8rem;margin-bottom:12px;min-height:16px"></div>
+    <button class="btn btn-y btn-lg" id="ql-btn" onclick="qlSendOtp()">Send OTP →</button>
+    <div style="text-align:center;margin-top:14px;font-size:.75rem;color:var(--ts)">Already verified? <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="closeModal('quick-login-modal');openVerifyModal()">Login with full profile</span></div>
+  </div>
+</div>
 <!-- ══════════ CHECK-IN MODAL ══════════ -->
 <div class="modal-bg" id="checkin-modal">
   <div class="modal" style="max-width:520px;width:calc(100vw - 32px)">
@@ -978,7 +1000,7 @@ async function renderProfile(){
     document.getElementById("prof-verify-btn").textContent = "Update Verification";
   } else {
     sb.innerHTML = '<span class="profile-badge pending">&#9888; Not Verified</span>';
-    tl.textContent = "Complete verification to book a car.";
+    tl.textContent = "Upload your Aadhaar & Driving Licence to enable check-in.";
     document.getElementById("prof-verify-btn").textContent = "Complete Profile Verification →";
   }
 
@@ -991,7 +1013,7 @@ async function renderProfile(){
       '<div class="profile-row"><span class="profile-row-lbl">Phone</span><span class="profile-row-val">' + (p.phone?"+91 "+p.phone:"—") + '</span></div>' +
       '<div class="profile-row"><span class="profile-row-lbl">Date of Birth</span><span class="profile-row-val">' + dob + '</span></div>';
   } else {
-    ib.innerHTML = '<div class="profile-empty">No profile data yet. Complete verification to get started.</div>';
+    ib.innerHTML = '<div class="profile-empty">No profile data yet. Add your details to enable check-in.</div>';
   }
 
   // KYC icons
@@ -1197,7 +1219,7 @@ async function payNow(){
   if(!priceResult){ alert("Please calculate price first."); return; }
   if(!document.getElementById("chk-ded").checked){ alert("Please acknowledge the ₹2,000 damage deductible clause."); return; }
   if(!document.getElementById("chk-tnc").checked){ alert("Please accept the Terms & Conditions."); return; }
-  if(!authToken){ alert("Please complete profile verification (OTP login) before booking."); openVerifyModal(); return; }
+  if(!authToken){ openQuickLogin(); return; }
 
   var isLocalCar = String(selCar.id).startsWith("local");
   if(isLocalCar){
@@ -1840,6 +1862,71 @@ async function ciVerifyOtp() {
     document.getElementById("ci-otp-err").textContent = e.message;
     document.getElementById("ci-otp-err").style.display = "block";
   }
+}
+
+// ── QUICK OTP LOGIN (pre-payment) ──
+function openQuickLogin(){
+  document.getElementById("ql-phone").value  = userProfile.phone || "";
+  document.getElementById("ql-otp").value    = "";
+  document.getElementById("ql-otp-row").style.display = "none";
+  document.getElementById("ql-msg").textContent = "";
+  document.getElementById("ql-btn").textContent = "Send OTP →";
+  document.getElementById("ql-btn").onclick = qlSendOtp;
+  document.getElementById("ql-btn").disabled = false;
+  openModal("quick-login-modal");
+}
+
+async function qlSendOtp(){
+  var ph = document.getElementById("ql-phone").value.trim();
+  if(!/^[6-9]\d{9}$/.test(ph)){
+    document.getElementById("ql-msg").innerHTML = '<span style="color:#c0392b">Enter a valid 10-digit number.</span>';
+    return;
+  }
+  var btn = document.getElementById("ql-btn");
+  btn.textContent = "Sending..."; btn.disabled = true;
+  try {
+    await apiFetch("/api/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph})});
+    document.getElementById("ql-otp-row").style.display = "block";
+    document.getElementById("ql-msg").innerHTML = '<span style="color:#1a5fa8">OTP sent to +91 ' + ph + '</span>';
+    btn.textContent = "Verify & Pay →";
+    btn.disabled = false;
+    btn.onclick = qlVerifyAndPay;
+  } catch(e){
+    // Offline fallback: skip OTP and proceed with a temp token
+    document.getElementById("ql-msg").innerHTML = '<span style="color:#c0392b">Could not send OTP (offline mode). <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="qlOfflineProceed()">Proceed anyway →</span></span>';
+    btn.textContent = "Send OTP →"; btn.disabled = false;
+  }
+}
+
+async function qlVerifyAndPay(){
+  var ph  = document.getElementById("ql-phone").value.trim();
+  var otp = document.getElementById("ql-otp").value.trim();
+  if(!otp){
+    document.getElementById("ql-msg").innerHTML = '<span style="color:#c0392b">Enter the OTP.</span>';
+    return;
+  }
+  var btn = document.getElementById("ql-btn");
+  btn.textContent = "Verifying..."; btn.disabled = true;
+  try {
+    var resp = await apiFetch("/api/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph,otp:otp})});
+    authToken = resp.token;
+    localStorage.setItem("dds_token", authToken);
+    userProfile.phone = ph;
+    if(resp.user && resp.user.name) userProfile.name = resp.user.name;
+    closeModal("quick-login-modal");
+    payNow(); // re-trigger now that we have a token
+  } catch(e){
+    document.getElementById("ql-msg").innerHTML = '<span style="color:#c0392b">❌ ' + e.message + '</span>';
+    btn.textContent = "Verify & Pay →"; btn.disabled = false;
+  }
+}
+
+function qlOfflineProceed(){
+  // Offline mode: store phone locally and proceed
+  var ph = document.getElementById("ql-phone").value.trim();
+  if(ph) { userProfile.phone = ph; }
+  closeModal("quick-login-modal");
+  payNow();
 }
 </script>
 </body>

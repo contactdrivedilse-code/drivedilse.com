@@ -1071,12 +1071,10 @@ function renderFleet(pickup, drop, searched){
           '<span class="pill">⛽ ' + car.fuel + '</span>' +
           '<span class="pill">💺 ' + car.seats + ' Seats</span>' +
         '</div>' +
-        '<button class="btn ' + btnClass + ' btn-lg" data-carid="' + car.id + '" data-avail="' + avail + '">' + btnTxt + '</button>' +
+        (avail
+          ? '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>'
+          : '<button class="btn btn-gr btn-lg" style="opacity:.5;cursor:not-allowed" disabled>' + btnTxt + '</button>') +
       '</div>';
-    div.querySelector("button").addEventListener("click", function(){
-      if(this.getAttribute("data-avail") === "false") return;
-      openCar(this.getAttribute("data-carid"));
-    });
     g.appendChild(div);
   });
 }

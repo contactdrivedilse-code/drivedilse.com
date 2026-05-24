@@ -1321,8 +1321,19 @@ function calcPrice(){
 function cacheBookingLocally(booking){
   try {
     var list = JSON.parse(localStorage.getItem("dds_bk_cache") || "[]");
-    // avoid duplicates by bookingId
+    // Remove exact duplicate bookingId
     list = list.filter(function(b){ return b.bookingId !== booking.bookingId; });
+    // Remove any existing booking for the same car + overlapping dates (prevent local duplicates)
+    var p = new Date(booking.pickup && booking.pickup.date ? booking.pickup.date : booking.pickup);
+    var d = new Date(booking.drop   && booking.drop.date   ? booking.drop.date   : booking.drop);
+    list = list.filter(function(b){
+      if(b.status === "completed" || b.status === "cancelled") return true;
+      var sameCar = booking.carId ? String(b.carId) === String(booking.carId) : b.carName === booking.carName;
+      if(!sameCar) return true;
+      var bp = new Date(b.pickup && b.pickup.date ? b.pickup.date : b.pickup);
+      var bd = new Date(b.drop   && b.drop.date   ? b.drop.date   : b.drop);
+      return !(p < bd && d > bp); // keep only non-overlapping
+    });
     list.unshift(booking);
     localStorage.setItem("dds_bk_cache", JSON.stringify(list.slice(0, 20)));
   } catch(e){ /* ignore */ }
@@ -1341,6 +1352,12 @@ async function payNow(){
   // Must be logged in — gate enforced by openCar(), but double-check here
   if(!authToken){
     openQuickLogin(payNow);
+    return;
+  }
+
+  // Availability re-check right before booking (catches detail-page double-taps)
+  if(!isAvail(selCar, priceResult.pickup, priceResult.drop)){
+    alert("Sorry, this car is already booked for the selected dates. Please choose different dates.");
     return;
   }
 

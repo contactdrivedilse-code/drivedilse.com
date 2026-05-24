@@ -784,7 +784,7 @@ window.addEventListener('scroll',function(){
 <!-- ══════════ CHECK-IN MODAL ══════════ -->
 <div class="modal-bg" id="checkin-modal">
   <div class="modal" style="max-width:520px;width:calc(100vw - 32px)">
-    <button class="modal-close" onclick="closeModal('checkin-modal')">✕</button>
+    <button class="modal-close" onclick="ciCloseCamera();closeModal('checkin-modal')">✕</button>
     <div style="font-family:Georgia,serif;font-size:1.25rem;font-weight:900;margin-bottom:4px">Car Check-In</div>
     <div style="font-size:.83rem;color:var(--ts);margin-bottom:20px" id="ci-booking-lbl">Upload photos of the car from all 4 sides, then enter the OTP from our representative.</div>
 
@@ -796,35 +796,47 @@ window.addEventListener('scroll',function(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div class="ci-photo-box" id="ci-front-box">
-          <input type="file" accept="image/*" capture="environment" id="ci-front" onchange="ciPhotoSet('front',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-front" onchange="ciPhotoSet('front',this)" style="display:none">
           <div class="ci-photo-icon" id="ci-front-icon">📸</div>
-          <div class="ci-photo-lbl" id="ci-front-lbl">Front of Car</div>
+          <div class="ci-photo-lbl">Front of Car</div>
           <div class="ci-photo-status" id="ci-front-status"></div>
-          <label for="ci-front" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
+            <label for="ci-front" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
+            <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('front')">📷 Camera</button>
+          </div>
           <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('front')">⚡ Use demo photo</div>
         </div>
         <div class="ci-photo-box" id="ci-rear-box">
-          <input type="file" accept="image/*" capture="environment" id="ci-rear" onchange="ciPhotoSet('rear',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-rear" onchange="ciPhotoSet('rear',this)" style="display:none">
           <div class="ci-photo-icon" id="ci-rear-icon">📸</div>
-          <div class="ci-photo-lbl" id="ci-rear-lbl">Rear of Car</div>
+          <div class="ci-photo-lbl">Rear of Car</div>
           <div class="ci-photo-status" id="ci-rear-status"></div>
-          <label for="ci-rear" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
+            <label for="ci-rear" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
+            <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('rear')">📷 Camera</button>
+          </div>
           <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('rear')">⚡ Use demo photo</div>
         </div>
         <div class="ci-photo-box" id="ci-passengerSide-box">
-          <input type="file" accept="image/*" capture="environment" id="ci-passengerSide" onchange="ciPhotoSet('passengerSide',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-passengerSide" onchange="ciPhotoSet('passengerSide',this)" style="display:none">
           <div class="ci-photo-icon" id="ci-passengerSide-icon">📸</div>
-          <div class="ci-photo-lbl" id="ci-passengerSide-lbl">Passenger Side</div>
+          <div class="ci-photo-lbl">Passenger Side</div>
           <div class="ci-photo-status" id="ci-passengerSide-status"></div>
-          <label for="ci-passengerSide" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
+            <label for="ci-passengerSide" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
+            <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('passengerSide')">📷 Camera</button>
+          </div>
           <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('passengerSide')">⚡ Use demo photo</div>
         </div>
         <div class="ci-photo-box" id="ci-driverSide-box">
-          <input type="file" accept="image/*" capture="environment" id="ci-driverSide" onchange="ciPhotoSet('driverSide',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-driverSide" onchange="ciPhotoSet('driverSide',this)" style="display:none">
           <div class="ci-photo-icon" id="ci-driverSide-icon">📸</div>
-          <div class="ci-photo-lbl" id="ci-driverSide-lbl">Driver Side</div>
+          <div class="ci-photo-lbl">Driver Side</div>
           <div class="ci-photo-status" id="ci-driverSide-status"></div>
-          <label for="ci-driverSide" class="btn btn-g btn-sm" style="margin-top:8px;cursor:pointer;display:block;text-align:center">Upload</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
+            <label for="ci-driverSide" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
+            <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('driverSide')">📷 Camera</button>
+          </div>
           <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('driverSide')">⚡ Use demo photo</div>
         </div>
       </div>
@@ -917,6 +929,21 @@ window.addEventListener('scroll',function(){
       <button class="btn btn-y btn-lg" id="bkd-ext-pay-btn" onclick="payExtension()" style="display:none">Pay & Extend →</button>
     </div>
   </div>
+</div>
+
+<!-- CAMERA OVERLAY -->
+<div id="ci-camera-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:600;flex-direction:column;align-items:center;justify-content:center">
+  <div style="font-size:.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:14px" id="ci-camera-label">Photographing: Front of Car</div>
+  <div style="position:relative;border-radius:16px;overflow:hidden;max-width:min(480px,90vw);width:100%;background:#000">
+    <video id="ci-camera-video" autoplay playsinline muted style="width:100%;display:block;max-height:60vh;object-fit:cover"></video>
+    <div style="position:absolute;inset:0;border:2px solid rgba(245,197,24,.5);border-radius:16px;pointer-events:none"></div>
+  </div>
+  <canvas id="ci-camera-canvas" style="display:none"></canvas>
+  <div style="display:flex;gap:16px;margin-top:20px">
+    <button onclick="ciCapturePhoto()" style="background:var(--y);color:#111;border:none;border-radius:50px;padding:14px 32px;font-size:1rem;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif">📸 Capture</button>
+    <button onclick="ciCloseCamera()" style="background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:50px;padding:14px 24px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">✕ Cancel</button>
+  </div>
+  <div id="ci-camera-err" style="color:#f87171;font-size:.8rem;margin-top:14px;text-align:center;display:none"></div>
 </div>
 
 <!-- CHECKOUT MODAL -->
@@ -2093,6 +2120,51 @@ function confirmPause(){
   // Refresh vehicles tab if open
   var activeTab = document.querySelector(".atab.on");
   if(activeTab && activeTab.textContent.indexOf("Vehicles") > -1) renderTab("vehicles");
+}
+
+// ── CAMERA CAPTURE ──
+var ciCameraStream = null;
+var ciCameraSide   = null;
+var ciSideLabels   = { front:"Front of Car", rear:"Rear of Car", passengerSide:"Passenger Side", driverSide:"Driver Side" };
+
+async function openCiCamera(side){
+  ciCameraSide = side;
+  document.getElementById("ci-camera-label").textContent = "Photographing: " + (ciSideLabels[side] || side);
+  document.getElementById("ci-camera-err").style.display = "none";
+  var overlay = document.getElementById("ci-camera-overlay");
+  overlay.style.display = "flex";
+  try {
+    ciCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal:"environment" }, width:{ ideal:1280 }, height:{ ideal:720 } }
+    });
+    document.getElementById("ci-camera-video").srcObject = ciCameraStream;
+  } catch(e){
+    document.getElementById("ci-camera-err").textContent = "Camera access denied or unavailable. Use Gallery instead.";
+    document.getElementById("ci-camera-err").style.display = "block";
+    document.getElementById("ci-camera-video").srcObject = null;
+  }
+}
+
+function ciCapturePhoto(){
+  var video  = document.getElementById("ci-camera-video");
+  var canvas = document.getElementById("ci-camera-canvas");
+  if(!video.videoWidth){ return; }
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+  canvas.toBlob(function(blob){
+    var file = new File([blob], "photo_"+ciCameraSide+".jpg", { type:"image/jpeg" });
+    ciPhotos[ciCameraSide] = file;
+    document.getElementById("ci-"+ciCameraSide+"-icon").textContent   = "✅";
+    document.getElementById("ci-"+ciCameraSide+"-status").textContent = "Photo captured ✓";
+    document.getElementById("ci-"+ciCameraSide+"-box").classList.add("ok");
+    ciCloseCamera();
+  }, "image/jpeg", 0.88);
+}
+
+function ciCloseCamera(){
+  if(ciCameraStream){ ciCameraStream.getTracks().forEach(function(t){ t.stop(); }); ciCameraStream = null; }
+  document.getElementById("ci-camera-overlay").style.display = "none";
 }
 
 // ── CHECK-IN FLOW ──

@@ -803,6 +803,37 @@ window.addEventListener('scroll',function(){
     </div>
   </div>
 </div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-bg" id="checkout-modal" style="display:none" onclick="if(event.target===this)closeModal('checkout-modal')">
+  <div class="modal" style="max-width:480px;width:calc(100vw - 32px)">
+    <button class="modal-close" onclick="closeModal('checkout-modal')">✕</button>
+    <div style="font-family:Georgia,serif;font-size:1.25rem;font-weight:900;margin-bottom:4px">End Booking</div>
+    <div style="font-size:.83rem;color:var(--ts);margin-bottom:20px" id="co-booking-lbl">Ask the DriveDilSe representative to share your Check-Out OTP to close the booking.</div>
+
+    <!-- OTP step -->
+    <div id="co-otp-step">
+      <div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:16px;margin-bottom:20px;font-size:.85rem;line-height:1.6">
+        <strong>Get the Check-Out OTP from the DriveDilSe representative</strong> to close your booking and mark it as completed.
+      </div>
+      <div style="margin-bottom:16px">
+        <label class="lbl">Check-Out OTP</label>
+        <input class="inp" type="number" id="co-otp-input" placeholder="Enter 6-digit OTP" style="font-size:1.2rem;letter-spacing:4px;text-align:center">
+      </div>
+      <div id="co-otp-err" style="color:#c0392b;font-size:.82rem;display:none;margin-bottom:12px"></div>
+      <button class="btn btn-y btn-lg" onclick="coVerifyOtp()">End Booking →</button>
+    </div>
+
+    <!-- Success step -->
+    <div id="co-success-step" style="display:none;text-align:center">
+      <div style="font-size:3rem;margin-bottom:12px">✅</div>
+      <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:8px">Booking Completed!</div>
+      <div style="color:var(--ts);font-size:.88rem;margin-bottom:24px">Thank you for driving with DriveDilSe. See you again!</div>
+      <button class="btn btn-y btn-lg" onclick="closeModal('checkout-modal');showProfile()">View My Bookings</button>
+    </div>
+  </div>
+</div>
+
 <div class="pause-modal-bg" id="pause-modal">
   <div class="pause-modal">
     <button class="modal-close" onclick="closeModal('pause-modal')">✕</button>
@@ -975,14 +1006,28 @@ async function renderProfile(){
           var windowMs    = 30 * 60 * 1000;
           var windowOpen  = nowMs >= pickupTime - windowMs;
           var isConfirmed = b.status === "confirmed";
+          var isActive    = b.status === "active";
           var photosUp    = b.checkin && b.checkin.photosUploadedAt;
+          var ks          = p.kycStatus; // "pending","uploaded","verified","rejected"
           var checkinBtn  = "";
-          if(isConfirmed && !photosUp){
-            checkinBtn = windowOpen
-              ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')">Start Check-In →</button>'
-              : '<div style="margin-top:6px"><span class="ci-window-badge">Check-in opens '+new Date(pickupTime - windowMs).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})+'</span></div>';
-          } else if(isConfirmed && photosUp){
-            checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#1a7a3c;font-weight:700">✅ Photos uploaded — enter OTP from representative <button class="btn btn-y btn-sm" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')" style="margin-left:8px;font-size:.72rem">Enter OTP →</button></div>';
+          if(isActive){
+            checkinBtn = '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckout(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\')">End Booking →</button>';
+          } else if(isConfirmed){
+            if(ks !== "verified"){
+              if(ks === "rejected"){
+                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#c0392b;font-weight:700">❌ KYC rejected. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#c0392b;color:#fff;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Re-submit Documents →</button></div>';
+              } else if(ks === "uploaded"){
+                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#e67e22;font-weight:700">⏳ KYC under review. Check-in unlocks once verified.</div>';
+              } else {
+                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#888;font-weight:600">Upload Aadhaar + DL to unlock check-in. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#ffd400;color:#111;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Complete KYC →</button></div>';
+              }
+            } else if(!photosUp){
+              checkinBtn = windowOpen
+                ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')">Start Check-In →</button>'
+                : '<div style="margin-top:6px"><span class="ci-window-badge">Check-in opens '+new Date(pickupTime - windowMs).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})+'</span></div>';
+            } else {
+              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#1a7a3c;font-weight:700">✅ Photos uploaded — enter OTP from representative <button class="btn btn-y btn-sm" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')" style="margin-left:8px;font-size:.72rem">Enter OTP →</button></div>';
+            }
           }
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
@@ -1933,6 +1978,43 @@ async function ciVerifyOtp() {
   } catch(e) {
     document.getElementById("ci-otp-err").textContent = e.message;
     document.getElementById("ci-otp-err").style.display = "block";
+  }
+}
+
+// ── CHECKOUT FLOW ──
+var coBookingId = null;
+
+function openCheckout(bookingId, carName) {
+  coBookingId = bookingId;
+  document.getElementById("co-otp-input").value = "";
+  document.getElementById("co-otp-err").style.display   = "none";
+  document.getElementById("co-otp-step").style.display  = "block";
+  document.getElementById("co-success-step").style.display = "none";
+  document.getElementById("co-booking-lbl").textContent = carName + " · Enter OTP from representative to close booking.";
+  openModal("checkout-modal");
+}
+
+async function coVerifyOtp() {
+  var otp = document.getElementById("co-otp-input").value.trim();
+  if (!otp || otp.length !== 6) {
+    document.getElementById("co-otp-err").textContent = "Enter the 6-digit OTP from the representative.";
+    document.getElementById("co-otp-err").style.display = "block";
+    return;
+  }
+  document.getElementById("co-otp-err").style.display = "none";
+  try {
+    var resp = await fetch(API + "/api/bookings/" + coBookingId + "/checkout/verify", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + authToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ otp: otp })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Verification failed");
+    document.getElementById("co-otp-step").style.display    = "none";
+    document.getElementById("co-success-step").style.display = "block";
+  } catch(e) {
+    document.getElementById("co-otp-err").textContent = e.message;
+    document.getElementById("co-otp-err").style.display = "block";
   }
 }
 

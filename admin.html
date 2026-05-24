@@ -460,6 +460,22 @@ function buildTable(bks, showActions){
       otpCell = '<td><span style="font-size:.75rem;color:var(--ts)">Awaiting photos</span></td>';
     }
 
+    // Check-out OTP column — shown for active bookings
+    var co = b.checkout;
+    var coOtpCell = "";
+    if(b.status === "active" && co && co.otp && !co.otpVerified){
+      coOtpCell = '<td>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-family:monospace;font-size:1rem;font-weight:900;background:#fff8d0;border:2px solid var(--yd);padding:5px 12px;border-radius:10px;letter-spacing:3px;color:var(--yd)">'+co.otp+'</span>' +
+          '<span style="font-size:.68rem;color:var(--ts);line-height:1.3">Check-Out OTP<br><strong style="color:#c0392b">Share with rep only</strong></span>' +
+        '</div>' +
+      '</td>';
+    } else if(co && co.otpVerified){
+      coOtpCell = '<td><span class="sbadge sb-done">✅ Checked Out</span><div style="font-size:.7rem;color:var(--ts);margin-top:4px">'+new Date(co.checkedOutAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div></td>';
+    } else {
+      coOtpCell = '<td><span style="font-size:.75rem;color:var(--ts)">—</span></td>';
+    }
+
     var actCell = showActions
       ? '<td><select class="status-sel" onchange="updateStatus(\''+b._id+'\',this.value)">' +
           ['pending','confirmed','active','completed','cancelled'].map(function(s){
@@ -477,12 +493,13 @@ function buildTable(bks, showActions){
       '<td>'+badge(b.status)+'</td>' +
       '<td>'+payBadge+'</td>' +
       otpCell +
+      coOtpCell +
       actCell +
     '</tr>';
   }).join("");
   var actHdr = showActions ? '<th>Change Status</th>' : '';
   return '<table class="adm-table"><thead><tr>' +
-    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th><th>Payment</th><th>Check-In OTP</th>' + actHdr +
+    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th><th>Payment</th><th>Check-In OTP</th><th>Check-Out OTP</th>' + actHdr +
     '</tr></thead><tbody>'+rows+'</tbody></table>';
 }
 

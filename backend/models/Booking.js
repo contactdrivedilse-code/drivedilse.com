@@ -39,6 +39,11 @@ const bookingSchema = new mongoose.Schema({
     otpVerified:      { type: Boolean, default: false },
     checkedInAt:      { type: Date, default: null },
   },
+  checkout: {
+    otp:          { type: String, default: "" },
+    otpVerified:  { type: Boolean, default: false },
+    checkedOutAt: { type: Date, default: null },
+  },
   status: {
     type: String,
     enum: ["pending", "confirmed", "active", "completed", "cancelled"],

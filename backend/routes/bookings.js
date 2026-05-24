@@ -97,9 +97,35 @@ router.post("/:id/checkin/verify", protect, async (req, res) => {
     booking.checkin.otpVerified  = true;
     booking.checkin.checkedInAt  = new Date();
     booking.status               = "active";
+    booking.checkout.otp         = generateOtp();
+    booking.checkout.otpVerified = false;
     await booking.save();
 
     res.json({ success: true, message: "Check-in complete! Enjoy your drive." });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/bookings/:id/checkout/verify — rep shares checkout OTP, booking closes
+router.post("/:id/checkout/verify", protect, async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const booking = await Booking.findOne({ _id: req.params.id, user: req.user.id });
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+    if (booking.status !== "active")
+      return res.status(400).json({ error: "Booking is not active" });
+    if (!booking.checkout.otp)
+      return res.status(400).json({ error: "Checkout OTP not yet generated" });
+    if (booking.checkout.otp !== otp)
+      return res.status(400).json({ error: "Incorrect OTP. Get it from the DriveDilSe representative." });
+
+    booking.checkout.otpVerified  = true;
+    booking.checkout.checkedOutAt = new Date();
+    booking.status                = "completed";
+    await booking.save();
+
+    res.json({ success: true, message: "Booking closed. Thank you for driving with DriveDilSe!" });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -24,8 +24,8 @@ function generateOtp() {
 }
 
 async function sendSmsOtp(phone, otp) {
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[DEV] OTP for ${phone}: ${otp}`);
+  if (!process.env.FAST2SMS_API_KEY) {
+    console.log(`[OTP] ${phone} → ${otp}`);
     return;
   }
   await axios.get("https://www.fast2sms.com/dev/bulkV2", {

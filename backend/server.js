@@ -32,7 +32,8 @@ app.use("/api/payment",  require("./routes/payment"));
 app.use("/api/bookings", require("./routes/bookings"));
 app.use("/api/admin",    require("./routes/admin"));
 
-app.get("/", (req, res) => res.json({ status: "DriveDilSe API running" }));
+app.get("/", (req, res) => res.json({ status: "DriveDilSe API running", ts: Date.now() }));
+app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

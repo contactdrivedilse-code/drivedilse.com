@@ -906,7 +906,6 @@ window.addEventListener('scroll',function(){
       <div style="display:flex;gap:20px;padding-top:10px;border-top:1px solid #ede9db">
         <div><div style="font-size:.62rem;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;font-weight:600">Duration</div><div style="font-size:.84rem;font-weight:700;margin-top:2px" id="bkd-dur"></div></div>
         <div><div style="font-size:.62rem;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;font-weight:600">Rate</div><div style="font-size:.84rem;font-weight:700;margin-top:2px" id="bkd-rate"></div></div>
-        <div><div style="font-size:.62rem;color:var(--ts);text-transform:uppercase;letter-spacing:.8px;font-weight:600">Deposit</div><div style="font-size:.84rem;font-weight:700;margin-top:2px" id="bkd-deposit"></div></div>
       </div>
     </div>
 
@@ -1105,13 +1104,13 @@ async function loadFleet(){
   } catch(e){
     console.warn("Fleet API unavailable, using fallback", e.message);
     FLEET = [
-      {id:"f02e26ed-b34a-46bd-bbb1-54215401a2f4",name:"Maruti Suzuki Ignis",        cat:"Hatchback",tm:"MT",fuel:"Petrol",seats:5,rate:1526,deposit:5000,color:"#f5c518",emoji:"🚗",active:true,paused:[]},
-      {id:"7c98dc26-69f2-4f3e-9fc2-40730e2d3507",name:"Hyundai Grand i10 Nios",    cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:5000,color:"#e8b800",emoji:"🚙",active:true,paused:[]},
-      {id:"38649005-acc9-4b96-819f-c126f13f6217",name:"Maruti Suzuki Baleno",      cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:5000,color:"#ffd700",emoji:"🚙",active:true,paused:[]},
-      {id:"bd12a92a-ce8a-49d7-8ba7-b0dd45261b0b",name:"Maruti Suzuki Grand Vitara",cat:"SUV",      tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:8000,color:"#f5c518",emoji:"🛻",active:true,paused:[]},
-      {id:"b3d62870-5a93-4383-824a-07ec664ea3cc",name:"Mahindra XUV 300",          cat:"SUV",      tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:8000,color:"#e8b800",emoji:"🛻",active:true,paused:[]},
-      {id:"f50afbdc-13b1-42d3-8fac-45880aabb9fb",name:"Maruti Suzuki Ertiga",      cat:"MPV",      tm:"AT",fuel:"Petrol",seats:7,rate:2238,deposit:8000,color:"#ffd700",emoji:"🚐",active:true,paused:[]},
-      {id:"5fdd6246-7287-44ad-9f75-354c3ea051ab",name:"Maruti Suzuki XL6",         cat:"MPV",      tm:"MT",fuel:"Petrol",seats:6,rate:2238,deposit:8000,color:"#f5c518",emoji:"🚐",active:true,paused:[]},
+      {id:"f02e26ed-b34a-46bd-bbb1-54215401a2f4",name:"Maruti Suzuki Ignis",        cat:"Hatchback",tm:"MT",fuel:"Petrol",seats:5,rate:1526,deposit:0,color:"#f5c518",emoji:"🚗",active:true,paused:[]},
+      {id:"7c98dc26-69f2-4f3e-9fc2-40730e2d3507",name:"Hyundai Grand i10 Nios",    cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:0,color:"#e8b800",emoji:"🚙",active:true,paused:[]},
+      {id:"38649005-acc9-4b96-819f-c126f13f6217",name:"Maruti Suzuki Baleno",      cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:0,color:"#ffd700",emoji:"🚙",active:true,paused:[]},
+      {id:"bd12a92a-ce8a-49d7-8ba7-b0dd45261b0b",name:"Maruti Suzuki Grand Vitara",cat:"SUV",      tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:0,color:"#f5c518",emoji:"🛻",active:true,paused:[]},
+      {id:"b3d62870-5a93-4383-824a-07ec664ea3cc",name:"Mahindra XUV 300",          cat:"SUV",      tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:0,color:"#e8b800",emoji:"🛻",active:true,paused:[]},
+      {id:"f50afbdc-13b1-42d3-8fac-45880aabb9fb",name:"Maruti Suzuki Ertiga",      cat:"MPV",      tm:"AT",fuel:"Petrol",seats:7,rate:2238,deposit:0,color:"#ffd700",emoji:"🚐",active:true,paused:[]},
+      {id:"5fdd6246-7287-44ad-9f75-354c3ea051ab",name:"Maruti Suzuki XL6",         cat:"MPV",      tm:"MT",fuel:"Petrol",seats:6,rate:2238,deposit:0,color:"#f5c518",emoji:"🚐",active:true,paused:[]},
     ];
     renderFleet("","",false);
   }

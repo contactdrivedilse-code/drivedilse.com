@@ -8,8 +8,30 @@ const sb = createClient(
 );
 
 function makeBookingId(): string { return "DS" + Date.now().toString(36).toUpperCase(); }
-function calcDiscount(days: number): number {
-  return days >= 30 ? 0.30 : days >= 14 ? 0.20 : days >= 7 ? 0.10 : 0;
+
+function calcMultiplier(hours: number): number {
+  const days = hours / 24;
+  if (hours <= 8)  return 1.30;
+  if (hours <= 12) return 1.15;
+  if (days <= 1)   return 1.00;
+  if (days <= 3)   return 0.95;
+  if (days <= 5)   return 0.92;
+  if (days <= 7)   return 0.90;
+  if (days <= 14)  return 0.85;
+  if (days <= 21)  return 0.80;
+  return 0.75;
+}
+
+function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
+  const hours    = (drop.getTime() - pickup.getTime()) / 3600000;
+  const mult     = calcMultiplier(hours);
+  const base     = Math.round(pricePerDay * mult * hours / 24);
+  const gst      = Math.round(base * 0.18);
+  const total    = base + gst;
+  const full     = Math.round(pricePerDay * hours / 24);
+  const discount = Math.max(0, full - base);
+  const days     = Math.max(1, Math.ceil(hours / 24));
+  return { base, gst, total, discount, days };
 }
 
 async function getUser(req: Request) {
@@ -74,9 +96,7 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const days   = Math.max(1, Math.ceil((drop.getTime() - pickup.getTime()) / 86400000));
-      const disc   = calcDiscount(days);
-      const total  = Math.round((c.price_per_day as number) * days * (1 - disc));
+      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
 
       let { data: user } = await sb.from("profiles").select("id, name").eq("phone", phone).maybeSingle();
       const u = user as Record<string, unknown> | null;
@@ -95,9 +115,8 @@ Deno.serve(async (req) => {
       return json({
         orderId: order.id, amount: total, currency: "INR",
         keyId: Deno.env.get("RAZORPAY_KEY_ID"),
-        days, pricePerDay: c.price_per_day,
-        discount: Math.round((c.price_per_day as number) * days * disc),
-        deposit: c.deposit, carName: c.name, guestToken: token,
+        days, pricePerDay: c.price_per_day, discount,
+        deposit: 0, carName: c.name, guestToken: token,
       });
     }
 
@@ -117,16 +136,13 @@ Deno.serve(async (req) => {
       if (conflict) return json({ error: "Car is already booked for these dates" }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const days   = Math.max(1, Math.ceil((drop.getTime() - pickup.getTime()) / 86400000));
-      const disc   = calcDiscount(days);
-      const discAmt = Math.round((c.price_per_day as number) * days * disc);
-      const total   = (c.price_per_day as number) * days - discAmt;
+      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
 
       const order = await razorpayCreate({ amount: total * 100, currency: "INR", receipt: makeBookingId(), notes: { carId, phone: user.phone } });
       return json({
         orderId: order.id, amount: total, currency: "INR",
         keyId: Deno.env.get("RAZORPAY_KEY_ID"),
-        days, pricePerDay: c.price_per_day, discount: discAmt, deposit: c.deposit, carName: c.name,
+        days, pricePerDay: c.price_per_day, discount, deposit: 0, carName: c.name,
       });
     }
 
@@ -147,9 +163,7 @@ Deno.serve(async (req) => {
       const c = car as Record<string, unknown>, p = profile as Record<string, unknown>;
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const days   = Math.max(1, Math.ceil((drop.getTime() - pickup.getTime()) / 86400000));
-      const disc   = calcDiscount(days);
-      const total  = Math.round((c.price_per_day as number) * days * (1 - disc));
+      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const bookingId = makeBookingId();
 
       const { data: booking, error } = await sb.from("bookings").insert({
@@ -159,7 +173,7 @@ Deno.serve(async (req) => {
         pickup_date: pickup.toISOString(), pickup_location: pickupLocation ?? "Pune",
         drop_date: drop.toISOString(), drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
-        deposit: c.deposit, discount: Math.round((c.price_per_day as number) * days * disc),
+        deposit: 0, discount,
         razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
         razorpay_signature: razorpaySignature, payment_status: "paid",
         paid_at: new Date().toISOString(), status: "confirmed",
@@ -186,9 +200,7 @@ Deno.serve(async (req) => {
       if (!p) return json({ error: "Profile not found" }, 404);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const days   = Math.max(1, Math.ceil((drop.getTime() - pickup.getTime()) / 86400000));
-      const disc   = calcDiscount(days);
-      const total  = Math.round((c.price_per_day as number) * days * (1 - disc));
+      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const bookingId = makeBookingId();
 
       const { data: booking, error } = await sb.from("bookings").insert({
@@ -198,7 +210,7 @@ Deno.serve(async (req) => {
         pickup_date: pickup.toISOString(), pickup_location: pickupLocation ?? "Pune",
         drop_date: drop.toISOString(), drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
-        deposit: c.deposit, discount: Math.round((c.price_per_day as number) * days * disc),
+        deposit: 0, discount,
         payment_status: "demo", status: "confirmed",
       }).select("*").maybeSingle();
       if (error) throw error;

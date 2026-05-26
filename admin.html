@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DriveDilSe — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--y:#f5c518;--yd:#c9a010;--w:#fff;--ow:#fafaf7;--wg:#f4f1e8;--b:#ede8d5;--t:#1a1a1a;--ts:#777}
+body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-height:100vh}
+
+/* ── LOGIN PAGE ── */
+#login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a1a1a 0%,#2d2600 100%)}
+.login-box{background:var(--w);border-radius:24px;padding:48px 44px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.login-logo-icon{width:48px;height:48px;background:var(--y);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+.login-logo-text{font-family:Georgia,serif;font-size:1.3rem;font-weight:900}
+.login-logo-sub{font-size:.7rem;color:var(--ts);letter-spacing:2px;text-transform:uppercase;font-weight:600}
+.login-title{font-family:Georgia,serif;font-size:1.6rem;font-weight:900;margin-bottom:6px}
+.login-sub{color:var(--ts);font-size:.88rem;margin-bottom:28px}
+.lbl{display:block;font-size:.67rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:6px}
+.inp{width:100%;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;color:var(--t);font-family:'Inter',sans-serif;font-size:.95rem;padding:13px 16px;outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--yd)}
+.btn{font-family:'Inter',sans-serif;font-weight:700;border:none;cursor:pointer;border-radius:10px;transition:all .15s;text-align:center;display:inline-block}
+.btn-y{background:var(--y);color:var(--t);box-shadow:0 4px 14px rgba(200,160,0,.3)}
+.btn-y:hover{background:#e8b800}
+.btn-g{background:var(--w);color:#444;border:1.5px solid var(--b)}
+.btn-g:hover{border-color:var(--yd);color:var(--yd)}
+.btn-red{background:#e74c3c;color:#fff}
+.btn-red:hover{background:#c0392b}
+.btn-lg{padding:13px 22px;font-size:.95rem;width:100%}
+.btn-sm{padding:7px 14px;font-size:.78rem}
+.login-err{color:#c0392b;font-size:.83rem;margin-top:10px;display:none}
+
+/* ── MAIN LAYOUT ── */
+#admin-page{display:none;min-height:100vh;flex-direction:column}
+.top-bar{background:#1a1a1a;color:#fff;padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.top-bar-left{display:flex;align-items:center;gap:14px}
+.top-logo{font-family:Georgia,serif;font-size:1rem;font-weight:900;color:var(--y)}
+.top-badge{font-size:.62rem;background:rgba(245,197,24,.15);color:var(--y);padding:3px 9px;border-radius:20px;font-weight:700;letter-spacing:1px}
+.top-bar-right{display:flex;align-items:center;gap:12px}
+.admin-name{font-size:.82rem;color:#ccc}
+.logout-btn{font-size:.75rem;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:background .15s}
+.logout-btn:hover{background:rgba(255,255,255,.2)}
+
+/* ── SIDEBAR + CONTENT ── */
+.main-wrap{display:flex;flex:1}
+.sidebar{width:220px;background:var(--w);border-right:1px solid var(--b);padding:20px 0;flex-shrink:0;position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto}
+.sidebar-section{font-size:.6rem;font-weight:700;letter-spacing:1.8px;color:var(--ts);text-transform:uppercase;padding:18px 20px 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:.85rem;font-weight:500;color:#555;cursor:pointer;border-left:3px solid transparent;transition:all .12s}
+.nav-item:hover{background:var(--ow);color:var(--t)}
+.nav-item.on{background:var(--wg);color:var(--yd);font-weight:700;border-left-color:var(--yd)}
+.nav-icon{font-size:1rem;width:22px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--y);color:var(--t);font-size:.6rem;font-weight:800;padding:2px 7px;border-radius:20px;min-width:20px;text-align:center}
+
+.content-area{flex:1;padding:28px 32px;min-width:0}
+.page-title{font-family:Georgia,serif;font-size:1.6rem;font-weight:900;margin-bottom:4px}
+.page-sub{color:var(--ts);font-size:.85rem;margin-bottom:28px}
+
+/* ── STAT CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
+.stat-card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:20px;text-align:center;box-shadow:0 2px 10px rgba(200,160,0,.06)}
+.stat-icon{font-size:1.5rem;margin-bottom:8px}
+.stat-num{font-family:Georgia,serif;font-size:1.5rem;font-weight:900;color:var(--yd);margin-bottom:4px}
+.stat-lbl{font-size:.7rem;color:var(--ts);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+
+/* ── CARD ── */
+.card{background:var(--w);border:1px solid var(--b);border-radius:16px;box-shadow:0 2px 10px rgba(200,160,0,.06)}
+.card-hdr{padding:16px 20px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-weight:800;font-size:.95rem}
+.card-body{padding:20px}
+
+/* ── TABLE ── */
+.adm-table{width:100%;border-collapse:collapse;min-width:700px}
+.adm-table th{padding:10px 14px;text-align:left;font-size:.63rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);border-bottom:1px solid var(--b);background:var(--ow);white-space:nowrap}
+.adm-table td{padding:11px 14px;font-size:.82rem;border-bottom:1px solid #f4f1e8;vertical-align:middle}
+.adm-table tr:last-child td{border-bottom:none}
+.adm-table tr:hover td{background:#fdfcf5}
+.table-wrap{overflow-x:auto}
+
+/* ── BADGES ── */
+.sbadge{font-size:.62rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.sb-on{background:#e8f4ff;color:#1a5fa8}
+.sb-up{background:#fff8d0;color:#c9a010}
+.sb-done{background:#f0f0f0;color:#666}
+.sb-act{background:#e6f9ee;color:#1a7a3c}
+.sb-pend{background:#fde8e8;color:#c0392b}
+
+/* ── FLEET CARDS ── */
+.v-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.v-card{border-radius:16px;overflow:hidden;background:var(--w);border:1px solid var(--b);box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.v-img{height:130px;display:flex;align-items:center;justify-content:center;font-size:3.5rem;position:relative}
+.v-body{padding:16px 18px}
+.v-status{position:absolute;top:10px;right:10px}
+
+/* ── TOOLBAR ── */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.search-inp{border:1.5px solid var(--b);border-radius:10px;padding:9px 14px;font-family:'Inter',sans-serif;font-size:.85rem;background:var(--w);outline:none;transition:border-color .15s;min-width:220px}
+.search-inp:focus{border-color:var(--yd)}
+.filter-btn{padding:8px 14px;font-size:.78rem;border-radius:10px;border:1.5px solid var(--b);background:var(--w);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;color:#555;transition:all .12s}
+.filter-btn:hover,.filter-btn.on{background:var(--y);border-color:var(--yd);color:var(--t)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:12px;font-size:.85rem;font-weight:600;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-left:4px solid #1a7a3c}
+.toast.error{border-left:4px solid #e74c3c}
+
+/* ── SELECT STATUS ── */
+.status-sel{font-size:.75rem;border:1.5px solid var(--b);border-radius:8px;padding:4px 8px;background:var(--w);font-family:'Inter',sans-serif;cursor:pointer;outline:none}
+.status-sel:focus{border-color:var(--yd)}
+
+/* ── CHECK-IN OTP ── */
+.adm-table td { max-width: 260px; }
+.otp-reveal { animation: pulse-border 1.5s ease-in-out infinite; }
+@keyframes pulse-border { 0%,100%{box-shadow:0 0 0 0 rgba(200,160,0,.4)} 50%{box-shadow:0 0 0 6px rgba(200,160,0,0)} }
+
+/* ── EMPTY STATE ── */
+.empty{padding:48px;text-align:center;color:var(--ts)}
+.empty-icon{font-size:2.5rem;margin-bottom:12px}
+.empty-msg{font-size:.9rem;font-weight:500}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--w);border-radius:20px;padding:32px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-title{font-family:Georgia,serif;font-size:1.2rem;font-weight:900;margin-bottom:20px}
+.modal-footer{display:flex;gap:10px;margin-top:24px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .sidebar{display:none}
+  .content-area{padding:20px 16px}
+}
+@media(max-width:600px){
+  .login-box{padding:32px 24px;margin:16px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .v-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN PAGE ── -->
+<div id="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">🚗</div>
+      <div>
+        <div class="login-logo-text">DriveDilSe</div>
+        <div class="login-logo-sub">Admin Portal</div>
+      </div>
+    </div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in to manage bookings, fleet & customers.</div>
+    <div style="margin-bottom:20px">
+      <label class="lbl">Admin Password</label>
+      <input class="inp" type="password" id="adm-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="login-err" id="login-err">Incorrect password. Try again.</div>
+    </div>
+    <button class="btn btn-y btn-lg" onclick="doLogin()" id="login-btn">Sign In →</button>
+    <div style="margin-top:20px;text-align:center">
+      <a href="index.html" style="color:var(--ts);font-size:.8rem;text-decoration:none">← Back to website</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADMIN PAGE ── -->
+<div id="admin-page">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div class="top-logo">DriveDilSe</div>
+      <span class="top-badge">ADMIN</span>
+    </div>
+    <div class="top-bar-right">
+      <span class="admin-name">Admin</span>
+      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+      <a href="index.html" style="font-size:.75rem;color:#aaa;text-decoration:none;margin-left:4px">← Site</a>
+    </div>
+  </div>
+
+  <div class="main-wrap">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section">Main</div>
+      <div class="nav-item on" data-tab="dashboard" onclick="navTo('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-item" data-tab="bookings"  onclick="navTo('bookings',this)"> <span class="nav-icon">📋</span>All Bookings <span class="nav-badge" id="nb-bookings">0</span></div>
+      <div class="sidebar-section">Drives</div>
+      <div class="nav-item" data-tab="active"    onclick="navTo('active',this)">   <span class="nav-icon">🟢</span>Active <span class="nav-badge" id="nb-active">0</span></div>
+      <div class="nav-item" data-tab="upcoming"  onclick="navTo('upcoming',this)"> <span class="nav-icon">🟡</span>Upcoming <span class="nav-badge" id="nb-upcoming">0</span></div>
+      <div class="nav-item" data-tab="completed" onclick="navTo('completed',this)"><span class="nav-icon">✅</span>Completed</div>
+      <div class="sidebar-section">Manage</div>
+      <div class="nav-item" data-tab="fleet"     onclick="navTo('fleet',this)">    <span class="nav-icon">🚗</span>Fleet</div>
+      <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
+    </div>
+
+    <!-- Content area -->
+    <div class="content-area" id="content"></div>
+
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="modal-overlay" id="pause-modal">
+  <div class="modal-box">
+    <div class="modal-title">Pause Car — <span id="pm-car-name"></span></div>
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1"><label class="lbl">From</label><input class="inp" type="date" id="pm-from"></div>
+      <div style="flex:1"><label class="lbl">To</label><input class="inp" type="date" id="pm-to"></div>
+    </div>
+    <div><label class="lbl">Note (optional)</label><input class="inp" type="text" id="pm-note" placeholder="e.g. Servicing"></div>
+    <div class="modal-footer">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="closePauseModal()">Cancel</button>
+      <button class="btn btn-y btn-sm" style="flex:1" onclick="submitPause()">Add Pause</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── ADD / EDIT CAR MODAL ── -->
+<div class="modal-overlay" id="car-modal">
+  <div class="modal-box" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="car-modal-title">Add Car</div>
+    <input type="hidden" id="cm-id">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+      <div style="grid-column:1/-1">
+        <label class="lbl">Car Name *</label>
+        <input class="inp" type="text" id="cm-name" placeholder="e.g. Maruti Suzuki Swift">
+      </div>
+      <div>
+        <label class="lbl">Category</label>
+        <select class="inp" id="cm-cat">
+          <option value="Hatchback">Hatchback</option>
+          <option value="Sedan">Sedan</option>
+          <option value="SUV">SUV</option>
+          <option value="MPV">MPV</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Transmission</label>
+        <select class="inp" id="cm-tm">
+          <option value="Manual">Manual (MT)</option>
+          <option value="Automatic">Automatic (AT)</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Fuel</label>
+        <select class="inp" id="cm-fuel">
+          <option value="Petrol">Petrol</option>
+          <option value="Diesel">Diesel</option>
+          <option value="CNG">CNG</option>
+          <option value="Electric">Electric</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Seats</label>
+        <input class="inp" type="number" id="cm-seats" min="2" max="9" value="5">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="lbl">Base Price per Day (₹) — before GST *</label>
+        <input class="inp" type="number" id="cm-price" min="100" placeholder="e.g. 1526" oninput="updatePricingPreview()">
+        <div id="cm-pricing-preview" style="margin-top:10px;background:#faf9f6;border:1px solid #ede9db;border-radius:10px;padding:12px;font-size:.78rem;display:none">
+          <div style="font-weight:700;margin-bottom:6px;color:#333">Dynamic Pricing Preview</div>
+          <div id="cm-price-rows" style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photos section -->
+    <div style="margin-top:14px;margin-bottom:4px">
+      <label class="lbl">Photos</label>
+      <div id="cm-existing-photos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
+      <label style="display:flex;align-items:center;gap:10px;background:var(--wg);border:1.5px dashed var(--b);border-radius:10px;padding:12px 16px;cursor:pointer;font-size:.82rem;color:var(--ts)">
+        <span style="font-size:1.4rem">📷</span>
+        <span id="cm-upload-lbl">Click to add photos — max 7 total (exterior front/rear/sides + interior)</span>
+        <input type="file" id="cm-photos" multiple accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewCarPhotos()">
+      </label>
+      <div id="cm-photo-previews" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+    </div>
+
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="closeCarModal()">Cancel</button>
+      <button class="btn btn-y btn-sm" style="flex:1" id="cm-submit-btn" onclick="submitCarForm()">Save Car</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API         = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
+var adminToken  = localStorage.getItem("dds_admin_token") || "";
+var pauseCarId  = null;
+var allBookings = [], allCars = [], allCustomers = [];
+
+var DEMO_BOOKINGS = [
+  { _id:"demo_bk_001", bookingId:"DS1K8X2A", carName:"Maruti Swift",   customer:"Rahul Sharma",  phone:"9876543210",
+    pickup:{date:"2026-05-20T09:00:00Z",location:"Pune Airport"},   drop:{date:"2026-05-27T09:00:00Z",location:"Pune Airport"},
+    days:7,  pricePerDay:900,  total:5670,  deposit:5000,  status:"active",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo001"},
+    checkin:{otp:"4821",otpVerified:true,checkedInAt:"2026-05-20T10:15:00Z",photosUploadedAt:"2026-05-20T09:50:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:{otp:"7364",otpVerified:false,checkedOutAt:null} },
+  { _id:"demo_bk_002", bookingId:"DS1K9Y3B", carName:"Hyundai i20",    customer:"Priya Patel",   phone:"9823456789",
+    pickup:{date:"2026-05-28T10:00:00Z",location:"Hinjewadi"},      drop:{date:"2026-06-03T10:00:00Z",location:"Hinjewadi"},
+    days:6,  pricePerDay:1000, total:5400,  deposit:5000,  status:"confirmed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo002"},
+    checkin:null, checkout:null },
+  { _id:"demo_bk_003", bookingId:"DS1KAZ4C", carName:"Tata Nexon",     customer:"Amit Kumar",    phone:"9765432101",
+    pickup:{date:"2026-06-01T08:00:00Z",location:"Baner"},          drop:{date:"2026-06-05T08:00:00Z",location:"Baner"},
+    days:4,  pricePerDay:1800, total:7200,  deposit:10000, status:"confirmed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo003"},
+    checkin:{otp:"9214",otpVerified:false,checkedInAt:null,photosUploadedAt:"2026-06-01T07:30:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:null },
+  { _id:"demo_bk_004", bookingId:"DS1K7W1Z", carName:"Maruti Baleno",  customer:"Sneha Joshi",   phone:"9812345678",
+    pickup:{date:"2026-05-10T11:00:00Z",location:"Wakad"},          drop:{date:"2026-05-15T11:00:00Z",location:"Wakad"},
+    days:5,  pricePerDay:1100, total:5500,  deposit:6000,  status:"completed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo004"},
+    checkin:{otp:"6743",otpVerified:true,checkedInAt:"2026-05-10T11:30:00Z",photosUploadedAt:"2026-05-10T11:10:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:{otp:"2891",otpVerified:true,checkedOutAt:"2026-05-15T11:45:00Z"} },
+  { _id:"demo_bk_005", bookingId:"DS1K6V0Y", carName:"Honda City",     customer:"Vikram Singh",  phone:"9898765432",
+    pickup:{date:"2026-05-01T09:00:00Z",location:"Koregaon Park"},  drop:{date:"2026-05-08T09:00:00Z",location:"Koregaon Park"},
+    days:7,  pricePerDay:1400, total:8820,  deposit:8000,  status:"completed",
+    payment:{status:"paid",razorpayPaymentId:"pay_demo005"},
+    checkin:{otp:"5132",otpVerified:true,checkedInAt:"2026-05-01T09:20:00Z",photosUploadedAt:"2026-05-01T09:05:00Z",
+             photos:{front:"#",rear:"#",passengerSide:"#",driverSide:"#"}},
+    checkout:{otp:"3647",otpVerified:true,checkedOutAt:"2026-05-08T09:30:00Z"} },
+  { _id:"demo_bk_006", bookingId:"DS1K5U9X", carName:"Hyundai Creta",  customer:"Anita Desai",   phone:"9845678901",
+    pickup:{date:"2026-05-18T12:00:00Z",location:"Kothrud"},        drop:{date:"2026-05-20T12:00:00Z",location:"Kothrud"},
+    days:2,  pricePerDay:2000, total:4000,  deposit:12000, status:"cancelled",
+    payment:{status:"pending"},
+    checkin:null, checkout:null }
+];
+
+var DEMO_FLEET = [
+  {_id:"demo_car_001",name:"Maruti Swift",  category:"Hatchback",transmission:"Manual",   fuel:"Petrol",seats:5,pricePerDay:900, deposit:5000, active:true, pauses:[]},
+  {_id:"demo_car_002",name:"Hyundai i20",  category:"Hatchback",transmission:"Manual",   fuel:"Petrol",seats:5,pricePerDay:1000,deposit:5000, active:true, pauses:[]},
+  {_id:"demo_car_003",name:"Maruti Baleno",category:"Hatchback",transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:1100,deposit:6000, active:true, pauses:[]},
+  {_id:"demo_car_004",name:"Honda City",   category:"Sedan",    transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:1400,deposit:8000, active:true, pauses:[]},
+  {_id:"demo_car_005",name:"Tata Nexon",   category:"SUV",      transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:1800,deposit:10000,active:true, pauses:[]},
+  {_id:"demo_car_006",name:"Hyundai Creta",category:"SUV",      transmission:"Automatic",fuel:"Petrol",seats:5,pricePerDay:2000,deposit:12000,active:true, pauses:[]},
+  {_id:"demo_car_007",name:"Maruti Ertiga",category:"MPV",      transmission:"Manual",   fuel:"Petrol",seats:7,pricePerDay:1400,deposit:8000, active:false,pauses:[]}
+];
+
+var DEMO_CUSTOMERS = [
+  {_id:"demo_u_001",name:"Rahul Sharma",phone:"9876543210",email:"rahul@example.com", createdAt:"2026-04-12T08:00:00Z",kyc:{status:"verified", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_002",name:"Priya Patel", phone:"9823456789",email:"priya@example.com", createdAt:"2026-04-18T10:00:00Z",kyc:{status:"verified", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_003",name:"Amit Kumar",  phone:"9765432101",email:"",                  createdAt:"2026-05-02T09:00:00Z",kyc:{status:"uploaded", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_004",name:"Sneha Joshi", phone:"9812345678",email:"sneha@example.com", createdAt:"2026-03-25T11:00:00Z",kyc:{status:"verified", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_005",name:"Vikram Singh",phone:"9898765432",email:"",                  createdAt:"2026-04-30T07:00:00Z",kyc:{status:"uploaded", aadhaarUrl:"#",dlUrl:"#"}},
+  {_id:"demo_u_006",name:"Anita Desai", phone:"9845678901",email:"anita@example.com", createdAt:"2026-05-15T14:00:00Z",kyc:{status:"pending",  aadhaarUrl:null,dlUrl:null}}
+];
+
+function inr(n){ return "₹" + Number(n).toLocaleString("en-IN"); }
+
+function toast(msg, type){
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show " + (type||"");
+  setTimeout(function(){ t.className = "toast"; }, 3200);
+}
+
+function badge(s){
+  var labels = {active:"Active",confirmed:"Confirmed",pending:"Pending",pending_kyc:"Paid · KYC Pending",completed:"Completed",cancelled:"Cancelled"};
+  var m = {active:"sb-on",confirmed:"sb-up",pending:"sb-up",pending_kyc:"sb-pend",completed:"sb-done",cancelled:"sb-done"};
+  return '<span class="sbadge '+(m[s]||"sb-done")+'">'+(labels[s]||s)+'</span>';
+}
+
+// ── AUTH ──
+async function doLogin(){
+  var pass = document.getElementById("adm-pass").value;
+  var btn  = document.getElementById("login-btn");
+  var err  = document.getElementById("login-err");
+  err.style.display = "none";
+  btn.textContent = "Signing in..."; btn.disabled = true;
+  try {
+    var r = await fetch(API + "/admin/login", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ password: pass })
+    });
+    var d = await r.json();
+    if(!r.ok) throw new Error(d.error || "Invalid password");
+    adminToken = d.token;
+    localStorage.setItem("dds_admin_token", adminToken);
+    enterAdmin();
+  } catch(e){
+    err.innerHTML = e.message || "Could not connect";
+    err.style.display = "block";
+    btn.textContent = "Sign In →"; btn.disabled = false;
+  }
+}
+
+function doLogout(){
+  adminToken = "";
+  localStorage.removeItem("dds_admin_token");
+  document.getElementById("admin-page").style.display = "none";
+  document.getElementById("login-page").style.display = "flex";
+  document.getElementById("adm-pass").value = "";
+}
+
+function enterAdmin(){
+  document.getElementById("login-page").style.display = "none";
+  document.getElementById("admin-page").style.display = "flex";
+  navTo("dashboard", document.querySelector('[data-tab="dashboard"]'));
+}
+
+// ── NAV ──
+function navTo(tab, el){
+  document.querySelectorAll(".nav-item").forEach(function(n){ n.classList.remove("on"); });
+  if(el) el.classList.add("on");
+  renderTab(tab);
+}
+
+// ── API HELPER ──
+async function adminFetch(path, opts){
+  opts = opts || {};
+  opts.headers = opts.headers || {};
+  opts.headers["Authorization"] = "Bearer " + adminToken;
+  // Don't set Content-Type for FormData — browser sets it with boundary
+  if(opts.body instanceof FormData) delete opts.headers["Content-Type"];
+  var r = await fetch(API + path, opts);
+  if(!r.ok){ var e = await r.json().catch(function(){ return {error:r.status}; }); throw new Error(e.error || r.status); }
+  return r.json();
+}
+
+// ── TABS ──
+async function renderTab(tab){
+  var c = document.getElementById("content");
+  c.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-msg">Loading...</div></div>';
+  var isLocal = adminToken === "local";
+
+  if(tab === "dashboard"){
+    await renderDashboard(isLocal, c);
+  } else if(tab === "bookings"){
+    await renderBookings(null, isLocal, c);
+  } else if(tab === "active"){
+    await renderBookings("active", isLocal, c);
+  } else if(tab === "upcoming"){
+    await renderBookings(["confirmed","pending","pending_kyc"], isLocal, c);
+  } else if(tab === "completed"){
+    await renderBookings("completed", isLocal, c);
+  } else if(tab === "fleet"){
+    await renderFleet(isLocal, c);
+  } else if(tab === "customers"){
+    await renderCustomers(isLocal, c);
+  }
+}
+
+async function renderDashboard(isLocal, c){
+  var stats = [];
+  if(!isLocal){
+    try {
+      var dash = await adminFetch("/admin/dashboard");
+      allBookings = await adminFetch("/admin/bookings");
+      updateBadges();
+      var rev = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; }).reduce(function(s,b){ return s+b.total; },0);
+      stats = [
+        {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles"},
+        {icon:"📋", num: allBookings.length,   lbl: "Total Bookings"},
+        {icon:"🟢", num: allBookings.filter(function(b){ return b.status==="active"; }).length,    lbl: "Active Drives"},
+        {icon:"🟡", num: allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; }).length, lbl: "Upcoming"},
+        {icon:"👥", num: dash.totalCustomers,  lbl: "Customers"},
+        {icon:"💰", num: inr(rev),             lbl: "Revenue Collected"},
+      ];
+    } catch(e){ isLocal = true; }
+  }
+  if(isLocal){
+    allBookings  = DEMO_BOOKINGS.slice();
+    allCustomers = DEMO_CUSTOMERS.slice();
+    updateBadges();
+    var demoRev = DEMO_BOOKINGS.filter(function(b){ return b.payment&&b.payment.status==="paid"; }).reduce(function(s,b){ return s+b.total; },0);
+    stats = [
+      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles"},
+      {icon:"📋",num:DEMO_BOOKINGS.length,lbl:"Total Bookings"},
+      {icon:"🟢",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="active"; }).length,lbl:"Active Drives"},
+      {icon:"🟡",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length,lbl:"Upcoming"},
+      {icon:"👥",num:DEMO_CUSTOMERS.length,lbl:"Customers"},
+      {icon:"💰",num:inr(demoRev),lbl:"Revenue Collected"},
+    ];
+  }
+  var statHtml = stats.map(function(s){
+    return '<div class="stat-card"><div class="stat-icon">'+s.icon+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
+  }).join("");
+
+  var recentHtml = "";
+  if(allBookings.length){
+    var recent = allBookings.slice(0,8);
+    recentHtml = '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">Recent Bookings</span><button class="btn btn-g btn-sm" onclick="navTo(\'bookings\',document.querySelector(\'[data-tab=bookings]\'))">View All →</button></div><div class="table-wrap">'+buildTable(recent, true)+'</div></div>';
+  }
+
+  c.innerHTML =
+    '<div class="page-title">Dashboard</div>' +
+    '<div class="page-sub">Overview of DriveDilSe operations.</div>' +
+    '<div class="stat-grid">' + statHtml + '</div>' +
+    recentHtml;
+}
+
+async function renderBookings(statusFilter, isLocal, c){
+  var titleMap = {null:"All Bookings", active:"Active Drives", completed:"Completed Bookings"};
+  var title = Array.isArray(statusFilter) ? "Upcoming Bookings" : (titleMap[statusFilter] || "All Bookings");
+
+  var bks = [];
+  if(!isLocal){
+    try {
+      if(!allBookings.length) allBookings = await adminFetch("/admin/bookings");
+      updateBadges();
+      bks = statusFilter === null ? allBookings :
+        Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
+        allBookings.filter(function(b){ return b.status===statusFilter; });
+    } catch(e){ isLocal = true; }
+  }
+
+  if(isLocal){
+    allBookings = DEMO_BOOKINGS.slice();
+    updateBadges();
+    bks = statusFilter === null ? allBookings :
+      Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
+      allBookings.filter(function(b){ return b.status===statusFilter; });
+  }
+
+  c.innerHTML =
+    '<div class="page-title">'+title+'</div>' +
+    '<div class="page-sub">'+bks.length+' booking'+(bks.length!==1?'s':'')+'</div>' +
+    '<div class="toolbar">' +
+      '<input class="search-inp" id="bk-search" placeholder="Search by ID, car, name, phone..." oninput="filterBookingTable()">' +
+      '<button class="filter-btn on" onclick="filterBookingStatus(null,this)">All</button>' +
+      '<button class="filter-btn" onclick="filterBookingStatus(\'confirmed\',this)">Confirmed</button>' +
+      '<button class="filter-btn" onclick="filterBookingStatus(\'active\',this)">Active</button>' +
+      '<button class="filter-btn" onclick="filterBookingStatus(\'completed\',this)">Completed</button>' +
+    '</div>' +
+    '<div class="card"><div class="table-wrap" id="bk-table-wrap">' + buildTable(bks, true) + '</div></div>';
+  window._curBks = bks;
+}
+
+function filterBookingStatus(status, btn){
+  document.querySelectorAll(".filter-btn").forEach(function(b){ b.classList.remove("on"); });
+  btn.classList.add("on");
+  var src = window._curBks || [];
+  var filtered = status ? src.filter(function(b){ return b.status===status; }) : src;
+  document.getElementById("bk-table-wrap").innerHTML = buildTable(filtered, true);
+}
+
+function filterBookingTable(){
+  var q = document.getElementById("bk-search").value.toLowerCase();
+  var src = window._curBks || [];
+  var filtered = src.filter(function(b){
+    var carName  = b.carName || (b.car&&b.car.name) || "";
+    var custName = b.customer || (b.user&&b.user.name) || "";
+    var phone    = b.phone || (b.user&&b.user.phone) || "";
+    return (b.bookingId||"").toLowerCase().includes(q) ||
+      carName.toLowerCase().includes(q) ||
+      custName.toLowerCase().includes(q) ||
+      phone.includes(q);
+  });
+  document.getElementById("bk-table-wrap").innerHTML = buildTable(filtered, true);
+}
+
+function buildTable(bks, showActions){
+  if(!bks.length) return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">No bookings found.</div></div>';
+  var rows = bks.map(function(b){
+    var carName  = b.carName || (b.car&&b.car.name) || "—";
+    var custName = b.customer || (b.user&&b.user.name) || "—";
+    var phone    = b.phone    || (b.user&&b.user.phone) || "—";
+    var pickup   = b.pickup&&b.pickup.date ? b.pickup.date : b.pickup;
+    var drop     = b.drop&&b.drop.date     ? b.drop.date   : b.drop;
+    var payBadge = b.payment&&b.payment.status==="paid"
+      ? '<span class="sbadge sb-act">Paid</span>'
+      : '<span class="sbadge sb-pend">Pending</span>';
+
+    // Check-in OTP column — shown when customer has uploaded photos
+    var otpCell = "";
+    var ci = b.checkin;
+    if(ci && ci.photosUploadedAt && !ci.otpVerified){
+      otpCell = '<td>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-family:monospace;font-size:1rem;font-weight:900;background:#fff8d0;border:2px solid var(--yd);padding:5px 12px;border-radius:10px;letter-spacing:3px;color:var(--yd)">'+ci.otp+'</span>' +
+          '<span style="font-size:.68rem;color:var(--ts);line-height:1.3">Check-In OTP<br><strong style="color:#c0392b">Share with rep only</strong></span>' +
+        '</div>' +
+        '<div style="margin-top:6px"><a href="'+ci.photos.front+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Front ↗</a>' +
+        '<a href="'+ci.photos.rear+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Rear ↗</a>' +
+        '<a href="'+ci.photos.passengerSide+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Psgr ↗</a>' +
+        '<a href="'+ci.photos.driverSide+'" target="_blank" style="font-size:.7rem;color:var(--yd)">Driver ↗</a></div>' +
+      '</td>';
+    } else if(ci && ci.otpVerified){
+      otpCell = '<td><span class="sbadge sb-act">✅ Checked In</span><div style="font-size:.7rem;color:var(--ts);margin-top:4px">'+new Date(ci.checkedInAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div></td>';
+    } else {
+      otpCell = '<td><span style="font-size:.75rem;color:var(--ts)">Awaiting photos</span></td>';
+    }
+
+    // Check-out OTP column — shown for active bookings
+    var co = b.checkout;
+    var coOtpCell = "";
+    if(b.status === "active" && co && co.otp && !co.otpVerified){
+      coOtpCell = '<td>' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span style="font-family:monospace;font-size:1rem;font-weight:900;background:#fff8d0;border:2px solid var(--yd);padding:5px 12px;border-radius:10px;letter-spacing:3px;color:var(--yd)">'+co.otp+'</span>' +
+          '<span style="font-size:.68rem;color:var(--ts);line-height:1.3">Check-Out OTP<br><strong style="color:#c0392b">Share with rep only</strong></span>' +
+        '</div>' +
+      '</td>';
+    } else if(co && co.otpVerified){
+      coOtpCell = '<td><span class="sbadge sb-done">✅ Checked Out</span><div style="font-size:.7rem;color:var(--ts);margin-top:4px">'+new Date(co.checkedOutAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div></td>';
+    } else {
+      coOtpCell = '<td><span style="font-size:.75rem;color:var(--ts)">—</span></td>';
+    }
+
+    var actCell = showActions
+      ? '<td><select class="status-sel" onchange="updateStatus(\''+b._id+'\',this.value)">' +
+          ['pending','confirmed','active','completed','cancelled'].map(function(s){
+            return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>';
+          }).join('') + '</select></td>'
+      : '';
+    return '<tr>' +
+      '<td style="font-weight:700;color:var(--yd);font-family:monospace">'+(b.bookingId||b._id||"—")+'</td>' +
+      '<td style="font-weight:600">'+carName+'</td>' +
+      '<td>'+custName+'</td>' +
+      '<td style="color:var(--ts)">'+phone+'</td>' +
+      '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(pickup).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
+      '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(drop).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
+      '<td style="font-weight:700">'+inr(b.total)+'</td>' +
+      '<td>'+badge(b.status)+'</td>' +
+      '<td>'+payBadge+'</td>' +
+      otpCell +
+      coOtpCell +
+      actCell +
+    '</tr>';
+  }).join("");
+  var actHdr = showActions ? '<th>Change Status</th>' : '';
+  return '<table class="adm-table"><thead><tr>' +
+    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th><th>Payment</th><th>Check-In OTP</th><th>Check-Out OTP</th>' + actHdr +
+    '</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+async function updateStatus(id, status){
+  if(adminToken === "local"){
+    var b = allBookings.find(function(b){ return b._id===id; });
+    if(b) b.status = status;
+    toast("Status updated to " + status, "success");
+    updateBadges();
+    return;
+  }
+  try {
+    await adminFetch("/admin/bookings/"+id+"/status", {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ status: status })
+    });
+    var b = allBookings.find(function(b){ return b._id===id; });
+    if(b) b.status = status;
+    toast("Status updated to " + status, "success");
+    updateBadges();
+  } catch(e){ toast("Failed: " + e.message, "error"); }
+}
+
+async function renderFleet(isLocal, c){
+  var cars = [];
+  if(!isLocal){
+    try {
+      cars = await adminFetch("/admin/fleet");
+      allCars = cars;
+    } catch(e){ isLocal = true; }
+  }
+
+  if(isLocal){
+    cars   = DEMO_FLEET.slice();
+    allCars = cars;
+  }
+
+  var emojiMap={Hatchback:"🚗",Sedan:"🚙",SUV:"🛻",MPV:"🚐"};
+  var colorMap={Hatchback:"#f5c518",Sedan:"#e8b800",SUV:"#ffd700",MPV:"#f5c518"};
+
+  var cards = cars.map(function(car){
+    var emoji = emojiMap[car.category]||"🚗";
+    var color = colorMap[car.category]||"#f5c518";
+    var tm    = car.transmission==="Automatic"?"AT":"MT";
+    return '<div class="v-card">' +
+      '<div class="v-img" style="background:linear-gradient(135deg,'+color+','+color+'55)">' +
+        '<span>'+emoji+'</span>' +
+        '<div class="v-status"><span class="sbadge '+(car.active?"sb-act":"sb-pend")+'">'+(car.active?"Active":"Inactive")+'</span></div>' +
+      '</div>' +
+      '<div class="v-body">' +
+        '<div style="font-size:.95rem;font-weight:800;margin-bottom:4px">'+car.name+'</div>' +
+        '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:10px">'+inr(Math.round((car.pricePerDay||0)/24))+'/hr &nbsp;·&nbsp; ₹'+((car.pricePerDay||0).toLocaleString("en-IN"))+'/day</div>' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
+          '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">⚙️ '+tm+'</span>' +
+          '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">⛽ '+car.fuel+'</span>' +
+          '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">💺 '+car.seats+' Seats</span>' +
+        '</div>' +
+        (car.pauses&&car.pauses.length ? '<div style="margin-bottom:10px;font-size:.75rem;color:var(--ts)">'+car.pauses.map(function(p,i){return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">⏸ '+new Date(p.from).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+ ' → '+new Date(p.to).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+(p.note?' — '+p.note:'')+' <button onclick="removePause(\''+car._id+'\',\''+p._id+'\')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:700;font-size:.85rem">✕</button></div>';}).join('')+'</div>' : '') +
+        (car.imageUrl ? '<img src="'+car.imageUrl+'" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.style.display=\'none\'">' : '') +
+        '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+          '<button class="btn '+(car.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCar(\''+car._id+'\')">'+(car.active?"Deactivate":"Activate")+'</button>' +
+          '<button class="btn btn-g btn-sm" style="flex:1" onclick="openPauseModal(\''+car._id+'\',\''+car.name+'\')">⏸ Pause</button>' +
+        '</div>' +
+        '<button class="btn btn-y btn-sm" style="width:100%" onclick=\'openEditCarModal('+JSON.stringify(car)+')\'>✏️ Edit / Photos</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  c.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
+      '<div><div class="page-title" style="margin-bottom:0">Fleet Management</div>' +
+      '<div class="page-sub" style="margin-top:2px">'+cars.length+' vehicle'+(cars.length!==1?'s':'')+' total</div></div>' +
+      '<button class="btn btn-y btn-sm" onclick="openAddCarModal()" style="white-space:nowrap">+ Add Car</button>' +
+    '</div>' +
+    '<div class="v-grid" style="margin-top:16px">'+cards+'</div>';
+}
+
+async function toggleCar(id){
+  if(adminToken === "local"){
+    var car = DEMO_FLEET.find(function(c){ return c._id===id; });
+    if(car) car.active = !car.active;
+    toast("Car status updated.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    return;
+  }
+  try {
+    await adminFetch("/admin/fleet/"+id+"/toggle", { method: "PUT" });
+    toast("Car status updated.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+function openPauseModal(carId, carName){
+  pauseCarId = carId;
+  document.getElementById("pm-car-name").textContent = carName;
+  document.getElementById("pm-from").value = "";
+  document.getElementById("pm-to").value   = "";
+  document.getElementById("pm-note").value = "";
+  document.getElementById("pause-modal").classList.add("open");
+}
+function closePauseModal(){ document.getElementById("pause-modal").classList.remove("open"); }
+
+async function submitPause(){
+  var from = document.getElementById("pm-from").value;
+  var to   = document.getElementById("pm-to").value;
+  var note = document.getElementById("pm-note").value;
+  if(!from||!to){ toast("Select from and to dates.", "error"); return; }
+  if(new Date(to) <= new Date(from)){ toast("To date must be after from date.", "error"); return; }
+  if(adminToken === "local"){
+    var car = DEMO_FLEET.find(function(c){ return c._id===pauseCarId; });
+    if(car) car.pauses.push({ _id:"p_"+Date.now(), from:from, to:to, note:note });
+    toast("Pause added.", "success");
+    closePauseModal();
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    return;
+  }
+  try {
+    await adminFetch("/admin/fleet/"+pauseCarId+"/pause", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ from: from, to: to, note: note })
+    });
+    toast("Pause added.", "success");
+    closePauseModal();
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+// ── ADD / EDIT CAR ──
+var _carPhotosToUpload = [];
+
+function openAddCarModal(){
+  document.getElementById("car-modal-title").textContent = "Add Car";
+  document.getElementById("cm-id").value       = "";
+  document.getElementById("cm-name").value     = "";
+  document.getElementById("cm-cat").value      = "Hatchback";
+  document.getElementById("cm-tm").value       = "Manual";
+  document.getElementById("cm-fuel").value     = "Petrol";
+  document.getElementById("cm-seats").value    = "5";
+  document.getElementById("cm-price").value    = "";
+  document.getElementById("cm-pricing-preview").style.display = "none";
+  document.getElementById("cm-existing-photos").innerHTML = "";
+  document.getElementById("cm-photo-previews").innerHTML  = "";
+  document.getElementById("cm-photos").value  = "";
+  document.getElementById("cm-upload-lbl").textContent = "Click to add photos — max 7 total (exterior front/rear/sides + interior)";
+  _carPhotosToUpload = [];
+  document.getElementById("car-modal").classList.add("open");
+}
+
+function openEditCarModal(car){
+  document.getElementById("car-modal-title").textContent = "Edit Car — " + car.name;
+  document.getElementById("cm-id").value       = car._id || car.id || "";
+  document.getElementById("cm-name").value     = car.name || "";
+  document.getElementById("cm-cat").value      = car.category || "Hatchback";
+  document.getElementById("cm-tm").value       = car.transmission || "Manual";
+  document.getElementById("cm-fuel").value     = car.fuel || "Petrol";
+  document.getElementById("cm-seats").value    = car.seats || 5;
+  document.getElementById("cm-price").value    = car.pricePerDay || "";
+  document.getElementById("cm-photo-previews").innerHTML  = "";
+  document.getElementById("cm-photos").value  = "";
+  _carPhotosToUpload = [];
+  updatePricingPreview();
+  // Show existing photos
+  var ep = document.getElementById("cm-existing-photos");
+  var imgs = car.images && car.images.length ? car.images : (car.imageUrl ? [car.imageUrl] : []);
+  ep.innerHTML = imgs.map(function(url){
+    return '<div style="position:relative;display:inline-block">' +
+      '<img src="'+url+'" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db">' +
+      '<button onclick="removeExistingPhoto(\''+car._id+'\',\''+url+'\',this.parentElement)" style="position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;line-height:18px;text-align:center">✕</button>' +
+    '</div>';
+  }).join("");
+  document.getElementById("car-modal").classList.add("open");
+}
+
+function closeCarModal(){ document.getElementById("car-modal").classList.remove("open"); }
+
+function updatePricingPreview(){
+  var price = parseInt(document.getElementById("cm-price").value) || 0;
+  var prev  = document.getElementById("cm-pricing-preview");
+  var rows  = document.getElementById("cm-price-rows");
+  if(!price){ prev.style.display = "none"; return; }
+  prev.style.display = "block";
+  var tiers = [
+    ["6–8 hrs",   price * 1.30 / 24 * 8],
+    ["1 day",     price],
+    ["2–3 days",  price * 0.95],
+    ["4–5 days",  price * 0.92],
+    ["6–7 days",  price * 0.90],
+    ["8–14 days", price * 0.85],
+    ["15–21 days",price * 0.80],
+    ["22+ days",  price * 0.75],
+  ];
+  rows.innerHTML = tiers.map(function(t){
+    return '<div style="color:var(--ts)">'+t[0]+'</div><div style="font-weight:700;color:#222">₹'+Math.round(t[1]).toLocaleString("en-IN")+(t[0]==="1 day"?"/day":t[0].includes("hrs")?"/trip":"/day")+'</div>';
+  }).join("");
+}
+
+function previewCarPhotos(){
+  var MAX = 7;
+  var existingCount = document.getElementById("cm-existing-photos").querySelectorAll("img").length;
+  var slots = Math.max(0, MAX - existingCount);
+  var files = Array.from(document.getElementById("cm-photos").files).slice(0, slots);
+
+  if(files.length < document.getElementById("cm-photos").files.length){
+    toast("Max 7 photos per car. " + (MAX - existingCount - files.length) + " slot(s) already used — only first " + files.length + " selected.", "error");
+  }
+
+  _carPhotosToUpload = files;
+  var prev = document.getElementById("cm-photo-previews");
+  prev.innerHTML = "";
+  files.forEach(function(f){
+    var url = URL.createObjectURL(f);
+    prev.innerHTML += '<div style="text-align:center">' +
+      '<img src="'+url+'" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db">' +
+      '<div style="font-size:.6rem;color:var(--ts);margin-top:2px;width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.name+'</div>' +
+    '</div>';
+  });
+
+  var remaining = MAX - existingCount - files.length;
+  document.getElementById("cm-upload-lbl").textContent =
+    files.length + " photo(s) selected · " + (existingCount + files.length) + "/" + MAX + " total" +
+    (remaining > 0 ? " · " + remaining + " slot(s) left" : " · Full");
+}
+
+async function removeExistingPhoto(carId, url, container){
+  if(!confirm("Remove this photo?")) return;
+  try {
+    await adminFetch("/admin/fleet/"+carId+"/photo", { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({url:url}) });
+    container.remove();
+    toast("Photo removed.", "success");
+  } catch(e){ toast("Failed: "+e.message,"error"); }
+}
+
+async function submitCarForm(){
+  var id    = document.getElementById("cm-id").value.trim();
+  var name  = document.getElementById("cm-name").value.trim();
+  var cat   = document.getElementById("cm-cat").value;
+  var tm    = document.getElementById("cm-tm").value;
+  var fuel  = document.getElementById("cm-fuel").value;
+  var seats = parseInt(document.getElementById("cm-seats").value) || 5;
+  var price = parseInt(document.getElementById("cm-price").value);
+  if(!name)  { toast("Car name is required.", "error"); return; }
+  if(!price) { toast("Price per day is required.", "error"); return; }
+
+  var btn = document.getElementById("cm-submit-btn");
+  btn.textContent = "Saving..."; btn.disabled = true;
+  try {
+    var carData;
+    if(id){
+      carData = await adminFetch("/admin/fleet/"+id, {
+        method:"PUT", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price })
+      });
+    } else {
+      carData = await adminFetch("/admin/fleet", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price })
+      });
+    }
+    var carId = carData._id || carData.id;
+
+    // Upload photos one by one (max 7 total)
+    if(_carPhotosToUpload.length){
+      btn.textContent = "Uploading photos (0/" + _carPhotosToUpload.length + ")...";
+      for(var i=0;i<_carPhotosToUpload.length;i++){
+        var fd = new FormData();
+        fd.append("photo", _carPhotosToUpload[i]);
+        await adminFetch("/admin/fleet/"+carId+"/photo", { method:"POST", body:fd });
+        btn.textContent = "Uploading photos (" + (i+1) + "/" + _carPhotosToUpload.length + ")...";
+      }
+    }
+
+    toast(id ? "Car updated." : "Car added.", "success");
+    closeCarModal();
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+  } catch(e){
+    toast("Failed: "+e.message,"error");
+    btn.textContent = "Save Car"; btn.disabled = false;
+  }
+}
+
+async function removePause(carId, pauseId){
+  if(!confirm("Remove this pause period?")) return;
+  if(adminToken === "local"){
+    var car = DEMO_FLEET.find(function(c){ return c._id===carId; });
+    if(car) car.pauses = car.pauses.filter(function(p){ return p._id!==pauseId; });
+    toast("Pause removed.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    return;
+  }
+  try {
+    await adminFetch("/admin/fleet/"+carId+"/pause/"+pauseId, { method: "DELETE" });
+    toast("Pause removed.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function renderCustomers(isLocal, c){
+  var custs = [];
+  if(!isLocal){
+    try {
+      custs = await adminFetch("/admin/customers");
+      allCustomers = custs;
+      document.getElementById("nb-customers").textContent = custs.filter(function(u){ return u.kyc&&u.kyc.status==="uploaded"; }).length || "";
+    } catch(e){ isLocal = true; }
+  }
+
+  if(isLocal){
+    custs        = DEMO_CUSTOMERS.slice();
+    allCustomers = custs;
+    document.getElementById("nb-customers").textContent = custs.filter(function(u){ return u.kyc&&u.kyc.status==="uploaded"; }).length || "";
+  }
+
+  var rows = custs.map(function(u){
+    var kycStatus = u.kyc&&u.kyc.status || "pending";
+    var kycBadge  = {pending:'<span class="sbadge sb-pend">Not Submitted</span>',uploaded:'<span class="sbadge sb-up">Awaiting Review</span>',verified:'<span class="sbadge sb-act">Verified</span>',rejected:'<span class="sbadge sb-done">Rejected</span>'}[kycStatus] || '<span class="sbadge sb-pend">Not Submitted</span>';
+    var kycDone   = kycStatus === "uploaded" || kycStatus === "verified";
+    var actions   = kycStatus==="uploaded"
+      ? '<button class="btn btn-y btn-sm" onclick="approveKyc(\''+u._id+'\')">Approve KYC</button> <button class="btn btn-red btn-sm" onclick="rejectKyc(\''+u._id+'\')">Reject</button>'
+      : kycStatus==="verified" ? '<span style="color:#1a7a3c;font-size:.78rem;font-weight:700">✅ Verified</span>' : '<span style="color:#aaa;font-size:.78rem">Awaiting upload</span>';
+    var docCell   = function(url, label){ return kycDone && url ? '<a href="'+url+'" target="_blank"><img src="'+url+'" style="width:48px;height:36px;object-fit:cover;border-radius:5px;border:1.5px solid #ede9db;vertical-align:middle"> <span style="color:var(--yd);font-size:.72rem;font-weight:700">'+label+' ↗</span></a>' : '<span style="color:#ccc">—</span>'; };
+    var initials  = kycDone && u.name ? u.name.split(" ").map(function(w){ return w[0]; }).join("").toUpperCase().slice(0,2) : u.phone.slice(-2);
+    return '<tr>' +
+      '<td><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:50%;background:var(--y);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex-shrink:0">'+initials+'</div><div>' +
+        '<div style="font-weight:700">'+(kycDone ? (u.name||"—") : '<span style="color:#aaa;font-style:italic">Hidden until KYC</span>')+'</div>' +
+        '<div style="font-size:.73rem;color:var(--ts)">Joined '+new Date(u.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+'</div>' +
+      '</div></div></td>' +
+      '<td>+91 '+u.phone+'</td>' +
+      '<td>'+kycBadge+'</td>' +
+      '<td>'+docCell(u.kyc&&u.kyc.aadhaarUrl,"Aadhaar")+'</td>' +
+      '<td>'+docCell(u.kyc&&u.kyc.dlUrl,"DL")+'</td>' +
+      '<td>'+actions+'</td>' +
+    '</tr>';
+  }).join("");
+
+  c.innerHTML =
+    '<div class="page-title">Customers</div>' +
+    '<div class="page-sub">'+custs.length+' registered customer'+(custs.length!==1?'s':'')+'</div>' +
+    '<div class="toolbar"><input class="search-inp" id="cust-search" placeholder="Search by name or phone..." oninput="filterCustomers()"></div>' +
+    '<div class="card"><div class="table-wrap" id="cust-table-wrap"><table class="adm-table"><thead><tr>' +
+      '<th>Customer</th><th>Phone</th><th>Email</th><th>KYC Status</th><th>Aadhaar</th><th>Driving Licence</th><th>Actions</th>' +
+    '</tr></thead><tbody id="cust-tbody">'+rows+'</tbody></table></div></div>';
+  window._custRows = rows;
+}
+
+function filterCustomers(){
+  var q = document.getElementById("cust-search").value.toLowerCase();
+  var filtered = allCustomers.filter(function(u){
+    return (u.name||"").toLowerCase().includes(q) || u.phone.includes(q);
+  });
+  // Re-render tbody
+  var rows = filtered.map(function(u){
+    var kycStatus = u.kyc&&u.kyc.status || "pending";
+    var kycBadge  = {pending:'<span class="sbadge sb-pend">Pending</span>',uploaded:'<span class="sbadge sb-up">Awaiting Review</span>',verified:'<span class="sbadge sb-act">Verified</span>',rejected:'<span class="sbadge sb-done">Rejected</span>'}[kycStatus] || '<span class="sbadge sb-pend">Pending</span>';
+    var actions = kycStatus==="uploaded"
+      ? '<button class="btn btn-y btn-sm" onclick="approveKyc(\''+u._id+'\')">Approve</button> <button class="btn btn-red btn-sm" onclick="rejectKyc(\''+u._id+'\')">Reject</button>'
+      : kycStatus==="verified" ? '<span style="color:#1a7a3c;font-size:.78rem;font-weight:700">✅ Verified</span>' : '—';
+    var initials = u.name ? u.name.split(" ").map(function(w){ return w[0]; }).join("").toUpperCase().slice(0,2) : u.phone.slice(-2);
+    return '<tr>' +
+      '<td><div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:50%;background:var(--y);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex-shrink:0">'+initials+'</div><div><div style="font-weight:700">'+(u.name||"—")+'</div></div></div></td>' +
+      '<td>+91 '+u.phone+'</td>' +
+      '<td style="color:var(--ts)">'+(u.email||"—")+'</td>' +
+      '<td>'+kycBadge+'</td>' +
+      '<td>'+(u.kyc&&u.kyc.aadhaarUrl?'<a href="'+u.kyc.aadhaarUrl+'" target="_blank" style="color:var(--yd);font-size:.78rem;font-weight:700">View ↗</a>':'—')+'</td>' +
+      '<td>'+(u.kyc&&u.kyc.dlUrl?'<a href="'+u.kyc.dlUrl+'" target="_blank" style="color:var(--yd);font-size:.78rem;font-weight:700">View ↗</a>':'—')+'</td>' +
+      '<td>'+actions+'</td>' +
+    '</tr>';
+  }).join("");
+  document.getElementById("cust-tbody").innerHTML = rows;
+}
+
+async function approveKyc(id){
+  if(adminToken === "local"){
+    var u = allCustomers.find(function(c){ return c._id===id; });
+    if(u&&u.kyc) u.kyc.status = "verified";
+    toast("KYC approved.", "success");
+    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    return;
+  }
+  try {
+    await adminFetch("/admin/customers/"+id+"/kyc", {
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"verified"})
+    });
+    toast("KYC approved.", "success");
+    navTo("customers", document.querySelector('[data-tab="customers"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+async function rejectKyc(id){
+  if(adminToken === "local"){
+    var u = allCustomers.find(function(c){ return c._id===id; });
+    if(u&&u.kyc) u.kyc.status = "rejected";
+    toast("KYC rejected.", "success");
+    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    return;
+  }
+  try {
+    await adminFetch("/admin/customers/"+id+"/kyc", {
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"rejected"})
+    });
+    toast("KYC rejected.", "success");
+    navTo("customers", document.querySelector('[data-tab="customers"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+function updateBadges(){
+  var active   = allBookings.filter(function(b){ return b.status==="active"; }).length;
+  var upcoming = allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length;
+  document.getElementById("nb-bookings").textContent = allBookings.length || "";
+  document.getElementById("nb-active").textContent   = active   || "";
+  document.getElementById("nb-upcoming").textContent = upcoming || "";
+}
+
+// ── INIT: auto-login if token exists ──
+window.addEventListener("DOMContentLoaded", function(){
+  if(adminToken){
+    document.getElementById("login-page").style.display = "none";
+    document.getElementById("admin-page").style.display = "flex";
+    navTo("dashboard", document.querySelector('[data-tab="dashboard"]'));
+  }
+});
+</script>
+</body>
+</html>

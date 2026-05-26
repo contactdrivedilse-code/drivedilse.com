@@ -7,6 +7,19 @@ const sb = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = []) {
+  return {
+    _id: c.id, id: c.id,
+    name: c.name, category: c.category,
+    transmission: c.transmission, fuel: c.fuel, seats: c.seats,
+    pricePerDay: c.price_per_day, deposit: c.deposit,
+    active: c.active,
+    imageUrl: c.image_url || "",
+    images: (c.images as string[] | null) || [],
+    pauses: pauses.map((p) => ({ _id: p.id, from: p.from_date, to: p.to_date, note: p.note })),
+  };
+}
+
 function mapBooking(b: Record<string, unknown>) {
   return {
     _id: b.id, id: b.id, bookingId: b.booking_id,
@@ -131,9 +144,64 @@ Deno.serve(async (req) => {
 
     // GET /fleet
     if (req.method === "GET" && path === "/fleet") {
-      const { data, error } = await sb.from("cars").select("*").order("name", { ascending: true });
+      const { data: cars, error } = await sb.from("cars").select("*").order("name", { ascending: true });
       if (error) throw error;
-      return json(data);
+      const ids = (cars ?? []).map((c: Record<string, unknown>) => c.id as string);
+      const { data: pauses } = ids.length ? await sb.from("car_pauses").select("*").in("car_id", ids) : { data: [] };
+      const pauseMap: Record<string, Record<string, unknown>[]> = {};
+      for (const p of pauses ?? []) {
+        const pp = p as Record<string, unknown>;
+        const cid = pp.car_id as string;
+        if (!pauseMap[cid]) pauseMap[cid] = [];
+        pauseMap[cid].push(pp);
+      }
+      return json((cars ?? []).map((c: Record<string, unknown>) => mapCar(c, pauseMap[c.id as string] ?? [])));
+    }
+
+    // POST /fleet — create new car
+    if (req.method === "POST" && path === "/fleet") {
+      const { name, category, transmission, fuel, seats, pricePerDay } = await req.json();
+      if (!name || !pricePerDay) return json({ error: "name and pricePerDay required" }, 400);
+      const { data, error } = await sb.from("cars").insert({
+        id: crypto.randomUUID(), name, category: category || "Hatchback",
+        transmission: transmission || "Manual", fuel: fuel || "Petrol",
+        seats: seats || 5, price_per_day: pricePerDay,
+        deposit: 0, active: true, image_url: "", images: [],
+      }).select("*").maybeSingle();
+      if (error) throw error;
+      return json(mapCar(data as Record<string, unknown>), 201);
+    }
+
+    // POST /fleet/:id/photo — upload a photo for a car
+    const photoMatch = path.match(/^\/fleet\/([^/]+)\/photo$/);
+    if (req.method === "POST" && photoMatch) {
+      const carId = photoMatch[1];
+      const fd = await req.formData();
+      const file = fd.get("photo") as File | null;
+      if (!file) return json({ error: "photo field required" }, 400);
+      const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
+      const storagePath = `${carId}/${Date.now()}.${ext}`;
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const { error: upErr } = await sb.storage.from("cars").upload(storagePath, buf, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const publicUrl = sb.storage.from("cars").getPublicUrl(storagePath).data.publicUrl;
+      const { data: car } = await sb.from("cars").select("images, image_url").eq("id", carId).maybeSingle();
+      const existing = ((car as Record<string, unknown>)?.images as string[] | null) || [];
+      const newImages = [...existing, publicUrl];
+      const imgUrl = ((car as Record<string, unknown>)?.image_url as string) || publicUrl;
+      await sb.from("cars").update({ images: newImages, image_url: imgUrl || publicUrl }).eq("id", carId);
+      return json({ url: publicUrl, images: newImages });
+    }
+
+    // DELETE /fleet/:id/photo — remove a photo
+    if (req.method === "DELETE" && photoMatch) {
+      const { url } = await req.json();
+      const { data: car } = await sb.from("cars").select("images, image_url").eq("id", photoMatch[1]).maybeSingle();
+      const c = car as Record<string, unknown>;
+      const existing = (c?.images as string[] | null) || [];
+      const newImages = existing.filter((u) => u !== url);
+      await sb.from("cars").update({ images: newImages, image_url: newImages[0] || "" }).eq("id", photoMatch[1]);
+      return json({ images: newImages });
     }
 
     // PUT /fleet/:id/toggle
@@ -143,9 +211,26 @@ Deno.serve(async (req) => {
       if (!car) return json({ error: "Car not found" }, 404);
       const { data, error } = await sb.from("cars")
         .update({ active: !(car as Record<string, unknown>).active })
-        .eq("id", toggleMatch[1]).select("id, active").maybeSingle();
+        .eq("id", toggleMatch[1]).select("*").maybeSingle();
       if (error) throw error;
-      return json(data);
+      return json(mapCar(data as Record<string, unknown>));
+    }
+
+    // PUT /fleet/:id — update car details (must come after toggle match)
+    const carEditMatch = path.match(/^\/fleet\/([^/]+)$/);
+    if (req.method === "PUT" && carEditMatch) {
+      const body = await req.json();
+      const updates: Record<string, unknown> = {};
+      if (body.name         !== undefined) updates.name          = body.name;
+      if (body.category     !== undefined) updates.category      = body.category;
+      if (body.transmission !== undefined) updates.transmission  = body.transmission;
+      if (body.fuel         !== undefined) updates.fuel          = body.fuel;
+      if (body.seats        !== undefined) updates.seats         = body.seats;
+      if (body.pricePerDay  !== undefined) updates.price_per_day = body.pricePerDay;
+      const { data, error } = await sb.from("cars").update(updates).eq("id", carEditMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Car not found" }, 404);
+      return json(mapCar(data as Record<string, unknown>));
     }
 
     // POST /fleet/:id/pause

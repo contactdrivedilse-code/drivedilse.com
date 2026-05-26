@@ -200,6 +200,11 @@ Deno.serve(async (req) => {
       if (!p) return json({ error: "Profile not found" }, 404);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
+      const pISO = pickup.toISOString(), dISO = drop.toISOString();
+      const { data: conflict } = await sb.from("bookings").select("id").eq("car_id", carId)
+        .in("status", ["confirmed", "active"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
+      if (conflict) return json({ error: "Car is already booked for these dates" }, 400);
+
       const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const bookingId = makeBookingId();
 
@@ -207,8 +212,8 @@ Deno.serve(async (req) => {
         id: crypto.randomUUID(), booking_id: bookingId,
         car_id: c.id, car_name: c.name,
         user_id: p.id, customer: p.name ?? "", phone: p.phone,
-        pickup_date: pickup.toISOString(), pickup_location: pickupLocation ?? "Pune",
-        drop_date: drop.toISOString(), drop_location: dropLocation ?? "Pune",
+        pickup_date: pISO, pickup_location: pickupLocation ?? "Pune",
+        drop_date: dISO, drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
         deposit: 0, discount,
         payment_status: "demo", status: "confirmed",
@@ -228,6 +233,11 @@ Deno.serve(async (req) => {
       const c = car as Record<string, unknown> | null;
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
+      const pISO2 = new Date(pickupDate).toISOString(), dISO2 = new Date(dropDate).toISOString();
+      const { data: conflict2 } = await sb.from("bookings").select("id").eq("car_id", carId)
+        .in("status", ["confirmed", "active"]).lt("pickup_date", dISO2).gt("drop_date", pISO2).maybeSingle();
+      if (conflict2) return json({ error: "Car is already booked for these dates" }, 400);
+
       let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
       if (!prof) {
         const id = crypto.randomUUID();
@@ -239,7 +249,7 @@ Deno.serve(async (req) => {
       }
       const p = prof as Record<string, unknown>;
 
-      const pickup = new Date(pickupDate), drop = new Date(dropDate);
+      const pickup = new Date(pISO2), drop = new Date(dISO2);
       const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const bookingId = makeBookingId();
 
@@ -247,8 +257,8 @@ Deno.serve(async (req) => {
         id: crypto.randomUUID(), booking_id: bookingId,
         car_id: c.id, car_name: c.name,
         user_id: p.id, customer: (p.name as string) ?? "", phone: p.phone,
-        pickup_date: pickup.toISOString(), pickup_location: pickupLocation ?? "Pune",
-        drop_date: drop.toISOString(), drop_location: dropLocation ?? "Pune",
+        pickup_date: pISO2, pickup_location: pickupLocation ?? "Pune",
+        drop_date: dISO2, drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
         deposit: 0, discount,
         payment_status: "demo", status: "confirmed",

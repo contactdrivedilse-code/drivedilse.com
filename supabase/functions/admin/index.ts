@@ -124,10 +124,21 @@ Deno.serve(async (req) => {
     // GET /customers
     if (req.method === "GET" && path === "/customers") {
       const { data, error } = await sb.from("profiles")
-        .select("id, phone, name, dob, email, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
+        .select("id, phone, name, dob, email, aadhaar_url, dl_url, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
         .eq("phone_verified", true).order("created_at", { ascending: false });
       if (error) throw error;
-      return json(data);
+      return json((data ?? []).map((u: Record<string, unknown>) => ({
+        _id: u.id, id: u.id,
+        phone: u.phone, name: u.name, email: u.email, dob: u.dob,
+        createdAt: u.created_at,
+        kyc: {
+          status: u.kyc_status || "pending",
+          aadhaarUrl: u.aadhaar_url || null,
+          dlUrl: u.dl_url || null,
+          aadhaarUploaded: u.aadhaar_uploaded,
+          dlVerified: u.dl_verified,
+        },
+      })));
     }
 
     // PUT /customers/:id/kyc
@@ -139,7 +150,17 @@ Deno.serve(async (req) => {
       const { data, error } = await sb.from("profiles").update(updates).eq("id", kycMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "User not found" }, 404);
-      return json(data);
+      // When KYC is verified, confirm all pending_kyc bookings for this user
+      if (status === "verified") {
+        await sb.from("bookings")
+          .update({ status: "confirmed", updated_at: new Date().toISOString() })
+          .eq("user_id", kycMatch[1]).eq("status", "pending_kyc");
+      }
+      const p = data as Record<string, unknown>;
+      return json({
+        _id: p.id, id: p.id, phone: p.phone, name: p.name,
+        kyc: { status: p.kyc_status, aadhaarUrl: p.aadhaar_url, dlUrl: p.dl_url },
+      });
     }
 
     // GET /fleet

@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
         deposit: 0, discount,
         razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
         razorpay_signature: razorpaySignature, payment_status: "paid",
-        paid_at: new Date().toISOString(), status: "confirmed",
+        paid_at: new Date().toISOString(), status: "pending_kyc",
       }).select("*").maybeSingle();
       if (error) throw error;
 
@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         drop_date: dISO, drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
         deposit: 0, discount,
-        payment_status: "demo", status: "confirmed",
+        payment_status: "demo", status: "pending_kyc",
       }).select("*").maybeSingle();
       if (error) throw error;
 
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
         drop_date: dISO2, drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
         deposit: 0, discount,
-        payment_status: "demo", status: "confirmed",
+        payment_status: "demo", status: "pending_kyc",
       }).select("*").maybeSingle();
       if (error) throw error;
 

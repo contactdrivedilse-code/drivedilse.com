@@ -1161,18 +1161,28 @@ async function renderProfile(){
       var bb = document.getElementById("prof-bookings-body");
       if(apiBookings.length){
         bb.innerHTML = apiBookings.map(function(b){
-          var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up"};
+          var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up",pending_kyc:"sb-up"};
+          var statusLabels={confirmed:"Confirmed",active:"Active",completed:"Completed",cancelled:"Cancelled",pending:"Pending","pending_kyc":"Paid · KYC Pending"};
           var pickupTime  = new Date(b.pickup.date).getTime();
           var nowMs       = Date.now();
           var windowMs    = 30 * 60 * 1000;
           var windowOpen  = nowMs >= pickupTime - windowMs;
-          var isConfirmed = b.status === "confirmed";
-          var isActive    = b.status === "active";
+          var isConfirmed  = b.status === "confirmed";
+          var isActive     = b.status === "active";
+          var isPendingKyc = b.status === "pending_kyc";
           var photosUp    = b.checkin && b.checkin.photosUploadedAt;
           var ks          = p.kycStatus; // "pending","uploaded","verified","rejected"
           var checkinBtn  = "";
           if(isActive){
             checkinBtn = '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckout(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\')">End Booking →</button>';
+          } else if(isPendingKyc){
+            if(ks === "rejected"){
+              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#c0392b;font-weight:700">✅ Payment received — KYC rejected. <button class="btn btn-sm" style="margin-left:6px;font-size:.72rem;background:#c0392b;color:#fff;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Re-submit Documents →</button></div>';
+            } else if(ks === "uploaded"){
+              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#e67e22;font-weight:700">✅ Payment received — KYC documents under review. Booking confirms once admin verifies.</div>';
+            } else {
+              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#a16207;font-weight:700">✅ Payment done — upload your Aadhaar &amp; DL to confirm your booking. <button class="btn btn-sm" style="margin-left:6px;font-size:.72rem;background:#ffd400;color:#111;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Complete KYC →</button></div>';
+            }
           } else if(isConfirmed){
             if(ks !== "verified"){
               if(ks === "rejected"){
@@ -1200,7 +1210,7 @@ async function renderProfile(){
               '<span class="bk-id">' + b.bookingId + '</span>' +
               '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
               '<div class="bk-date">' + new Date(b.pickup.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ', ' + new Date(b.pickup.date).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}) + ' → ' + new Date(b.drop.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
-              '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + b.status + '</span>' +
+              '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + (statusLabels[b.status]||b.status) + '</span>' +
             '</div>' +
             checkinBtn +
             cancelBtn +

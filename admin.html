@@ -223,7 +223,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 <div class="toast" id="toast"></div>
 
 <script>
-var API         = "https://drivedilse-api.onrender.com";
+var API         = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
 var adminToken  = localStorage.getItem("dds_admin_token") || "";
 var pauseCarId  = null;
 var allBookings = [], allCars = [], allCustomers = [];
@@ -310,7 +310,7 @@ async function doLogin(){
   err.style.display = "none";
   btn.textContent = "Signing in..."; btn.disabled = true;
   try {
-    var r = await fetch(API + "/api/admin/login", {
+    var r = await fetch(API + "/admin/login", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ password: pass })
@@ -390,8 +390,8 @@ async function renderDashboard(isLocal, c){
   var stats = [];
   if(!isLocal){
     try {
-      var dash = await adminFetch("/api/admin/dashboard");
-      allBookings = await adminFetch("/api/admin/bookings");
+      var dash = await adminFetch("/admin/dashboard");
+      allBookings = await adminFetch("/admin/bookings");
       updateBadges();
       var rev = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; }).reduce(function(s,b){ return s+b.total; },0);
       stats = [
@@ -442,7 +442,7 @@ async function renderBookings(statusFilter, isLocal, c){
   var bks = [];
   if(!isLocal){
     try {
-      if(!allBookings.length) allBookings = await adminFetch("/api/admin/bookings");
+      if(!allBookings.length) allBookings = await adminFetch("/admin/bookings");
       updateBadges();
       bks = statusFilter === null ? allBookings :
         Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
@@ -579,7 +579,7 @@ async function updateStatus(id, status){
     return;
   }
   try {
-    await adminFetch("/api/admin/bookings/"+id+"/status", {
+    await adminFetch("/admin/bookings/"+id+"/status", {
       method: "PUT",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ status: status })
@@ -595,7 +595,7 @@ async function renderFleet(isLocal, c){
   var cars = [];
   if(!isLocal){
     try {
-      cars = await adminFetch("/api/admin/fleet");
+      cars = await adminFetch("/admin/fleet");
       allCars = cars;
     } catch(e){ isLocal = true; }
   }
@@ -649,7 +649,7 @@ async function toggleCar(id){
     return;
   }
   try {
-    await adminFetch("/api/admin/fleet/"+id+"/toggle", { method: "PUT" });
+    await adminFetch("/admin/fleet/"+id+"/toggle", { method: "PUT" });
     toast("Car status updated.", "success");
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
@@ -680,7 +680,7 @@ async function submitPause(){
     return;
   }
   try {
-    await adminFetch("/api/admin/fleet/"+pauseCarId+"/pause", {
+    await adminFetch("/admin/fleet/"+pauseCarId+"/pause", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ from: from, to: to, note: note })
@@ -701,7 +701,7 @@ async function removePause(carId, pauseId){
     return;
   }
   try {
-    await adminFetch("/api/admin/fleet/"+carId+"/pause/"+pauseId, { method: "DELETE" });
+    await adminFetch("/admin/fleet/"+carId+"/pause/"+pauseId, { method: "DELETE" });
     toast("Pause removed.", "success");
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
@@ -711,7 +711,7 @@ async function renderCustomers(isLocal, c){
   var custs = [];
   if(!isLocal){
     try {
-      custs = await adminFetch("/api/admin/customers");
+      custs = await adminFetch("/admin/customers");
       allCustomers = custs;
       document.getElementById("nb-customers").textContent = custs.filter(function(u){ return u.kyc&&u.kyc.status==="uploaded"; }).length || "";
     } catch(e){ isLocal = true; }
@@ -786,7 +786,7 @@ async function approveKyc(id){
     return;
   }
   try {
-    await adminFetch("/api/admin/customers/"+id+"/kyc", {
+    await adminFetch("/admin/customers/"+id+"/kyc", {
       method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"verified"})
     });
     toast("KYC approved.", "success");
@@ -802,7 +802,7 @@ async function rejectKyc(id){
     return;
   }
   try {
-    await adminFetch("/api/admin/customers/"+id+"/kyc", {
+    await adminFetch("/admin/customers/"+id+"/kyc", {
       method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"rejected"})
     });
     toast("KYC rejected.", "success");

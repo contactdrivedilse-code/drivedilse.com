@@ -7,6 +7,27 @@ const sb = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+function mapBooking(b: Record<string, unknown>) {
+  return {
+    _id: b.id, id: b.id, bookingId: b.booking_id,
+    car: { _id: b.car_id, id: b.car_id, name: b.car_name }, carName: b.car_name,
+    customer: b.customer, phone: b.phone,
+    pickup: { date: b.pickup_date, location: b.pickup_location },
+    drop:   { date: b.drop_date,   location: b.drop_location },
+    days: b.days, pricePerDay: b.price_per_day, total: b.total,
+    deposit: b.deposit, discount: b.discount,
+    payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
+    checkin: {
+      photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },
+      photosUploadedAt: b.checkin_photos_at, otp: b.checkin_otp, otpVerified: b.checkin_otp_verified, checkedInAt: b.checked_in_at,
+    },
+    checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
+    status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
+    createdAt: b.created_at, updatedAt: b.updated_at,
+    extensions: [],
+  };
+}
+
 async function getAdmin(req: Request) {
   const token = getBearer(req);
   if (!token) return null;
@@ -52,7 +73,7 @@ Deno.serve(async (req) => {
     if (req.method === "GET" && path === "/bookings") {
       const { data, error } = await sb.from("bookings").select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      return json(data);
+      return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
     }
 
     // PUT /bookings/:id/status
@@ -64,7 +85,7 @@ Deno.serve(async (req) => {
         .eq("id", bkStatusMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);
-      return json(data);
+      return json(mapBooking(data as Record<string, unknown>));
     }
 
     // POST /bookings/:id/checkin-otp — reveal check-in OTP to admin

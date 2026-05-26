@@ -321,14 +321,9 @@ async function doLogin(){
     localStorage.setItem("dds_admin_token", adminToken);
     enterAdmin();
   } catch(e){
-    if(pass === "drivedilse2024"){
-      adminToken = "local";
-      localStorage.setItem("dds_admin_token", "local");
-      enterAdmin();
-    } else {
-      err.style.display = "block";
-      btn.textContent = "Sign In →"; btn.disabled = false;
-    }
+    err.innerHTML = e.message || "Could not connect";
+    err.style.display = "block";
+    btn.textContent = "Sign In →"; btn.disabled = false;
   }
 }
 

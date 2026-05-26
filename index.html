@@ -417,8 +417,8 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
         <div class="hero-search">
           <div class="hero-search-title">&#128337; Check Availability</div>
           <div id="search-sec" class="date-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
-            <div><label class="lbl">Pickup Date &amp; Time</label><input type="datetime-local" id="h-pickup" class="inp"></div>
-            <div><label class="lbl">Drop Date &amp; Time</label><input type="datetime-local" id="h-drop" class="inp"></div>
+            <div><label class="lbl">Pickup Date &amp; Time</label><input type="datetime-local" id="h-pickup" class="inp" step="3600"></div>
+            <div><label class="lbl">Drop Date &amp; Time</label><input type="datetime-local" id="h-drop" class="inp" step="3600"></div>
           </div>
           <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem">Show Available Cars</button>
         </div>
@@ -712,8 +712,8 @@ window.addEventListener('scroll',function(){
       <div class="tag" id="booking-tag">Book This Car</div>
       <div id="booking-form">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-          <div><label class="lbl">📍 Pickup</label><input type="datetime-local" id="d-pickup" class="inp"></div>
-          <div><label class="lbl">🏁 Drop</label><input type="datetime-local" id="d-drop" class="inp"></div>
+          <div><label class="lbl">📍 Pickup</label><input type="datetime-local" id="d-pickup" class="inp" step="3600"></div>
+          <div><label class="lbl">🏁 Drop</label><input type="datetime-local" id="d-drop" class="inp" step="3600"></div>
         </div>
         <button class="btn btn-y btn-lg" onclick="calcPrice()">Calculate Price →</button>
         <div id="price-section" style="display:none">
@@ -1102,8 +1102,8 @@ window.addEventListener('scroll',function(){
         <div><div class="lbl" style="margin-bottom:4px">End Date</div><div style="font-weight:700;font-size:.88rem" id="cal-end-txt">—</div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div><label class="lbl">Start Time</label><input type="time" id="p-start-time" class="inp" value="09:00"></div>
-        <div><label class="lbl">End Time</label><input type="time" id="p-end-time" class="inp" value="18:00"></div>
+        <div><label class="lbl">Start Time</label><input type="time" id="p-start-time" class="inp" value="09:00" step="3600"></div>
+        <div><label class="lbl">End Time</label><input type="time" id="p-end-time" class="inp" value="18:00" step="3600"></div>
       </div>
       <div id="pause-dur-box" style="margin-top:12px;background:#fffbe6;border:1px solid rgba(200,160,0,.25);border-radius:8px;padding:10px 14px;font-size:.82rem;font-weight:700;color:var(--yd)"></div>
     </div>
@@ -1441,6 +1441,19 @@ async function renderProfile(){
 // ── INIT ──
 document.getElementById("h-pickup").value = nowFmt(0);
 document.getElementById("h-drop").value   = nowFmt(86400000);
+
+// snap datetime-local inputs to whole hours (no minutes)
+function snapHour(el){
+  if(!el.value) return;
+  var d = new Date(el.value);
+  if(isNaN(d)) return;
+  d.setMinutes(0,0,0);
+  el.value = d.toISOString().slice(0,16);
+}
+["h-pickup","h-drop","d-pickup","d-drop"].forEach(function(id){
+  var el = document.getElementById(id);
+  if(el) el.addEventListener("change", function(){ snapHour(this); });
+});
 
 // ── FLEET ──
 function isAvail(car, pickup, drop){

@@ -1569,10 +1569,21 @@ async function payNow(){
 
   // Helper: create booking directly in Supabase (no Razorpay)
   async function bookDirect(){
-    var result = await apiFetch("/payment/direct", {
+    var isDemo = authToken.startsWith("demo_");
+    var endpoint, body;
+    if(isDemo){
+      // Demo token: extract phone and use guest endpoint (no JWT needed)
+      var demoPhone = authToken.split("_")[1] || userProfile.phone || "";
+      endpoint = "/payment/guest-direct";
+      body = { phone: demoPhone, name: userProfile.name || "", carId: selCar.id, pickupDate: priceResult.pickup, dropDate: priceResult.drop, pickupLocation:"Pune", dropLocation:"Pune" };
+    } else {
+      endpoint = "/payment/direct";
+      body = { carId: selCar.id, pickupDate: priceResult.pickup, dropDate: priceResult.drop, pickupLocation:"Pune", dropLocation:"Pune" };
+    }
+    var result = await apiFetch(endpoint, {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ carId: selCar.id, pickupDate: priceResult.pickup, dropDate: priceResult.drop, pickupLocation:"Pune", dropLocation:"Pune" })
+      body: JSON.stringify(body)
     });
     if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
     myBookingIds.push(result.bookingId);
@@ -1582,7 +1593,7 @@ async function payNow(){
     document.getElementById("success-section").style.display = "block";
   }
 
-  // Demo token — exchange for real session then save booking to Supabase
+  // Demo token — save booking to Supabase via guest-direct (no JWT needed)
   if(authToken.startsWith("demo_")){
     try { await bookDirect(); } catch(e){
       alert("Could not save booking: " + e.message);

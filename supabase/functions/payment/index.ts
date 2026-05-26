@@ -219,6 +219,46 @@ Deno.serve(async (req) => {
       return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>), token });
     }
 
+    // POST /guest-direct — create booking for demo/offline users (no JWT, just phone)
+    if (req.method === "POST" && path === "/guest-direct") {
+      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation } = await req.json();
+      if (!phone) return json({ error: "Phone required" }, 400);
+
+      const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
+      const c = car as Record<string, unknown> | null;
+      if (!c || !c.active) return json({ error: "Car not available" }, 404);
+
+      let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
+      if (!prof) {
+        const id = crypto.randomUUID();
+        await sb.from("profiles").insert({ id, phone, name: name ?? "" });
+        const { data: newProf } = await sb.from("profiles").select("*").eq("id", id).maybeSingle();
+        prof = newProf;
+      } else if (name && !(prof as Record<string, unknown>).name) {
+        await sb.from("profiles").update({ name }).eq("phone", phone);
+      }
+      const p = prof as Record<string, unknown>;
+
+      const pickup = new Date(pickupDate), drop = new Date(dropDate);
+      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const bookingId = makeBookingId();
+
+      const { data: booking, error } = await sb.from("bookings").insert({
+        id: crypto.randomUUID(), booking_id: bookingId,
+        car_id: c.id, car_name: c.name,
+        user_id: p.id, customer: (p.name as string) ?? "", phone: p.phone,
+        pickup_date: pickup.toISOString(), pickup_location: pickupLocation ?? "Pune",
+        drop_date: drop.toISOString(), drop_location: dropLocation ?? "Pune",
+        days, price_per_day: c.price_per_day, total,
+        deposit: 0, discount,
+        payment_status: "demo", status: "confirmed",
+      }).select("*").maybeSingle();
+      if (error) throw error;
+
+      const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
+      return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>), token });
+    }
+
     return json({ error: "Not found" }, 404);
   } catch (e) {
     return json({ error: (e as Error).message }, 500);

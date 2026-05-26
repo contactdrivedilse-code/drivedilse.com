@@ -24,7 +24,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --y:#f5c518;--yd:#c9a010;--w:#fff;--ow:#faf9f6;--wg:#f4f1e8;--b:#ede9db;
-  --t:#111;--ts:#888
+  --t:#3a2c00;--ts:#9a8060
 }
 html{scroll-behavior:smooth}
 body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-font-smoothing:antialiased}
@@ -32,7 +32,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 /* ---- UTILITIES ---- */
 .pill{font-size:.67rem;color:var(--ts);background:var(--wg);border:1px solid var(--b);padding:4px 10px;border-radius:20px;display:inline-block}
 .card{background:var(--w);border:1px solid var(--b);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
-.inp{width:100%;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;color:#111;font-family:'Inter',sans-serif;font-size:.9rem;padding:12px 14px;box-sizing:border-box;outline:none;transition:border-color .2s,background .2s}
+.inp{width:100%;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;color:var(--t);font-family:'Inter',sans-serif;font-size:.9rem;padding:12px 14px;box-sizing:border-box;outline:none;transition:border-color .2s,background .2s}
 .inp:focus{border-color:var(--yd);background:#fff}
 .inp::placeholder{color:#aaa}
 /* Light inp for modals/detail — same as .inp now */
@@ -44,7 +44,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 
 /* ---- BUTTONS ---- */
 .btn{font-family:'Inter',sans-serif;font-weight:700;border:none;cursor:pointer;border-radius:10px;transition:all .2s;text-align:center;display:inline-block}
-.btn-y{background:linear-gradient(135deg,var(--y) 0%,#e8b800 100%);color:#111;box-shadow:0 4px 20px rgba(245,197,24,.35);position:relative;overflow:hidden}
+.btn-y{background:linear-gradient(135deg,var(--y) 0%,#e8b800 100%);color:var(--t);box-shadow:0 4px 20px rgba(245,197,24,.35);position:relative;overflow:hidden}
 .btn-y::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.25) 50%,transparent 100%);background-size:200% 100%;animation:shimmer 2.4s ease-in-out infinite}
 .btn-y:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(245,197,24,.5);filter:brightness(1.06)}
 .btn-g{background:#fff;color:#444;border:1.5px solid #ede9db}
@@ -67,9 +67,9 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .sec-title{font-family:'Playfair Display',Georgia,serif;font-weight:900;letter-spacing:-.5px;margin-bottom:10px;line-height:1.1}
 
 /* ---- MODALS ---- */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(58,44,0,.55);z-index:400;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .modal-bg.open{display:flex}
-.modal{background:var(--w);border-radius:22px;padding:36px 32px;width:500px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.3)}
+.modal{background:var(--w);border-radius:22px;padding:36px 32px;width:500px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(58,44,0,.18)}
 .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--ts);transition:color .15s}
 .modal-close:hover{color:var(--t)}
 /* Override inp/lbl inside modals to use light theme */
@@ -95,8 +95,8 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .hero-bg-overlay{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 60% 40%,rgba(245,197,24,.10) 0%,transparent 65%),radial-gradient(ellipse 40% 30% at 10% 80%,rgba(201,160,16,.06) 0%,transparent 60%),linear-gradient(160deg,#fffde8 0%,#fff9d0 40%,#fffef5 100%);pointer-events:none;z-index:0}
 .hero-glow{position:absolute;top:50%;left:50%;width:700px;height:700px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(245,197,24,.18) 0%,transparent 60%);pointer-events:none;z-index:0;animation:heroFloat 6s ease-in-out infinite}
 .hero-inner{max-width:1100px;margin:0 auto;padding:100px 48px 80px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;position:relative;z-index:1;width:100%}
-.hero h1{font-family:'Playfair Display',Georgia,serif;font-size:3.6rem;font-weight:900;line-height:1.06;letter-spacing:-1.5px;margin-bottom:18px;color:#111}
-.hero h1 .gold{color:var(--yd)}
+.hero h1{font-family:'Playfair Display',Georgia,serif;font-size:3.6rem;font-weight:900;line-height:1.06;letter-spacing:-1.5px;margin-bottom:18px;color:var(--yd)}
+.hero h1 .gold{color:var(--t)}
 .hero-sub{color:#666;font-size:1rem;line-height:1.8;margin-bottom:10px;max-width:440px;font-weight:400}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,24,.18);border:1px solid rgba(245,197,24,.4);color:var(--yd);font-size:.65rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:7px 16px;border-radius:20px;margin-bottom:20px}
 
@@ -108,7 +108,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 /* Hero stats */
 .hero-stats{display:flex;align-items:center;gap:24px;margin-top:28px;flex-wrap:wrap}
 .stat-item{display:flex;flex-direction:column;gap:3px}
-.stat-val{font-family:'Playfair Display',Georgia,serif;font-size:1.6rem;font-weight:900;color:#111;line-height:1}
+.stat-val{font-family:'Playfair Display',Georgia,serif;font-size:1.6rem;font-weight:900;color:var(--yd);line-height:1}
 .stat-lbl{font-size:.63rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px}
 .stat-div{width:1px;height:38px;background:#ede9db}
 
@@ -117,7 +117,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .hsc:hover{background:#fffbe6;border-color:rgba(245,197,24,.4)}
 .hsc-icon{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;box-shadow:0 4px 12px rgba(245,197,24,.3)}
 .hsc-label-sub{font-size:.63rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#888;margin-bottom:2px}
-.hsc-label-main{font-size:.92rem;font-weight:700;color:#111}
+.hsc-label-main{font-size:.92rem;font-weight:700;color:var(--t)}
 
 /* ---- TRUST TICKER ---- */
 .ticker-wrap{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);border-bottom:1.5px solid rgba(201,160,16,.25);padding:13px 0;overflow:hidden;position:relative}
@@ -140,7 +140,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .fleet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:22px}
 .fleet-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
 .fcat{font-family:'Inter',sans-serif;font-size:.8rem;font-weight:700;padding:9px 22px;border-radius:20px;border:1.5px solid var(--b);background:var(--w);color:#666;cursor:pointer;transition:all .2s}
-.fcat.on,.fcat:hover{background:var(--y);border-color:var(--yd);color:#111;box-shadow:0 4px 12px rgba(245,197,24,.25)}
+.fcat.on,.fcat:hover{background:var(--y);border-color:var(--yd);color:var(--t);box-shadow:0 4px 12px rgba(245,197,24,.25)}
 .car-card{background:var(--w);border:1px solid var(--b);border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.06);overflow:hidden;transition:transform .3s cubic-bezier(.2,.6,.3,1),box-shadow .3s}
 .car-card:hover{transform:translateY(-8px) scale(1.01);box-shadow:0 20px 48px rgba(0,0,0,.13)}
 .car-img{height:190px;display:flex;align-items:center;justify-content:center;font-size:4.5rem;position:relative;background:linear-gradient(135deg,#f8f8f8 0%,#ede9db 100%);overflow:hidden}
@@ -153,7 +153,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .features-sec{padding:88px 48px;background:var(--wg);position:relative;overflow:hidden}
 .features-sec::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 50%,rgba(245,197,24,.12) 0%,transparent 70%);pointer-events:none}
 .features-sec .tag{color:var(--yd)}
-.features-sec .sec-title{color:#111}
+.features-sec .sec-title{color:var(--t)}
 .features-sec > div > p{color:#888}
 .features-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:40px}
 .feat-card{background:#fff;border:1px solid var(--b);border-radius:18px;padding:30px 26px;transition:transform .3s,background .3s,border-color .3s,box-shadow .3s;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.04)}
@@ -161,13 +161,13 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .feat-card:hover{transform:translateY(-6px);background:#fffef8;border-color:rgba(201,160,16,.35);box-shadow:0 16px 40px rgba(201,160,16,.15)}
 .feat-card:hover::before{opacity:1}
 .feat-icon{font-size:2.2rem;margin-bottom:18px;display:block;filter:drop-shadow(0 0 8px rgba(245,197,24,.4))}
-.feat-title{font-size:.96rem;font-weight:800;margin-bottom:8px;color:#111}
+.feat-title{font-size:.96rem;font-weight:800;margin-bottom:8px;color:var(--t)}
 .feat-desc{font-size:.8rem;color:#777;line-height:1.75}
 
 /* ---- GOLD CTA BAND ---- */
 .cta-band{background:linear-gradient(135deg,#fff9d0 0%,#fffde8 40%,#fff4a8 100%);background-size:200% 200%;animation:gradientMove 10s ease infinite;padding:88px 48px;text-align:center;position:relative;overflow:hidden;border-top:1.5px solid rgba(201,160,16,.2);border-bottom:1.5px solid rgba(201,160,16,.2)}
 .cta-band::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 50% 50%,rgba(245,197,24,.25) 0%,transparent 70%);pointer-events:none}
-.cta-band-title{font-family:'Playfair Display',Georgia,serif;font-size:3.2rem;font-weight:900;color:#111;line-height:1.08;margin-bottom:16px;letter-spacing:-1.2px;position:relative}
+.cta-band-title{font-family:'Playfair Display',Georgia,serif;font-size:3.2rem;font-weight:900;color:var(--yd);line-height:1.08;margin-bottom:16px;letter-spacing:-1.2px;position:relative}
 .cta-band-title em{color:var(--yd);font-style:italic}
 .cta-band-sub{color:#666;font-size:.95rem;margin-bottom:36px;position:relative;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.7}
 .cta-band-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative}
@@ -178,7 +178,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .steps::before{content:'';position:absolute;top:44px;left:calc(16.67% + 24px);right:calc(16.67% + 24px);height:2px;background:linear-gradient(90deg,var(--y) 0%,var(--yd) 100%);opacity:.35;z-index:0;pointer-events:none}
 .step{background:#fff;border:1px solid var(--b);border-radius:18px;padding:32px 28px;position:relative;z-index:1;transition:transform .25s,box-shadow .25s;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 .step:hover{transform:translateY(-5px);box-shadow:0 12px 32px rgba(0,0,0,.08)}
-.step-num{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:900;color:#111;margin-bottom:18px;box-shadow:0 6px 18px rgba(245,197,24,.35)}
+.step-num{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:900;color:var(--t);margin-bottom:18px;box-shadow:0 6px 18px rgba(245,197,24,.35)}
 
 /* ---- FAQ ---- */
 .faq-sec{padding:88px 48px;background:#fff}
@@ -281,9 +281,9 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .ext-slider{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:#ede9db;outline:none;cursor:pointer;transition:background .1s}
 .ext-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--y);cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.18);border:2px solid #fff}
 .ext-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--y);cursor:pointer;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.18)}
-.pause-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.pause-modal-bg{display:none;position:fixed;inset:0;background:rgba(58,44,0,.55);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 .pause-modal-bg.open{display:flex}
-.pause-modal{background:var(--w);border-radius:22px;padding:32px;width:540px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.3)}
+.pause-modal{background:var(--w);border-radius:22px;padding:32px;width:540px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(58,44,0,.18)}
 .cal-nav-btn{background:none;border:1px solid var(--b);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .15s}
 .cal-nav-btn:hover{background:var(--wg)}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:4px}
@@ -299,8 +299,8 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 
 /* ---- PROFILE PAGE ---- */
 .profile-hero{background:linear-gradient(135deg,#fffde8 0%,#fff9d0 100%);padding:48px 48px 36px;border-bottom:1px solid #ede9db;text-align:center}
-.profile-avatar{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;margin:0 auto 16px;border:3px solid rgba(245,197,24,.4);color:#111;box-shadow:0 0 0 6px rgba(245,197,24,.1)}
-.profile-name-big{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;margin-bottom:6px;color:#111}
+.profile-avatar{width:76px;height:76px;border-radius:50%;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;margin:0 auto 16px;border:3px solid rgba(245,197,24,.4);color:var(--t);box-shadow:0 0 0 6px rgba(245,197,24,.1)}
+.profile-name-big{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;margin-bottom:6px;color:var(--t)}
 .profile-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase}
 .profile-badge.verified{background:#dcfce7;color:#15803d}
 .profile-badge.pending{background:#fef9c3;color:#a16207}
@@ -517,17 +517,17 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
       <div class="steps">
         <div class="step fade-up">
           <div class="step-num">01</div>
-          <div style="font-size:.95rem;font-weight:800;margin-bottom:8px;color:#111">Pick Your Dates</div>
+          <div style="font-size:.95rem;font-weight:800;margin-bottom:8px;color:var(--t)">Pick Your Dates</div>
           <div style="font-size:.8rem;color:var(--ts);line-height:1.7">Choose pickup and drop times, then instantly see which cars are available. Hourly and multi-day trips both welcome.</div>
         </div>
         <div class="step fade-up">
           <div class="step-num">02</div>
-          <div style="font-size:.95rem;font-weight:800;margin-bottom:8px;color:#111">Choose &amp; Pay</div>
+          <div style="font-size:.95rem;font-weight:800;margin-bottom:8px;color:var(--t)">Choose &amp; Pay</div>
           <div style="font-size:.8rem;color:var(--ts);line-height:1.7">Pick a car, see the full GST-inclusive price breakdown, and pay securely online. Longer trips automatically get better rates.</div>
         </div>
         <div class="step fade-up">
           <div class="step-num">03</div>
-          <div style="font-size:.95rem;font-weight:800;margin-bottom:8px;color:#111">Verify &amp; Drive</div>
+          <div style="font-size:.95rem;font-weight:800;margin-bottom:8px;color:var(--t)">Verify &amp; Drive</div>
           <div style="font-size:.8rem;color:var(--ts);line-height:1.7">Upload your Aadhaar &amp; Driving Licence once. Our rep gives you the Check-In OTP at handover — then the road is yours.</div>
         </div>
       </div>
@@ -1037,15 +1037,15 @@ window.addEventListener('scroll',function(){
 </div>
 
 <!-- CAMERA OVERLAY -->
-<div id="ci-camera-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:600;flex-direction:column;align-items:center;justify-content:center">
+<div id="ci-camera-overlay" style="display:none;position:fixed;inset:0;background:rgba(58,44,0,.88);z-index:600;flex-direction:column;align-items:center;justify-content:center">
   <div style="font-size:.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:14px" id="ci-camera-label">Photographing: Front of Car</div>
-  <div style="position:relative;border-radius:16px;overflow:hidden;max-width:min(480px,90vw);width:100%;background:#000">
+  <div style="position:relative;border-radius:16px;overflow:hidden;max-width:min(480px,90vw);width:100%;background:#2a1800">
     <video id="ci-camera-video" autoplay playsinline muted style="width:100%;display:block;max-height:60vh;object-fit:cover"></video>
     <div style="position:absolute;inset:0;border:2px solid rgba(245,197,24,.5);border-radius:16px;pointer-events:none"></div>
   </div>
   <canvas id="ci-camera-canvas" style="display:none"></canvas>
   <div style="display:flex;gap:16px;margin-top:20px">
-    <button onclick="ciCapturePhoto()" style="background:var(--y);color:#111;border:none;border-radius:50px;padding:14px 32px;font-size:1rem;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif">📸 Capture</button>
+    <button onclick="ciCapturePhoto()" style="background:var(--y);color:var(--t);border:none;border-radius:50px;padding:14px 32px;font-size:1rem;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif">📸 Capture</button>
     <button onclick="ciCloseCamera()" style="background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:50px;padding:14px 24px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">✕ Cancel</button>
   </div>
   <div id="ci-camera-err" style="color:#f87171;font-size:.8rem;margin-top:14px;text-align:center;display:none"></div>
@@ -1271,7 +1271,7 @@ async function renderProfile(){
             } else if(ks === "uploaded"){
               checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#e67e22;font-weight:700">✅ Payment received — KYC documents under review. Booking confirms once admin verifies.</div>';
             } else {
-              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#a16207;font-weight:700">✅ Payment done — upload your Aadhaar &amp; DL to confirm your booking. <button class="btn btn-sm" style="margin-left:6px;font-size:.72rem;background:#ffd400;color:#111;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Complete KYC →</button></div>';
+              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#a16207;font-weight:700">✅ Payment done — upload your Aadhaar &amp; DL to confirm your booking. <button class="btn btn-sm" style="margin-left:6px;font-size:.72rem;background:#ffd400;color:var(--t);padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Complete KYC →</button></div>';
             }
           } else if(isConfirmed){
             if(ks !== "verified"){
@@ -1280,7 +1280,7 @@ async function renderProfile(){
               } else if(ks === "uploaded"){
                 checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#e67e22;font-weight:700">⏳ KYC under review. Check-in unlocks once verified.</div>';
               } else {
-                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#888;font-weight:600">Upload Aadhaar + DL to unlock check-in. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#ffd400;color:#111;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Complete KYC →</button></div>';
+                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#888;font-weight:600">Upload Aadhaar + DL to unlock check-in. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#ffd400;color:var(--t);padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Complete KYC →</button></div>';
               }
             } else if(!photosUp){
               checkinBtn = windowOpen

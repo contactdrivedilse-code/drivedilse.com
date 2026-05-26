@@ -1,9 +1,6 @@
-const router  = require("express").Router();
-const jwt     = require("jsonwebtoken");
-const bcrypt  = require("bcryptjs");
-const Car     = require("../models/Car");
-const Booking = require("../models/Booking");
-const User    = require("../models/User");
+const router = require("express").Router();
+const jwt    = require("jsonwebtoken");
+const sb     = require("../db");
 const { protectAdmin } = require("../middleware/auth");
 
 // POST /api/admin/login
@@ -22,13 +19,19 @@ router.post("/login", async (req, res) => {
 // GET /api/admin/dashboard
 router.get("/dashboard", protectAdmin, async (req, res) => {
   try {
-    const [totalCars, totalBookings, totalCustomers, bookings] = await Promise.all([
-      Car.countDocuments({ active: true }),
-      Booking.countDocuments(),
-      User.countDocuments({ phoneVerified: true }),
-      Booking.find({ "payment.status": "paid" }).select("total"),
+    const [
+      { count: totalCars },
+      { count: totalBookings },
+      { count: totalCustomers },
+      { data: paidBookings },
+    ] = await Promise.all([
+      sb.from("cars").select("*", { count: "exact", head: true }).eq("active", true),
+      sb.from("bookings").select("*", { count: "exact", head: true }),
+      sb.from("profiles").select("*", { count: "exact", head: true }).eq("phone_verified", true),
+      sb.from("bookings").select("total").eq("payment_status", "paid"),
     ]);
-    const revenue = bookings.reduce((s, b) => s + b.total, 0);
+
+    const revenue = (paidBookings || []).reduce((s, b) => s + b.total, 0);
     res.json({ totalCars, totalBookings, totalCustomers, revenue });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -38,10 +41,10 @@ router.get("/dashboard", protectAdmin, async (req, res) => {
 // GET /api/admin/bookings
 router.get("/bookings", protectAdmin, async (req, res) => {
   try {
-    const bookings = await Booking.find()
-      .populate("car", "name category")
-      .populate("user", "phone name")
-      .sort({ createdAt: -1 });
+    const { data: bookings, error } = await sb.from("bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
     res.json(bookings);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -52,13 +55,14 @@ router.get("/bookings", protectAdmin, async (req, res) => {
 router.put("/bookings/:id/status", protectAdmin, async (req, res) => {
   try {
     const { status } = req.body;
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-    if (!booking) return res.status(404).json({ error: "Booking not found" });
-    res.json(booking);
+    const { data, error } = await sb.from("bookings")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", req.params.id)
+      .select("*")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: "Booking not found" });
+    res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -67,8 +71,12 @@ router.put("/bookings/:id/status", protectAdmin, async (req, res) => {
 // GET /api/admin/customers
 router.get("/customers", protectAdmin, async (req, res) => {
   try {
-    const users = await User.find({ phoneVerified: true }).select("-otp -otpExpiry").sort({ createdAt: -1 });
-    res.json(users);
+    const { data, error } = await sb.from("profiles")
+      .select("id, phone, name, dob, email, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
+      .eq("phone_verified", true)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -77,8 +85,9 @@ router.get("/customers", protectAdmin, async (req, res) => {
 // GET /api/admin/fleet
 router.get("/fleet", protectAdmin, async (req, res) => {
   try {
-    const cars = await Car.find().sort({ name: 1 });
-    res.json(cars);
+    const { data, error } = await sb.from("cars").select("*").order("name", { ascending: true });
+    if (error) throw error;
+    res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -87,11 +96,15 @@ router.get("/fleet", protectAdmin, async (req, res) => {
 // PUT /api/admin/fleet/:id/toggle
 router.put("/fleet/:id/toggle", protectAdmin, async (req, res) => {
   try {
-    const car = await Car.findById(req.params.id);
+    const { data: car } = await sb.from("cars").select("active").eq("id", req.params.id).maybeSingle();
     if (!car) return res.status(404).json({ error: "Car not found" });
-    car.active = !car.active;
-    await car.save();
-    res.json({ id: car._id, active: car.active });
+    const { data, error } = await sb.from("cars")
+      .update({ active: !car.active })
+      .eq("id", req.params.id)
+      .select("id, active")
+      .maybeSingle();
+    if (error) throw error;
+    res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -101,11 +114,18 @@ router.put("/fleet/:id/toggle", protectAdmin, async (req, res) => {
 router.post("/fleet/:id/pause", protectAdmin, async (req, res) => {
   try {
     const { from, to, note } = req.body;
-    const car = await Car.findById(req.params.id);
+    const { data: car } = await sb.from("cars").select("id").eq("id", req.params.id).maybeSingle();
     if (!car) return res.status(404).json({ error: "Car not found" });
-    car.pauses.push({ from, to, note });
-    await car.save();
-    res.json(car);
+
+    const { data, error } = await sb.from("car_pauses").insert({
+      id:        require("crypto").randomUUID(),
+      car_id:    req.params.id,
+      from_date: new Date(from).toISOString(),
+      to_date:   new Date(to).toISOString(),
+      note:      note || "",
+    }).select("*").maybeSingle();
+    if (error) throw error;
+    res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -114,10 +134,11 @@ router.post("/fleet/:id/pause", protectAdmin, async (req, res) => {
 // DELETE /api/admin/fleet/:id/pause/:pauseId
 router.delete("/fleet/:id/pause/:pauseId", protectAdmin, async (req, res) => {
   try {
-    const car = await Car.findById(req.params.id);
-    if (!car) return res.status(404).json({ error: "Car not found" });
-    car.pauses = car.pauses.filter(p => p._id.toString() !== req.params.pauseId);
-    await car.save();
+    const { error } = await sb.from("car_pauses")
+      .delete()
+      .eq("id", req.params.pauseId)
+      .eq("car_id", req.params.id);
+    if (error) throw error;
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -128,13 +149,45 @@ router.delete("/fleet/:id/pause/:pauseId", protectAdmin, async (req, res) => {
 router.put("/customers/:id/kyc", protectAdmin, async (req, res) => {
   try {
     const { status } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { "kyc.status": status, ...(status === "verified" ? { "kyc.dlVerified": true } : {}) },
-      { new: true }
-    );
-    if (!user) return res.status(404).json({ error: "User not found" });
-    res.json(user);
+    const updates = { kyc_status: status };
+    if (status === "verified") updates.dl_verified = true;
+
+    const { data, error } = await sb.from("profiles")
+      .update(updates)
+      .eq("id", req.params.id)
+      .select("*")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: "User not found" });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/bookings/:id/checkin-otp — admin reveals checkin OTP
+router.post("/bookings/:id/checkin-otp", protectAdmin, async (req, res) => {
+  try {
+    const { data: booking } = await sb.from("bookings")
+      .select("checkin_otp, status").eq("id", req.params.id).maybeSingle();
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+    if (booking.status !== "confirmed")
+      return res.status(400).json({ error: "Booking is not in confirmed state" });
+    res.json({ otp: booking.checkin_otp });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/bookings/:id/checkout-otp — admin reveals checkout OTP
+router.post("/bookings/:id/checkout-otp", protectAdmin, async (req, res) => {
+  try {
+    const { data: booking } = await sb.from("bookings")
+      .select("checkout_otp, status").eq("id", req.params.id).maybeSingle();
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+    if (booking.status !== "active")
+      return res.status(400).json({ error: "Booking is not active" });
+    res.json({ otp: booking.checkout_otp });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

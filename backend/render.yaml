@@ -8,7 +8,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: MONGODB_URI
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: JWT_SECRET
         generateValue: true
@@ -21,12 +23,6 @@ services:
       - key: RAZORPAY_KEY_SECRET
         sync: false
       - key: FAST2SMS_API_KEY
-        sync: false
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
         sync: false
       - key: FRONTEND_URL
         value: https://contact-drivedilse.github.io

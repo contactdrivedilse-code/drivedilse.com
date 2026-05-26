@@ -1,9 +1,8 @@
 const router   = require("express").Router();
 const Razorpay = require("razorpay");
 const crypto   = require("crypto");
-const Car      = require("../models/Car");
-const Booking  = require("../models/Booking");
-const User     = require("../models/User");
+const jwt      = require("jsonwebtoken");
+const sb       = require("../db");
 const { protect } = require("../middleware/auth");
 
 const razorpay = new Razorpay({
@@ -15,7 +14,64 @@ function makeBookingId() {
   return "DS" + Date.now().toString(36).toUpperCase();
 }
 
-// POST /api/payment/guest-order — no JWT required; creates user by phone if needed
+function calcDiscount(days) {
+  if (days >= 30) return 0.30;
+  if (days >= 14) return 0.20;
+  if (days >= 7)  return 0.10;
+  return 0;
+}
+
+function mapBooking(b) {
+  return {
+    _id:        b.id,
+    id:         b.id,
+    bookingId:  b.booking_id,
+    car:        { _id: b.car_id, id: b.car_id, name: b.car_name },
+    carName:    b.car_name,
+    user:       { _id: b.user_id, id: b.user_id, phone: b.phone, name: b.customer },
+    customer:   b.customer,
+    phone:      b.phone,
+    pickup:     { date: b.pickup_date, location: b.pickup_location },
+    drop:       { date: b.drop_date,   location: b.drop_location },
+    days:       b.days,
+    pricePerDay: b.price_per_day,
+    total:      b.total,
+    deposit:    b.deposit,
+    discount:   b.discount,
+    payment: {
+      razorpayOrderId:   b.razorpay_order_id,
+      razorpayPaymentId: b.razorpay_payment_id,
+      razorpaySignature: b.razorpay_signature,
+      status:            b.payment_status,
+      paidAt:            b.paid_at,
+    },
+    checkin: {
+      photos: {
+        front:         b.checkin_front,
+        rear:          b.checkin_rear,
+        passengerSide: b.checkin_passenger_side,
+        driverSide:    b.checkin_driver_side,
+      },
+      photosUploadedAt: b.checkin_photos_at,
+      otp:              b.checkin_otp,
+      otpVerified:      b.checkin_otp_verified,
+      checkedInAt:      b.checked_in_at,
+    },
+    checkout: {
+      otp:          b.checkout_otp,
+      otpVerified:  b.checkout_otp_verified,
+      checkedOutAt: b.checked_out_at,
+    },
+    status:      b.status,
+    cancelledAt: b.cancelled_at,
+    notes:       b.notes,
+    createdAt:   b.created_at,
+    updatedAt:   b.updated_at,
+    extensions:  [],
+  };
+}
+
+// POST /api/payment/guest-order — no JWT; creates user by phone if needed
 router.post("/guest-order", async (req, res) => {
   try {
     const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation } = req.body;
@@ -23,24 +79,24 @@ router.post("/guest-order", async (req, res) => {
     if (!phone || !/^[6-9]\d{9}$/.test(phone))
       return res.status(400).json({ error: "Valid 10-digit Indian mobile number required" });
 
-    const car = await Car.findById(carId);
+    const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
     if (!car || !car.active) return res.status(404).json({ error: "Car not available" });
-    if (!car.isAvailable(pickupDate, dropDate))
-      return res.status(400).json({ error: "Car not available for selected dates" });
 
-    // Find or create user — no OTP verification needed for guest
-    let user = await User.findOneAndUpdate(
-      { phone },
-      { $setOnInsert: { phone, name: name || "" } },
-      { upsert: true, new: true }
-    );
-    if (name && !user.name) { user.name = name; await user.save(); }
+    const pickup = new Date(pickupDate);
+    const drop   = new Date(dropDate);
+    const days   = Math.max(1, Math.ceil((drop - pickup) / 86400000));
+    const disc   = calcDiscount(days);
+    const total  = Math.round(car.price_per_day * days * (1 - disc));
 
-    const pickup   = new Date(pickupDate);
-    const drop     = new Date(dropDate);
-    const days     = Math.max(1, Math.ceil((drop - pickup) / (1000 * 60 * 60 * 24)));
-    let   discount = days >= 30 ? 0.30 : days >= 14 ? 0.20 : days >= 7 ? 0.10 : 0;
-    const total    = Math.round(car.pricePerDay * days * (1 - discount));
+    // Find or create user
+    let { data: user } = await sb.from("profiles").select("id, name").eq("phone", phone).maybeSingle();
+    if (!user) {
+      const id = require("crypto").randomUUID();
+      await sb.from("profiles").insert({ id, phone, name: name || "" });
+      user = { id, name: name || "" };
+    } else if (name && !user.name) {
+      await sb.from("profiles").update({ name }).eq("id", user.id);
+    }
 
     const order = await razorpay.orders.create({
       amount:   total * 100,
@@ -49,15 +105,13 @@ router.post("/guest-order", async (req, res) => {
       notes:    { carId, phone },
     });
 
-    // Issue a short-lived JWT so /verify can auth the same user
-    const jwt   = require("jsonwebtoken");
-    const token = jwt.sign({ id: user._id, phone }, process.env.JWT_SECRET, { expiresIn: "2h" });
+    const token = jwt.sign({ id: user.id, phone }, process.env.JWT_SECRET, { expiresIn: "2h" });
 
     res.json({
       orderId: order.id, amount: total, currency: "INR",
       keyId: process.env.RAZORPAY_KEY_ID,
-      days, pricePerDay: car.pricePerDay,
-      discount: Math.round(car.pricePerDay * days * discount),
+      days, pricePerDay: car.price_per_day,
+      discount: Math.round(car.price_per_day * days * disc),
       deposit: car.deposit, carName: car.name,
       guestToken: token,
     });
@@ -71,51 +125,41 @@ router.post("/order", protect, async (req, res) => {
   try {
     const { carId, pickupDate, dropDate, pickupLocation, dropLocation } = req.body;
 
-    const car = await Car.findById(carId);
+    const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
     if (!car || !car.active) return res.status(404).json({ error: "Car not available" });
-    if (!car.isAvailable(pickupDate, dropDate))
-      return res.status(400).json({ error: "Car not available for selected dates" });
+
+    const pickupISO = new Date(pickupDate).toISOString();
+    const dropISO   = new Date(dropDate).toISOString();
+
+    const { data: conflict } = await sb.from("bookings")
+      .select("id")
+      .eq("car_id", carId)
+      .in("status", ["confirmed", "active"])
+      .lt("pickup_date", dropISO)
+      .gt("drop_date", pickupISO)
+      .maybeSingle();
+
+    if (conflict) return res.status(400).json({ error: "Car is already booked for these dates" });
 
     const pickup = new Date(pickupDate);
     const drop   = new Date(dropDate);
-
-    // Check for conflicting confirmed/active bookings
-    const conflict = await Booking.findOne({
-      car: car._id,
-      status: { $in: ["confirmed", "active"] },
-      "pickup.date": { $lt: drop },
-      "drop.date":   { $gt: pickup },
-    });
-    if (conflict) return res.status(400).json({ error: "Car is already booked for these dates" });
-    const days   = Math.max(1, Math.ceil((drop - pickup) / (1000 * 60 * 60 * 24)));
-
-    let discount = 0;
-    if (days >= 30)      discount = 0.30;
-    else if (days >= 14) discount = 0.20;
-    else if (days >= 7)  discount = 0.10;
-
-    const pricePerDay  = car.pricePerDay;
-    const baseTotal    = pricePerDay * days;
-    const discountAmt  = Math.round(baseTotal * discount);
-    const total        = baseTotal - discountAmt;
+    const days   = Math.max(1, Math.ceil((drop - pickup) / 86400000));
+    const disc   = calcDiscount(days);
+    const discAmt = Math.round(car.price_per_day * days * disc);
+    const total   = car.price_per_day * days - discAmt;
 
     const order = await razorpay.orders.create({
-      amount:   total * 100, // paise
+      amount:   total * 100,
       currency: "INR",
       receipt:  makeBookingId(),
       notes:    { carId, phone: req.user.phone },
     });
 
     res.json({
-      orderId: order.id,
-      amount:  total,
-      currency: "INR",
-      keyId:   process.env.RAZORPAY_KEY_ID,
-      days,
-      pricePerDay,
-      discount: discountAmt,
-      deposit:  car.deposit,
-      carName:  car.name,
+      orderId: order.id, amount: total, currency: "INR",
+      keyId: process.env.RAZORPAY_KEY_ID,
+      days, pricePerDay: car.price_per_day,
+      discount: discAmt, deposit: car.deposit, carName: car.name,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -125,62 +169,56 @@ router.post("/order", protect, async (req, res) => {
 // POST /api/payment/verify
 router.post("/verify", protect, async (req, res) => {
   try {
-    const {
-      razorpayOrderId, razorpayPaymentId, razorpaySignature,
-      carId, pickupDate, dropDate, pickupLocation, dropLocation,
-    } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, carId, pickupDate, dropDate, pickupLocation, dropLocation } = req.body;
 
     const expected = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
-
     if (expected !== razorpaySignature)
       return res.status(400).json({ error: "Payment verification failed" });
 
-    const car    = await Car.findById(carId);
-    const user   = await User.findById(req.user.id);
+    const [{ data: car }, { data: user }] = await Promise.all([
+      sb.from("cars").select("*").eq("id", carId).maybeSingle(),
+      sb.from("profiles").select("*").eq("id", req.user.id).maybeSingle(),
+    ]);
+
     const pickup = new Date(pickupDate);
     const drop   = new Date(dropDate);
-    const days   = Math.max(1, Math.ceil((drop - pickup) / (1000 * 60 * 60 * 24)));
+    const days   = Math.max(1, Math.ceil((drop - pickup) / 86400000));
+    const disc   = calcDiscount(days);
+    const total  = Math.round(car.price_per_day * days * (1 - disc));
 
-    let discount = 0;
-    if (days >= 30)      discount = 0.30;
-    else if (days >= 14) discount = 0.20;
-    else if (days >= 7)  discount = 0.10;
-
-    const pricePerDay = car.pricePerDay;
-    const total       = Math.round(pricePerDay * days * (1 - discount));
-
-    const booking = await Booking.create({
-      bookingId:   makeBookingId(),
-      car:         car._id,
-      carName:     car.name,
-      user:        user._id,
-      customer:    user.name || "",
-      phone:       user.phone,
-      pickup:      { date: pickup, location: pickupLocation || "Pune" },
-      drop:        { date: drop,   location: dropLocation   || "Pune" },
+    const bookingId = makeBookingId();
+    const { data: booking, error } = await sb.from("bookings").insert({
+      id:                   require("crypto").randomUUID(),
+      booking_id:           bookingId,
+      car_id:               car.id,
+      car_name:             car.name,
+      user_id:              user.id,
+      customer:             user.name || "",
+      phone:                user.phone,
+      pickup_date:          pickup.toISOString(),
+      pickup_location:      pickupLocation || "Pune",
+      drop_date:            drop.toISOString(),
+      drop_location:        dropLocation   || "Pune",
       days,
-      pricePerDay,
+      price_per_day:        car.price_per_day,
       total,
-      deposit:     car.deposit,
-      discount:    Math.round(pricePerDay * days * discount),
-      payment: {
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
-        status: "paid",
-        paidAt: new Date(),
-      },
-      status: "confirmed",
-    });
+      deposit:              car.deposit,
+      discount:             Math.round(car.price_per_day * days * disc),
+      razorpay_order_id:    razorpayOrderId,
+      razorpay_payment_id:  razorpayPaymentId,
+      razorpay_signature:   razorpaySignature,
+      payment_status:       "paid",
+      paid_at:              new Date().toISOString(),
+      status:               "confirmed",
+    }).select("*").maybeSingle();
 
-    // Issue / refresh a 30-day token so the frontend always has a long-lived session
-    const jwt   = require("jsonwebtoken");
-    const token = jwt.sign({ id: user._id, phone: user.phone }, process.env.JWT_SECRET, { expiresIn: "30d" });
+    if (error) throw error;
 
-    res.json({ success: true, bookingId: booking.bookingId, booking, token });
+    const token = jwt.sign({ id: user.id, phone: user.phone }, process.env.JWT_SECRET, { expiresIn: "30d" });
+    res.json({ success: true, bookingId, booking: mapBooking(booking), token });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

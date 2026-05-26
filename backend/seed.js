@@ -1,6 +1,8 @@
 require("dotenv").config();
-const mongoose = require("mongoose");
-const Car = require("./models/Car");
+const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
+
+const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const cars = [
   {
@@ -9,7 +11,7 @@ const cars = [
     fuel: "Petrol",
     seats: 5,
     transmission: "Manual",
-    pricePerDay: 1299,
+    price_per_day: 1299,
     deposit: 5000,
     features: ["AC", "Music System", "Power Steering", "Power Windows"],
     image: "",
@@ -20,7 +22,7 @@ const cars = [
     fuel: "Petrol",
     seats: 5,
     transmission: "Manual",
-    pricePerDay: 1199,
+    price_per_day: 1199,
     deposit: 5000,
     features: ["AC", "Music System", "Power Steering"],
     image: "",
@@ -31,7 +33,7 @@ const cars = [
     fuel: "Petrol",
     seats: 5,
     transmission: "Manual",
-    pricePerDay: 1799,
+    price_per_day: 1799,
     deposit: 7000,
     features: ["AC", "Music System", "Power Steering", "Reverse Camera"],
     image: "",
@@ -42,7 +44,7 @@ const cars = [
     fuel: "Diesel",
     seats: 4,
     transmission: "Manual",
-    pricePerDay: 3999,
+    price_per_day: 3999,
     deposit: 10000,
     features: ["4WD", "AC", "Music System", "Sunroof"],
     image: "",
@@ -53,7 +55,7 @@ const cars = [
     fuel: "Diesel",
     seats: 7,
     transmission: "Manual",
-    pricePerDay: 3499,
+    price_per_day: 3499,
     deposit: 10000,
     features: ["AC", "7 Seats", "Music System", "Power Windows"],
     image: "",
@@ -64,7 +66,7 @@ const cars = [
     fuel: "Petrol",
     seats: 5,
     transmission: "Automatic",
-    pricePerDay: 2799,
+    price_per_day: 2799,
     deposit: 8000,
     features: ["AC", "Sunroof", "Music System", "Reverse Camera", "Cruise Control"],
     image: "",
@@ -75,7 +77,7 @@ const cars = [
     fuel: "Petrol",
     seats: 7,
     transmission: "Automatic",
-    pricePerDay: 2999,
+    price_per_day: 2999,
     deposit: 8000,
     features: ["AC", "7 Seats", "Sunroof", "Music System", "ADAS"],
     image: "",
@@ -83,12 +85,13 @@ const cars = [
 ];
 
 async function seed() {
-  await mongoose.connect(process.env.MONGODB_URI);
-  console.log("Connected to MongoDB");
-  await Car.deleteMany({});
-  const inserted = await Car.insertMany(cars);
-  console.log(`Seeded ${inserted.length} cars`);
-  process.exit(0);
+  console.log("Seeding cars into Supabase...");
+  await sb.from("cars").delete().neq("id", "0"); // clear all
+
+  const rows = cars.map(c => ({ ...c, id: crypto.randomUUID(), active: true }));
+  const { error } = await sb.from("cars").insert(rows);
+  if (error) throw error;
+  console.log(`Seeded ${rows.length} cars successfully.`);
 }
 
-seed().catch(err => { console.error(err); process.exit(1); });
+seed().catch(err => { console.error(err.message); process.exit(1); });

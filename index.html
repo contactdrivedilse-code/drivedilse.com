@@ -1568,13 +1568,26 @@ async function payNow(){
     return;
   }
 
-  // Demo / offline mode — skip Razorpay entirely
-  if(authToken.startsWith("demo_")){
-    var demoId = "DS" + Date.now().toString(36).toUpperCase();
-    cacheBookingLocally({ bookingId: demoId, carId: selCar.id, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
-    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+demoId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\n⚠️ Demo booking — contact admin to confirm.";
+  // Helper: create booking directly in Supabase (no Razorpay)
+  async function bookDirect(){
+    var result = await apiFetch("/payment/direct", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ carId: selCar.id, pickupDate: priceResult.pickup, dropDate: priceResult.drop, pickupLocation:"Pune", dropLocation:"Pune" })
+    });
+    if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
+    myBookingIds.push(result.bookingId);
+    cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\n✅ Booking confirmed.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
+  }
+
+  // Demo token — exchange for real session then save booking to Supabase
+  if(authToken.startsWith("demo_")){
+    try { await bookDirect(); } catch(e){
+      alert("Could not save booking: " + e.message);
+    }
     return;
   }
 
@@ -1610,12 +1623,10 @@ async function payNow(){
     });
     rzp.open();
   } catch(e){
-    // Backend unreachable — demo/offline booking
-    var demoId = "DS" + Date.now().toString(36).toUpperCase();
-    cacheBookingLocally({ bookingId: demoId, carId: selCar.id, carName: selCar.name, pickup: { date: priceResult.pickup }, drop: { date: priceResult.drop }, total: priceResult.total, status: "confirmed" });
-    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+demoId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(priceResult.total)+"\n\n⚠️ Server offline — admin will confirm.";
-    document.getElementById("booking-form").style.display    = "none";
-    document.getElementById("success-section").style.display = "block";
+    // Razorpay unavailable — save booking directly to Supabase
+    try { await bookDirect(); } catch(e2){
+      alert("Could not save booking: " + e2.message);
+    }
   }
 }
 // ── VERIFY MODAL ──

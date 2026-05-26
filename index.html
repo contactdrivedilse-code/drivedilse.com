@@ -1208,10 +1208,14 @@ async function loadFleet(){
 
 // ── UTILS ──
 function inr(n){ return "\u20B9" + Number(n).toLocaleString("en-IN"); }
+function pad2(n){ return String(n).padStart(2,"0"); }
+function toLocalDT(d){
+  return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())+"T"+pad2(d.getHours())+":00";
+}
 function nowFmt(offsetMs){
   var d = new Date(Date.now() + (offsetMs||0));
   d.setMinutes(0,0,0);
-  return d.toISOString().slice(0,16);
+  return toLocalDT(d);
 }
 function goTo(id){
   var el = document.getElementById(id);
@@ -1447,8 +1451,7 @@ function snapHour(el){
   if(!el.value) return;
   var d = new Date(el.value);
   if(isNaN(d)) return;
-  d.setMinutes(0,0,0);
-  el.value = d.toISOString().slice(0,16);
+  el.value = toLocalDT(d);
 }
 ["h-pickup","h-drop","d-pickup","d-drop"].forEach(function(id){
   var el = document.getElementById(id);

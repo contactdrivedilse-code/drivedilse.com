@@ -34,6 +34,16 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .card{background:var(--w);border:1px solid var(--b);border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
 .inp{width:100%;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;color:var(--t);font-family:'Inter',sans-serif;font-size:.9rem;padding:12px 14px;box-sizing:border-box;outline:none;transition:border-color .2s,background .2s}
 .inp:focus{border-color:var(--yd);background:#fff}
+/* ── Custom date+hour picker ── */
+.dt-pair{background:#fff;border:1.5px solid var(--b);border-radius:14px;padding:13px 15px;transition:border-color .2s,box-shadow .2s;cursor:default}
+.dt-pair:focus-within{border-color:var(--yd);box-shadow:0 0 0 3px rgba(245,197,24,.13)}
+.dt-pair-label{font-size:.68rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ts);margin-bottom:8px}
+.dt-controls{display:flex;align-items:center;gap:8px}
+.dt-date-inp{flex:1;border:none;background:transparent;font-size:.92rem;font-weight:700;color:var(--t);outline:none;font-family:'Inter',sans-serif;min-width:0;cursor:pointer}
+.dt-date-inp::-webkit-calendar-picker-indicator{opacity:.45;cursor:pointer;width:16px;height:16px}
+.dt-divider{font-size:.8rem;color:var(--b);font-weight:700;flex-shrink:0}
+.dt-hour-sel{border:none;background:var(--wg);border-radius:8px;padding:5px 28px 5px 10px;font-size:.88rem;font-weight:700;color:var(--t);font-family:'Inter',sans-serif;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a8060' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;flex-shrink:0}
+.dt-hour-sel:focus{background-color:var(--b)}
 .inp::placeholder{color:#aaa}
 /* Light inp for modals/detail — same as .inp now */
 .inp-light{background:var(--ow);border-color:var(--b);color:var(--t)}
@@ -416,9 +426,23 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
       <div>
         <div class="hero-search">
           <div class="hero-search-title">&#128337; Check Availability</div>
-          <div id="search-sec" class="date-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
-            <div><label class="lbl">Pickup Date &amp; Time</label><input type="datetime-local" id="h-pickup" class="inp" step="3600"></div>
-            <div><label class="lbl">Drop Date &amp; Time</label><input type="datetime-local" id="h-drop" class="inp" step="3600"></div>
+          <div id="search-sec" class="date-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div class="dt-pair">
+              <div class="dt-pair-label">📍 Pickup</div>
+              <div class="dt-controls">
+                <input type="date" class="dt-date-inp" id="h-pickup-date">
+                <span class="dt-divider">@</span>
+                <select class="dt-hour-sel" id="h-pickup-hour"></select>
+              </div>
+            </div>
+            <div class="dt-pair">
+              <div class="dt-pair-label">🏁 Drop</div>
+              <div class="dt-controls">
+                <input type="date" class="dt-date-inp" id="h-drop-date">
+                <span class="dt-divider">@</span>
+                <select class="dt-hour-sel" id="h-drop-hour"></select>
+              </div>
+            </div>
           </div>
           <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem">Show Available Cars</button>
         </div>
@@ -712,8 +736,22 @@ window.addEventListener('scroll',function(){
       <div class="tag" id="booking-tag">Book This Car</div>
       <div id="booking-form">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-          <div><label class="lbl">📍 Pickup</label><input type="datetime-local" id="d-pickup" class="inp" step="3600"></div>
-          <div><label class="lbl">🏁 Drop</label><input type="datetime-local" id="d-drop" class="inp" step="3600"></div>
+          <div class="dt-pair">
+            <div class="dt-pair-label">📍 Pickup</div>
+            <div class="dt-controls">
+              <input type="date" class="dt-date-inp" id="d-pickup-date">
+              <span class="dt-divider">@</span>
+              <select class="dt-hour-sel" id="d-pickup-hour"></select>
+            </div>
+          </div>
+          <div class="dt-pair">
+            <div class="dt-pair-label">🏁 Drop</div>
+            <div class="dt-controls">
+              <input type="date" class="dt-date-inp" id="d-drop-date">
+              <span class="dt-divider">@</span>
+              <select class="dt-hour-sel" id="d-drop-hour"></select>
+            </div>
+          </div>
         </div>
         <button class="btn btn-y btn-lg" onclick="calcPrice()">Calculate Price →</button>
         <div id="price-section" style="display:none">
@@ -1442,21 +1480,37 @@ async function renderProfile(){
     }
   }
 }
-// ── INIT ──
-document.getElementById("h-pickup").value = nowFmt(0);
-document.getElementById("h-drop").value   = nowFmt(86400000);
-
-// snap datetime-local inputs to whole hours (no minutes)
-function snapHour(el){
-  if(!el.value) return;
-  var d = new Date(el.value);
-  if(isNaN(d)) return;
-  el.value = toLocalDT(d);
+// ── DATE+HOUR PICKER HELPERS ──
+var HOUR_LABELS=["12:00 AM","1:00 AM","2:00 AM","3:00 AM","4:00 AM","5:00 AM","6:00 AM","7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM"];
+function buildHourOpts(sel, selected){
+  sel.innerHTML = HOUR_LABELS.map(function(l,i){ return '<option value="'+i+'"'+(i===selected?' selected':'')+'>'+l+'</option>'; }).join('');
 }
-["h-pickup","h-drop","d-pickup","d-drop"].forEach(function(id){
-  var el = document.getElementById(id);
-  if(el) el.addEventListener("change", function(){ snapHour(this); });
-});
+function getDt(base){
+  var de=document.getElementById(base+"-date"), he=document.getElementById(base+"-hour");
+  if(!de||!he||!de.value) return "";
+  return de.value+"T"+pad2(parseInt(he.value))+":00";
+}
+function setDt(base, d){
+  if(typeof d==="string") d=new Date(d);
+  var de=document.getElementById(base+"-date"), he=document.getElementById(base+"-hour");
+  if(!de||!he) return;
+  de.value = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+  he.value = d.getHours();
+}
+// ── INIT ──
+(function(){
+  var now=new Date(); now.setMinutes(0,0,0);
+  var drop=new Date(now.getTime()+86400000);
+  ["h-pickup","h-drop","d-pickup","d-drop"].forEach(function(b){
+    var he=document.getElementById(b+"-hour"); if(he) buildHourOpts(he,0);
+  });
+  setDt("h-pickup",now); setDt("h-drop",drop);
+  setDt("d-pickup",now); setDt("d-drop",drop);
+  buildHourOpts(document.getElementById("h-pickup-hour"),now.getHours());
+  buildHourOpts(document.getElementById("h-drop-hour"),drop.getHours());
+  buildHourOpts(document.getElementById("d-pickup-hour"),now.getHours());
+  buildHourOpts(document.getElementById("d-drop-hour"),drop.getHours());
+})();
 
 // ── FLEET ──
 function isAvail(car, pickup, drop){
@@ -1522,8 +1576,8 @@ function renderFleet(pickup, drop, searched){
 loadFleet();
 
 async function doSearch(){
-  var p = document.getElementById("h-pickup").value;
-  var d = document.getElementById("h-drop").value;
+  var p = getDt("h-pickup");
+  var d = getDt("h-drop");
   if(!p || !d){ alert("Please select pickup and drop dates."); return; }
   if(new Date(d) <= new Date(p)){ alert("Drop must be after pickup."); return; }
   if((new Date(d) - new Date(p)) / 3600000 < 6){ alert("Minimum booking is 6 hours."); return; }
@@ -1586,10 +1640,12 @@ function openCar(id){
   });
 
   // Pre-fill dates from search
-  var hp = document.getElementById("h-pickup").value;
-  var hd = document.getElementById("h-drop").value;
-  document.getElementById("d-pickup").value = hp || nowFmt(0);
-  document.getElementById("d-drop").value   = hd || nowFmt(86400000);
+  var hp = getDt("h-pickup"), hd = getDt("h-drop");
+  var now=new Date(); now.setMinutes(0,0,0);
+  setDt("d-pickup", hp ? new Date(hp) : now);
+  setDt("d-drop",   hd ? new Date(hd) : new Date(now.getTime()+86400000));
+  buildHourOpts(document.getElementById("d-pickup-hour"), hp ? new Date(hp).getHours() : now.getHours());
+  buildHourOpts(document.getElementById("d-drop-hour"),   hd ? new Date(hd).getHours() : now.getHours());
 
   // Reset state
   document.getElementById("price-section").style.display  = "none";
@@ -1605,8 +1661,8 @@ function openCar(id){
 
 // ── PRICE ──
 function calcPrice(){
-  var pv = document.getElementById("d-pickup").value;
-  var dv = document.getElementById("d-drop").value;
+  var pv = getDt("d-pickup");
+  var dv = getDt("d-drop");
   if(!pv || !dv){ alert("Select pickup and drop dates."); return; }
   var p = new Date(pv), d = new Date(dv);
   if(d <= p){ alert("Drop must be after pickup."); return; }

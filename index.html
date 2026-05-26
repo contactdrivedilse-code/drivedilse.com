@@ -120,13 +120,13 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .hsc-label-main{font-size:.92rem;font-weight:700;color:#111}
 
 /* ---- TRUST TICKER ---- */
-.ticker-wrap{background:#1b2d4f;padding:13px 0;overflow:hidden;position:relative}
+.ticker-wrap{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);border-bottom:1.5px solid rgba(201,160,16,.25);padding:13px 0;overflow:hidden;position:relative}
 .ticker-wrap::before,.ticker-wrap::after{content:'';position:absolute;top:0;bottom:0;width:80px;z-index:2;pointer-events:none}
-.ticker-wrap::before{left:0;background:linear-gradient(90deg,#1b2d4f,transparent)}
-.ticker-wrap::after{right:0;background:linear-gradient(270deg,#1b2d4f,transparent)}
+.ticker-wrap::before{left:0;background:linear-gradient(90deg,#fffbe6,transparent)}
+.ticker-wrap::after{right:0;background:linear-gradient(270deg,#fffbe6,transparent)}
 .ticker{display:flex;width:max-content;animation:marquee 30s linear infinite}
 .ticker:hover{animation-play-state:paused}
-.ticker-item{display:inline-flex;align-items:center;gap:9px;padding:0 32px;font-size:.7rem;font-weight:700;color:rgba(255,255,255,.75);letter-spacing:2px;text-transform:uppercase;white-space:nowrap}
+.ticker-item{display:inline-flex;align-items:center;gap:9px;padding:0 32px;font-size:.7rem;font-weight:700;color:var(--yd);letter-spacing:2px;text-transform:uppercase;white-space:nowrap}
 .ticker-dot{color:var(--y);font-size:1rem;line-height:1}
 
 /* ---- TRUST STRIP (legacy, kept for compat) ---- */
@@ -149,27 +149,27 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .unavail-tag{position:absolute;top:12px;right:12px;background:#fee2e2;color:#b91c1c;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px}
 .car-cat{font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);background:#fffbe6;border:1px solid rgba(201,160,16,.25);padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:8px}
 
-/* ---- FEATURES (WHY DRIVEDILSE) — DARK PREMIUM ---- */
-.features-sec{padding:88px 48px;background:#1b2d4f;position:relative;overflow:hidden}
-.features-sec::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 50%,rgba(245,197,24,.09) 0%,transparent 70%);pointer-events:none}
-.features-sec .tag{color:var(--y);opacity:.9}
-.features-sec .sec-title{color:#fff}
-.features-sec > div > p{color:rgba(255,255,255,.45)}
+/* ---- FEATURES (WHY DRIVEDILSE) — WARM LIGHT ---- */
+.features-sec{padding:88px 48px;background:var(--wg);position:relative;overflow:hidden}
+.features-sec::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 50%,rgba(245,197,24,.12) 0%,transparent 70%);pointer-events:none}
+.features-sec .tag{color:var(--yd)}
+.features-sec .sec-title{color:#111}
+.features-sec > div > p{color:#888}
 .features-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:40px}
-.feat-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:30px 26px;transition:transform .3s,background .3s,border-color .3s,box-shadow .3s;position:relative;overflow:hidden}
-.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--y),transparent);opacity:0;transition:opacity .3s}
-.feat-card:hover{transform:translateY(-6px);background:rgba(245,197,24,.08);border-color:rgba(245,197,24,.3);box-shadow:0 16px 40px rgba(0,0,0,.25)}
+.feat-card{background:#fff;border:1px solid var(--b);border-radius:18px;padding:30px 26px;transition:transform .3s,background .3s,border-color .3s,box-shadow .3s;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--y),transparent);opacity:0;transition:opacity .3s}
+.feat-card:hover{transform:translateY(-6px);background:#fffef8;border-color:rgba(201,160,16,.35);box-shadow:0 16px 40px rgba(201,160,16,.15)}
 .feat-card:hover::before{opacity:1}
-.feat-icon{font-size:2.2rem;margin-bottom:18px;display:block;filter:drop-shadow(0 0 12px rgba(245,197,24,.5))}
-.feat-title{font-size:.96rem;font-weight:800;margin-bottom:8px;color:#fff}
-.feat-desc{font-size:.8rem;color:rgba(255,255,255,.45);line-height:1.75}
+.feat-icon{font-size:2.2rem;margin-bottom:18px;display:block;filter:drop-shadow(0 0 8px rgba(245,197,24,.4))}
+.feat-title{font-size:.96rem;font-weight:800;margin-bottom:8px;color:#111}
+.feat-desc{font-size:.8rem;color:#777;line-height:1.75}
 
-/* ---- DARK CTA BAND ---- */
-.cta-band{background:linear-gradient(135deg,#162540 0%,#1b2d4f 50%,#162540 100%);background-size:200% 200%;animation:gradientMove 8s ease infinite;padding:88px 48px;text-align:center;position:relative;overflow:hidden}
-.cta-band::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 50% 50%,rgba(245,197,24,.14) 0%,transparent 70%);pointer-events:none}
-.cta-band-title{font-family:'Playfair Display',Georgia,serif;font-size:3.2rem;font-weight:900;color:#fff;line-height:1.08;margin-bottom:16px;letter-spacing:-1.2px;position:relative}
-.cta-band-title em{color:var(--y);font-style:italic}
-.cta-band-sub{color:rgba(255,255,255,.45);font-size:.95rem;margin-bottom:36px;position:relative;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.7}
+/* ---- GOLD CTA BAND ---- */
+.cta-band{background:linear-gradient(135deg,#fff9d0 0%,#fffde8 40%,#fff4a8 100%);background-size:200% 200%;animation:gradientMove 10s ease infinite;padding:88px 48px;text-align:center;position:relative;overflow:hidden;border-top:1.5px solid rgba(201,160,16,.2);border-bottom:1.5px solid rgba(201,160,16,.2)}
+.cta-band::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 50% 50%,rgba(245,197,24,.25) 0%,transparent 70%);pointer-events:none}
+.cta-band-title{font-family:'Playfair Display',Georgia,serif;font-size:3.2rem;font-weight:900;color:#111;line-height:1.08;margin-bottom:16px;letter-spacing:-1.2px;position:relative}
+.cta-band-title em{color:var(--yd);font-style:italic}
+.cta-band-sub{color:#666;font-size:.95rem;margin-bottom:36px;position:relative;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.7}
 .cta-band-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative}
 
 /* ---- HOW IT WORKS ---- */
@@ -195,13 +195,13 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .faq-item.open{box-shadow:0 6px 28px rgba(0,0,0,.08);border-color:rgba(201,160,16,.35)}
 
 /* ---- FOOTER ---- */
-footer{background:#1b2d4f;border-top:1px solid rgba(245,197,24,.15);padding:40px 48px}
+footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40px 48px}
 .footer-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px}
 .footer-links{display:flex;gap:22px;flex-wrap:wrap}
-.footer-links a{font-size:.82rem;color:rgba(255,255,255,.4);cursor:pointer;font-weight:500;text-decoration:none;transition:color .2s}
-.footer-links a:hover{color:var(--y)}
-.footer-brand{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:var(--y)}
-.footer-copy{font-size:.76rem;color:rgba(255,255,255,.25);margin-top:4px}
+.footer-links a{font-size:.82rem;color:#888;cursor:pointer;font-weight:500;text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--yd)}
+.footer-brand{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:var(--yd)}
+.footer-copy{font-size:.76rem;color:#aaa;margin-top:4px}
 
 /* ---- WHATSAPP FLOAT ---- */
 .wa-float{position:fixed;bottom:28px;right:28px;width:58px;height:58px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.55rem;cursor:pointer;box-shadow:0 4px 24px rgba(37,211,102,.5);z-index:300;transition:transform .2s,box-shadow .2s;text-decoration:none}
@@ -540,7 +540,7 @@ footer{background:#1b2d4f;border-top:1px solid rgba(245,197,24,.15);padding:40px
     <p class="cta-band-sub">Pune's self-drive platform — pick up your keys, go wherever you want, return when you're done.</p>
     <div class="cta-band-btns">
       <button class="btn btn-y btn-md" onclick="goTo('fleet-sec')" style="min-width:180px;font-size:.95rem;padding:15px 32px">View Fleet</button>
-      <a class="btn btn-md" href="https://wa.me/919999999999" target="_blank" style="background:rgba(255,255,255,.06);color:#fff;border:1.5px solid rgba(255,255,255,.15);text-decoration:none;min-width:180px;font-size:.95rem;padding:15px 32px">WhatsApp Us</a>
+      <a class="btn btn-green btn-md" href="https://wa.me/919999999999" target="_blank" style="text-decoration:none;min-width:180px;font-size:.95rem;padding:15px 32px">WhatsApp Us</a>
     </div>
   </section>
 

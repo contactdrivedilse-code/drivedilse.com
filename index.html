@@ -1099,7 +1099,7 @@ function apiFetch(path, opts){
 
 async function loadFleet(){
   try {
-    var cars = await apiFetch("/api/fleet");
+    var cars = await apiFetch("/fleet");
     FLEET = cars.map(mapApiCar);
     renderFleet("","",false);
   } catch(e){
@@ -1144,8 +1144,8 @@ async function renderProfile(){
   if(authToken){
     try {
       var [apiUser, apiBookings] = await Promise.all([
-        apiFetch("/api/auth/profile"),
-        apiFetch("/api/bookings")
+        apiFetch("/auth/profile"),
+        apiFetch("/bookings")
       ]);
       p = {
         name:            apiUser.name || "",
@@ -1417,7 +1417,7 @@ async function doSearch(){
   document.getElementById("fleet-sub").textContent     = "";
   goTo("fleet-sec");
   try {
-    var cars = await apiFetch("/api/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d));
+    var cars = await apiFetch("/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d));
     FLEET = cars.map(mapApiCar);
     document.getElementById("fleet-heading").textContent = FLEET.length + " cars available for your dates";
     document.getElementById("fleet-sub").textContent = "Click a car to view details and book.";
@@ -1579,7 +1579,7 @@ async function payNow(){
   }
 
   try {
-    var order = await apiFetch("/api/payment/order", {
+    var order = await apiFetch("/payment/order", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ carId: selCar.id, pickupDate: priceResult.pickup, dropDate: priceResult.drop, pickupLocation:"Pune", dropLocation:"Pune" })
@@ -1595,7 +1595,7 @@ async function payNow(){
       theme:       { color: "#f5c518" },
       handler: async function(resp){
         try {
-          var result = await apiFetch("/api/payment/verify", {
+          var result = await apiFetch("/payment/verify", {
             method:"POST", headers:{"Content-Type":"application/json"},
             body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, carId:selCar.id, pickupDate:priceResult.pickup, dropDate:priceResult.drop })
           });
@@ -1668,7 +1668,7 @@ async function vmSendOtp(){
   var msg = document.getElementById("vm-otp-msg");
   btn.textContent = "Sending..."; btn.disabled = true;
   try {
-    await apiFetch("/api/auth/send-otp", {
+    await apiFetch("/auth/send-otp", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ phone: ph })
@@ -1688,7 +1688,7 @@ async function vmVerifyOtp(){
   var otp = document.getElementById("vm-otp").value.trim();
   if(!otp){ alert("Enter the OTP."); return; }
   try {
-    var resp = await apiFetch("/api/auth/verify-otp", {
+    var resp = await apiFetch("/auth/verify-otp", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ phone: ph, otp: otp })
@@ -1789,7 +1789,7 @@ async function vmSubmit(){
     if(aadhaarFile) fd.append("aadhaar", aadhaarFile);
     if(dlFile)      fd.append("dl",      dlFile);
 
-    var resp = await fetch(API + "/api/auth/profile", {
+    var resp = await fetch(API + "/auth/profile", {
       method: "POST",
       headers: { "Authorization": "Bearer " + authToken },
       body: fd
@@ -1812,7 +1812,7 @@ function showAdminLogin(){ openModal("admin-login-modal"); }
 async function doAdminLogin(){
   var pass = document.getElementById("adm-pass").value;
   try {
-    var resp = await fetch(API + "/api/admin/login", {
+    var resp = await fetch(API + "/admin/login", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ password: pass })
@@ -1876,7 +1876,7 @@ function bkTable(bks, showActions){
 }
 async function updateBookingStatus(id, status){
   try {
-    await fetch(API + "/api/admin/bookings/" + id + "/status", {
+    await fetch(API + "/admin/bookings/" + id + "/status", {
       method: "PUT",
       headers: {"Content-Type":"application/json","Authorization":"Bearer "+adminToken},
       body: JSON.stringify({ status: status })
@@ -1892,8 +1892,8 @@ async function renderTab(tab){
     var stats, ongoing=[], upcoming=[], completed=[];
     if(!isLocal){
       try {
-        var dash = await fetch(API+"/api/admin/dashboard",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
-        var bks  = await fetch(API+"/api/admin/bookings", {headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var dash = await fetch(API+"/admin/dashboard",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var bks  = await fetch(API+"/admin/bookings", {headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
         ongoing   = bks.filter(function(b){ return b.status==="active"; });
         upcoming  = bks.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; });
         completed = bks.filter(function(b){ return b.status==="completed"; });
@@ -1920,7 +1920,7 @@ async function renderTab(tab){
   } else if(tab === "ongoing"||tab === "upcoming"||tab === "completed"){
     if(!isLocal){
       try {
-        var bks2 = await fetch(API+"/api/admin/bookings",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var bks2 = await fetch(API+"/admin/bookings",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
         var statusFilter = {ongoing:"active",upcoming:["confirmed","pending"],completed:"completed"};
         var filtered = bks2.filter(function(b){
           var sf = statusFilter[tab];
@@ -1936,7 +1936,7 @@ async function renderTab(tab){
     var carsData = FLEET;
     if(!isLocal){
       try {
-        var apiCars = await fetch(API+"/api/admin/fleet",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var apiCars = await fetch(API+"/admin/fleet",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
         carsData = apiCars.map(mapApiCar).map(function(c,i){ c._id=apiCars[i]._id; return c; });
       } catch(e){}
     }
@@ -1962,7 +1962,7 @@ async function renderTab(tab){
   } else if(tab === "customers"){
     if(!isLocal){
       try {
-        var custs = await fetch(API+"/api/admin/customers",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
+        var custs = await fetch(API+"/admin/customers",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
         var rows = custs.map(function(u){
           return '<tr>' +
             '<td><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:var(--y);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0">'+(u.name?u.name[0]:"?")+'</div><span style="font-weight:700">'+(u.name||"—")+'</span></div></td>' +
@@ -1983,7 +1983,7 @@ async function renderTab(tab){
 }
 async function adminToggleCar(id){
   if(adminToken !== "local-admin"){
-    try { await fetch(API+"/api/admin/fleet/"+id+"/toggle",{method:"PUT",headers:{"Authorization":"Bearer "+adminToken}}); } catch(e){}
+    try { await fetch(API+"/admin/fleet/"+id+"/toggle",{method:"PUT",headers:{"Authorization":"Bearer "+adminToken}}); } catch(e){}
   } else {
     for(var i=0;i<FLEET.length;i++){ if(FLEET[i].id===id){ FLEET[i].active=!FLEET[i].active; break; } }
   }
@@ -1991,7 +1991,7 @@ async function adminToggleCar(id){
 }
 async function approveKyc(userId){
   try {
-    await fetch(API+"/api/admin/customers/"+userId+"/kyc",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+adminToken},body:JSON.stringify({status:"verified"})});
+    await fetch(API+"/admin/customers/"+userId+"/kyc",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+adminToken},body:JSON.stringify({status:"verified"})});
     renderTab("customers");
   } catch(e){ alert("Failed: "+e.message); }
 }
@@ -2250,7 +2250,7 @@ async function ciUploadPhotos() {
   fd.append("driverSide",    ciPhotos.driverSide);
 
   try {
-    var resp = await fetch(API + "/api/bookings/" + ciBookingId + "/checkin", {
+    var resp = await fetch(API + "/bookings/" + ciBookingId + "/checkin", {
       method: "POST",
       headers: { "Authorization": "Bearer " + authToken },
       body: fd
@@ -2279,7 +2279,7 @@ async function ciVerifyOtp() {
   }
   document.getElementById("ci-otp-err").style.display = "none";
   try {
-    var resp = await fetch(API + "/api/bookings/" + ciBookingId + "/checkin/verify", {
+    var resp = await fetch(API + "/bookings/" + ciBookingId + "/checkin/verify", {
       method: "POST",
       headers: { "Authorization": "Bearer " + authToken, "Content-Type": "application/json" },
       body: JSON.stringify({ otp: otp })
@@ -2329,7 +2329,7 @@ async function coVerifyOtp() {
   }
   document.getElementById("co-otp-err").style.display = "none";
   try {
-    var resp = await fetch(API + "/api/bookings/" + coBookingId + "/checkout/verify", {
+    var resp = await fetch(API + "/bookings/" + coBookingId + "/checkout/verify", {
       method: "POST",
       headers: { "Authorization": "Bearer " + authToken, "Content-Type": "application/json" },
       body: JSON.stringify({ otp: otp })
@@ -2357,7 +2357,7 @@ async function coVerifyOtp() {
 async function cancelBooking(id, displayId){
   if(!confirm("Cancel booking " + displayId + "?\n\nThis cannot be undone.")) return;
   try {
-    var r = await fetch(API + "/api/bookings/" + id + "/cancel", {
+    var r = await fetch(API + "/bookings/" + id + "/cancel", {
       method: "PUT",
       headers: { "Authorization": "Bearer " + authToken }
     });
@@ -2500,7 +2500,7 @@ async function payExtension(){
 
   try {
     if(authToken && authToken.startsWith("demo_")) throw new Error("demo");
-    var r = await fetch(API + "/api/bookings/" + id + "/extend/order", {
+    var r = await fetch(API + "/bookings/" + id + "/extend/order", {
       method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},
       body: JSON.stringify({ hours: hours })
     });
@@ -2510,7 +2510,7 @@ async function payExtension(){
       key: order.keyId, amount: order.amount*100, currency: order.currency,
       name: "DriveDilSe", description: "Booking Extension", order_id: order.orderId,
       handler: async function(resp){
-        var vr = await fetch(API + "/api/bookings/" + id + "/extend/verify", {
+        var vr = await fetch(API + "/bookings/" + id + "/extend/verify", {
           method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},
           body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, hours:hours })
         });
@@ -2576,7 +2576,7 @@ async function qlSendOtp(){
   var btn = document.getElementById("ql-btn");
   btn.textContent = "Sending..."; btn.disabled = true;
   try {
-    await apiFetch("/api/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph})});
+    await apiFetch("/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph})});
     document.getElementById("ql-otp-row").style.display = "block";
     document.getElementById("ql-msg").innerHTML = '<span style="color:#1a5fa8">OTP sent to +91 ' + ph + '</span>';
     btn.textContent = "Verify & Pay →";
@@ -2604,7 +2604,7 @@ async function qlVerifyAndPay(){
   var btn = document.getElementById("ql-btn");
   btn.textContent = "Verifying..."; btn.disabled = true;
   try {
-    var resp = await apiFetch("/api/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph,otp:otp,name:nm})});
+    var resp = await apiFetch("/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph,otp:otp,name:nm})});
     authToken = resp.token;
     localStorage.setItem("dds_token", authToken);
     userProfile.phone = ph;

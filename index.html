@@ -3090,62 +3090,56 @@ async function ciUploadPhotos() {
   var btn = document.getElementById("ci-upload-btn");
   btn.textContent = "Uploading photos…"; btn.disabled = true;
 
-  var fd = new FormData();
-  fd.append("front",         ciPhotos.front);
-  fd.append("rear",          ciPhotos.rear);
-  fd.append("passengerSide", ciPhotos.passengerSide);
-  fd.append("driverSide",    ciPhotos.driverSide);
+  var STORAGE = "https://fuesnifgaiivcapppexw.supabase.co/storage/v1/object/checkin/";
+  var sides = ["front","rear","passengerSide","driverSide"];
 
   try {
-    var _ciH = { "Authorization": "Bearer " + ANON_KEY };
+    // Upload photos directly to Supabase Storage (bypasses Edge Function timeout)
+    var urls = {};
+    for(var si = 0; si < sides.length; si++){
+      var side = sides[si];
+      btn.textContent = "Uploading " + (si+1) + "/4…";
+      var file = ciPhotos[side];
+      var path = ciBookingId + "/" + side + ".jpg";
+      var upR  = await fetch(STORAGE + path, {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + ANON_KEY, "Content-Type": file.type || "image/jpeg", "x-upsert": "true" },
+        body: file
+      });
+      if(!upR.ok){
+        var upE = await upR.json().catch(function(){ return {}; });
+        throw new Error("Photo upload failed: " + (upE.error || upR.status));
+      }
+      urls[side] = "https://fuesnifgaiivcapppexw.supabase.co/storage/v1/object/public/checkin/" + path;
+    }
+
+    // Tell backend the photo URLs + get OTP
+    btn.textContent = "Confirming…";
     var _ciUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
+    var _ciH  = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
     if(_ciUt) _ciH["x-user-token"] = _ciUt;
-    var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin" + (_ciUt ? "?_ut=" + encodeURIComponent(_ciUt) : "");
-    var _ciAbort = new AbortController();
-    var _ciTimeout = setTimeout(function(){ _ciAbort.abort(); }, 60000);
-    var resp = await fetch(_ciUrl, {
-      method: "POST",
-      headers: _ciH,
-      body: fd,
-      signal: _ciAbort.signal
-    });
-    clearTimeout(_ciTimeout);
-    var data = await resp.json();
-    if (!resp.ok) {
-      var errMsg = data.error || "Upload failed";
-      if(resp.status === 401) errMsg = "Session expired. Please log out and log in again, then retry.";
-      else if(errMsg.includes("not in confirmed")) errMsg = "Your booking is not yet confirmed. Complete KYC verification first.";
+    var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin-urls" + (_ciUt ? "?_ut=" + encodeURIComponent(_ciUt) : "");
+    var resp = await fetch(_ciUrl, { method: "POST", headers: _ciH, body: JSON.stringify(urls) });
+    var data = await resp.json().catch(function(){ return {}; });
+    if(!resp.ok){
+      var errMsg = data.error || "Check-in failed";
+      if(resp.status === 401) errMsg = "Session expired. Please log out and log in again.";
+      else if(errMsg.includes("not in confirmed")) errMsg = "Booking not confirmed. Complete KYC first.";
       else if(errMsg.includes("Check-in opens")) errMsg = errMsg;
       document.getElementById("ci-photo-err").textContent = "⚠️ " + errMsg;
       document.getElementById("ci-photo-err").style.display = "block";
       btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false;
       return;
     }
-    // Success — photos uploaded, show damage step before OTP
+
     ciDamagePhotos = [];
     document.getElementById("ci-damage-grid").innerHTML = "";
     document.getElementById("ci-photo-step").style.display  = "none";
     document.getElementById("ci-damage-step").style.display = "block";
     document.getElementById("ci-otp-hint").style.display    = "none";
   } catch(e) {
-    clearTimeout(_ciTimeout);
-    var isAborted = e.name === "AbortError";
-    if(isAborted){
-      document.getElementById("ci-photo-err").textContent = "⚠️ Upload timed out. Check your connection and try again.";
-      document.getElementById("ci-photo-err").style.display = "block";
-      if(btn){ btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false; }
-      return;
-    }
-    var netFail = e.message && (e.message.includes("fetch") || e.message.includes("Failed") || e.message.includes("NetworkError"));
-    if(netFail){
-      document.getElementById("ci-photo-step").style.display = "none";
-      document.getElementById("ci-otp-step").style.display   = "block";
-      var hint = document.getElementById("ci-otp-hint");
-      if(hint) hint.style.display = "block";
-    } else {
-      document.getElementById("ci-photo-err").textContent = "⚠️ " + (e.message || "Upload failed. Please try again.");
-      document.getElementById("ci-photo-err").style.display = "block";
-    }
+    document.getElementById("ci-photo-err").textContent = "⚠️ " + (e.message || "Upload failed. Try again.");
+    document.getElementById("ci-photo-err").style.display = "block";
     btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false;
   }
 }

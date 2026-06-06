@@ -138,7 +138,37 @@ Deno.serve(async (req) => {
       return json({ status: "pending" });
     }
 
-    // POST /:id/checkin — upload 4 photos
+    // POST /:id/checkin-urls — receive pre-uploaded photo URLs, generate OTP
+    const checkinUrlsMatch = path.match(/^\/([^/]+)\/checkin-urls$/);
+    if (req.method === "POST" && checkinUrlsMatch) {
+      const id = checkinUrlsMatch[1];
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.status !== "confirmed") return json({ error: "Booking is not in confirmed state" }, 400);
+
+      const nowMs    = Date.now();
+      const pickupMs = new Date(b.pickup_date as string).getTime();
+      if (nowMs < pickupMs - CHECKIN_WINDOW_MINS * 60000)
+        return json({ error: `Check-in opens ${CHECKIN_WINDOW_MINS} minutes before your pickup time` }, 400);
+
+      const { front, rear, passengerSide, driverSide } = await req.json() as Record<string, string>;
+      if (!front || !rear || !passengerSide || !driverSide)
+        return json({ error: "Missing photo URLs" }, 400);
+
+      const otp = generateOtp();
+      await sb.from("bookings").update({
+        checkin_front: front, checkin_rear: rear,
+        checkin_passenger_side: passengerSide, checkin_driver_side: driverSide,
+        checkin_photos_at: new Date().toISOString(),
+        checkin_otp: otp, checkin_otp_verified: false,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
+
+      return json({ success: true, message: "Photos saved. Get your check-in OTP from the DriveDilSe representative." });
+    }
+
+    // POST /:id/checkin — upload 4 photos (legacy, kept for compatibility)
     const checkinMatch = path.match(/^\/([^/]+)\/checkin$/);
     if (req.method === "POST" && checkinMatch) {
       const id = checkinMatch[1];

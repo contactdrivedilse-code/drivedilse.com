@@ -3103,7 +3103,7 @@ async function ciUploadPhotos() {
       var path = ciBookingId + "/" + side + ".jpg";
       var upR  = await fetch(STORAGE + path, {
         method: "POST",
-        headers: { "Authorization": "Bearer " + ANON_KEY, "Content-Type": file.type || "image/jpeg", "x-upsert": "true" },
+        headers: { "Authorization": "Bearer " + ANON_KEY, "apikey": ANON_KEY, "Content-Type": file.type || "image/jpeg", "x-upsert": "true" },
         body: file
       });
       if(!upR.ok){

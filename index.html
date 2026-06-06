@@ -556,7 +556,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
           <div style="margin-top:12px;background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
             <div>
               <div style="font-weight:700;font-size:.82rem;color:var(--t)">🚗 Doorstep Delivery</div>
-              <div style="font-size:.7rem;color:var(--ts);margin-top:2px">Car delivered to your door · ₹700×2 up to 7 km</div>
+              <div style="font-size:.7rem;color:var(--ts);margin-top:2px">Car delivered to your door · ₹700/leg up to 7 km · ₹20/km beyond</div>
             </div>
             <label style="position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;cursor:pointer">
               <input type="checkbox" id="hero-delivery-toggle" onchange="onHeroDeliveryToggle()" style="opacity:0;width:0;height:0">
@@ -928,7 +928,7 @@ window.addEventListener('scroll',function(){
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                 <div>
                   <div style="font-weight:700;font-size:.9rem">🚗 Doorstep Delivery</div>
-                  <div style="font-size:.72rem;color:var(--ts);margin-top:2px">Round trip (delivery + pickup) · ₹700×2 up to 7 km · ₹20/km beyond</div>
+                  <div style="font-size:.72rem;color:var(--ts);margin-top:2px">₹700/leg up to 7 km · ₹20/km beyond · charged per leg</div>
                 </div>
                 <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
                   <input type="checkbox" id="delivery-toggle" onchange="onDeliveryToggle()" style="opacity:0;width:0;height:0">
@@ -3532,17 +3532,14 @@ function haversineKm(lat1,lon1,lat2,lon2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-function calcDeliveryFee(km){
-  // ≤7km: ₹700 flat (covers round trip within base zone)
-  if(km <= 7) return 700;
-  // >7km: ₹700 base (covers first 7km outward) + both legs beyond base @ ₹20/km
-  // Total extra km = (km-7) outward extra + km full return = 2km-7
-  return 700 + Math.ceil(2*km - 7)*20;
-}
 function calcOneWayFee(km){
-  // Used for different pickup/drop locations — each leg priced separately
+  // ₹700 up to 7 km, ₹20/km beyond
   if(km <= 7) return 700;
-  return 700 + Math.ceil(km-7)*20;
+  return 700 + Math.ceil(km - 7) * 20;
+}
+function calcDeliveryFee(km){
+  // Same location = round trip = pickup leg + drop leg
+  return 2 * calcOneWayFee(km);
 }
 
 var deliveryMap = null, deliveryMarker = null;
@@ -3642,12 +3639,9 @@ function calcAndShowDeliveryTotal(){
   if(same || dropDist===0){
     // Round trip same location
     fee = calcDeliveryFee(pickupDist);
+    var legFee = calcOneWayFee(pickupDist);
     breakdown = pickupDist>0
-      ? 'Distance: ~'+pickupDist.toFixed(1)+' km &nbsp;·&nbsp; ' +
-        (pickupDist<=7
-          ? '≤7 km flat rate'
-          : '₹700 + (2×'+pickupDist.toFixed(1)+'−7)km×₹20'
-        )
+      ? 'Each leg: ~'+pickupDist.toFixed(1)+' km = ₹'+legFee.toLocaleString("en-IN")+' &nbsp;×2 (delivery + pickup) = ₹'+fee.toLocaleString("en-IN")
       : '';
   } else {
     // Different pickup/drop — two separate legs

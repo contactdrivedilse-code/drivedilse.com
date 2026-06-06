@@ -346,6 +346,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 <script>
 var API         = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
 var ANON_KEY    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
+// Clear stale demo tokens so users are forced to log in with the real backend
+if(localStorage.getItem("dds_admin_token") === "local"){ localStorage.removeItem("dds_admin_token"); localStorage.removeItem("dds_role"); }
 var adminToken  = localStorage.getItem("dds_admin_token") || "";
 var currentRole = localStorage.getItem("dds_role") || "admin"; // "admin" | "fleet"
 var selectedLoginRole = new URLSearchParams(location.search).get("role") || "admin";

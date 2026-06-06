@@ -3538,8 +3538,8 @@ function calcOneWayFee(km){
   return 700 + Math.ceil(km - 7) * 20;
 }
 function calcDeliveryFee(km){
-  // Same location = round trip = pickup leg + drop leg
-  return 2 * calcOneWayFee(km);
+  // Same location (round trip): ₹700 base up to 7 km, ₹20/km beyond
+  return calcOneWayFee(km);
 }
 
 var deliveryMap = null, deliveryMarker = null;
@@ -3639,9 +3639,8 @@ function calcAndShowDeliveryTotal(){
   if(same || dropDist===0){
     // Round trip same location
     fee = calcDeliveryFee(pickupDist);
-    var legFee = calcOneWayFee(pickupDist);
     breakdown = pickupDist>0
-      ? 'Each leg: ~'+pickupDist.toFixed(1)+' km = ₹'+legFee.toLocaleString("en-IN")+' &nbsp;×2 (delivery + pickup) = ₹'+fee.toLocaleString("en-IN")
+      ? '~'+pickupDist.toFixed(1)+' km &nbsp;·&nbsp; Round trip: ₹'+fee.toLocaleString("en-IN")
       : '';
   } else {
     // Different pickup/drop — two separate legs

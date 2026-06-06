@@ -1710,7 +1710,7 @@ async function renderProfile(){
           var checkinBtn3 = isActive3
             ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckout(\''+(b._id||b.bookingId)+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\')">End Booking →</button>'
             : isConf3
-            ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckin(\''+(b._id||b.bookingId)+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',\''+(pickupDate||"")+'\')">Start Check-In →</button>'
+            ? '<div style="margin-top:6px;font-size:.74rem;color:#888">⚠️ Connect to internet to start check-in.</div>'
             : '';
           var cancelBtn3 = isConf3
             ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
@@ -1817,7 +1817,7 @@ async function renderProfile(){
         var checkinBtn2 = isActive2
           ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckout(\''+(b._id||b.bookingId)+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\')">End Booking →</button>'
           : isConf2
-          ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckin(\''+(b._id||b.bookingId)+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',\''+(pickupDate||"")+'\')">Start Check-In →</button>'
+          ? '<div style="margin-top:6px;font-size:.74rem;color:#888">⚠️ Connect to internet to start check-in.</div>'
           : '';
         var cancelBtn2 = isConf2
           ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
@@ -3026,6 +3026,16 @@ function proceedToCarPhotos(){
 }
 
 function openCheckin(bookingId, carName, pickupStr) {
+  // Block check-in if KYC not verified
+  var ks = userProfile && userProfile.kycStatus;
+  if(ks !== "verified"){
+    var msg = ks === "uploaded"
+      ? "Your KYC documents are under review. Check-in unlocks once verified by our team."
+      : "Please complete KYC verification (Aadhaar + Driving Licence) before check-in.";
+    alert(msg);
+    if(ks !== "uploaded") showPage("pg-verify");
+    return;
+  }
   ciBookingId = bookingId;
   ciPhotos    = { front: null, rear: null, passengerSide: null, driverSide: null };
   selfieDataUrl = null;

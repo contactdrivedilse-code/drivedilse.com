@@ -3090,39 +3090,39 @@ async function ciUploadPhotos() {
   var btn = document.getElementById("ci-upload-btn");
   btn.textContent = "Uploading photos…"; btn.disabled = true;
 
-  var STORAGE = "https://fuesnifgaiivcapppexw.supabase.co/storage/v1/object/checkin/";
   var sides = ["front","rear","passengerSide","driverSide"];
 
+  // Convert file to base64
+  function fileToB64(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result.split(",")[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   try {
-    // Upload photos directly to Supabase Storage (bypasses Edge Function timeout)
-    var urls = {};
+    // Convert photos to base64 and send as JSON to edge function
+    btn.textContent = "Preparing photos…";
+    var photos = {};
     for(var si = 0; si < sides.length; si++){
-      var side = sides[si];
-      btn.textContent = "Uploading " + (si+1) + "/4…";
-      var file = ciPhotos[side];
-      var path = ciBookingId + "/" + side + ".jpg";
-      var upR  = await fetch(STORAGE + path, {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + ANON_KEY, "apikey": ANON_KEY, "Content-Type": file.type || "image/jpeg", "x-upsert": "true" },
-        body: file
-      });
-      if(!upR.ok){
-        var upE = await upR.json().catch(function(){ return {}; });
-        throw new Error("Photo upload failed: " + (upE.error || upR.status));
-      }
-      urls[side] = "https://fuesnifgaiivcapppexw.supabase.co/storage/v1/object/public/checkin/" + path;
+      btn.textContent = "Preparing " + (si+1) + "/4…";
+      photos[sides[si]] = await fileToB64(ciPhotos[sides[si]]);
     }
 
-    // Tell backend the photo URLs + get OTP
-    btn.textContent = "Confirming…";
+    btn.textContent = "Uploading…";
     var _ciUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     var _ciH  = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
     if(_ciUt) _ciH["x-user-token"] = _ciUt;
-    var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin-urls" + (_ciUt ? "?_ut=" + encodeURIComponent(_ciUt) : "");
-    var resp = await fetch(_ciUrl, { method: "POST", headers: _ciH, body: JSON.stringify(urls) });
+    var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin-b64" + (_ciUt ? "?_ut=" + encodeURIComponent(_ciUt) : "");
+    var _ciAbort = new AbortController();
+    var _ciTimer = setTimeout(function(){ _ciAbort.abort(); }, 90000);
+    var resp = await fetch(_ciUrl, { method:"POST", headers:_ciH, body:JSON.stringify(photos), signal:_ciAbort.signal });
+    clearTimeout(_ciTimer);
     var data = await resp.json().catch(function(){ return {}; });
     if(!resp.ok){
-      var errMsg = data.error || "Check-in failed";
+      var errMsg = data.error || "Upload failed";
       if(resp.status === 401) errMsg = "Session expired. Please log out and log in again.";
       else if(errMsg.includes("not in confirmed")) errMsg = "Booking not confirmed. Complete KYC first.";
       else if(errMsg.includes("Check-in opens")) errMsg = errMsg;
@@ -3138,7 +3138,8 @@ async function ciUploadPhotos() {
     document.getElementById("ci-damage-step").style.display = "block";
     document.getElementById("ci-otp-hint").style.display    = "none";
   } catch(e) {
-    document.getElementById("ci-photo-err").textContent = "⚠️ " + (e.message || "Upload failed. Try again.");
+    var errTxt = e.name === "AbortError" ? "Upload timed out. Check your connection and try again." : (e.message || "Upload failed. Try again.");
+    document.getElementById("ci-photo-err").textContent = "⚠️ " + errTxt;
     document.getElementById("ci-photo-err").style.display = "block";
     btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false;
   }

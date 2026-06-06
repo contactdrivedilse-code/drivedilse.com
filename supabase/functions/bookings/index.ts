@@ -138,6 +138,46 @@ Deno.serve(async (req) => {
       return json({ status: "pending" });
     }
 
+    // POST /:id/checkin-b64 — receive base64 photos, upload to storage, generate OTP
+    const checkinB64Match = path.match(/^\/([^/]+)\/checkin-b64$/);
+    if (req.method === "POST" && checkinB64Match) {
+      const id = checkinB64Match[1];
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.status !== "confirmed") return json({ error: "Booking is not in confirmed state" }, 400);
+
+      const nowMs    = Date.now();
+      const pickupMs = new Date(b.pickup_date as string).getTime();
+      if (nowMs < pickupMs - CHECKIN_WINDOW_MINS * 60000)
+        return json({ error: `Check-in opens ${CHECKIN_WINDOW_MINS} minutes before your pickup time` }, 400);
+
+      const body = await req.json() as Record<string, string>;
+      const sides = ["front","rear","passengerSide","driverSide"];
+      const missing = sides.filter(s => !body[s]);
+      if (missing.length) return json({ error: `Missing photos: ${missing.join(", ")}` }, 400);
+
+      const urls: Record<string, string> = {};
+      await Promise.all(sides.map(async (s) => {
+        const buf  = Uint8Array.from(atob(body[s]), c => c.charCodeAt(0));
+        const path = `${id}/${s}.jpg`;
+        const { error } = await sb.storage.from("checkin").upload(path, buf, { contentType: "image/jpeg", upsert: true });
+        if (error) throw error;
+        urls[s] = sb.storage.from("checkin").getPublicUrl(path).data.publicUrl;
+      }));
+
+      const otp = generateOtp();
+      await sb.from("bookings").update({
+        checkin_front: urls.front, checkin_rear: urls.rear,
+        checkin_passenger_side: urls.passengerSide, checkin_driver_side: urls.driverSide,
+        checkin_photos_at: new Date().toISOString(),
+        checkin_otp: otp, checkin_otp_verified: false,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
+
+      return json({ success: true, message: "Photos uploaded. Get your check-in OTP from the DriveDilSe representative." });
+    }
+
     // POST /:id/checkin-urls — receive pre-uploaded photo URLs, generate OTP
     const checkinUrlsMatch = path.match(/^\/([^/]+)\/checkin-urls$/);
     if (req.method === "POST" && checkinUrlsMatch) {

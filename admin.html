@@ -1132,7 +1132,7 @@ async function renderRevenue(isLocal, c){
     } catch(e){ isLocal = true; }
   }
   if(isLocal){ _revBookings = DEMO_BOOKINGS.slice(); }
-  _revRender(c);
+  try { _revRender(c); } catch(e){ c.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-msg">Error: '+esc(e.message)+'</div></div>'; }
 }
 
 async function renderFleet(isLocal, c){

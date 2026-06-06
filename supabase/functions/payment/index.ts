@@ -70,7 +70,7 @@ function mapBooking(b: Record<string, unknown>) {
     pickup: { date: b.pickup_date, location: b.pickup_location },
     drop:   { date: b.drop_date,   location: b.drop_location },
     days: b.days, pricePerDay: b.price_per_day, total: b.total,
-    deposit: b.deposit, discount: b.discount,
+    deposit: b.deposit, discount: b.discount, deliveryFee: b.delivery_fee ?? 0,
     payment: { status: b.payment_status, paidAt: b.paid_at },
     checkin: { photos: {}, otp: b.checkin_otp, otpVerified: b.checkin_otp_verified },
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified },
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
   try {
     // POST /guest-order
     if (req.method === "POST" && path === "/guest-order") {
-      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation } = await req.json();
+      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gdc } = await req.json();
       if (!phone || !/^[6-9]\d{9}$/.test(phone))
         return json({ error: "Valid 10-digit Indian mobile number required" }, 400);
 
@@ -96,7 +96,9 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const deliveryFee = typeof gdc === "number" && gdc > 0 ? gdc : 0;
+      const total = baseTotal + deliveryFee;
 
       let { data: user } = await sb.from("profiles").select("id, name").eq("phone", phone).maybeSingle();
       const u = user as Record<string, unknown> | null;
@@ -116,7 +118,7 @@ Deno.serve(async (req) => {
         orderId: order.id, amount: total, currency: "INR",
         keyId: Deno.env.get("RAZORPAY_KEY_ID"),
         days, pricePerDay: c.price_per_day, discount,
-        deposit: 0, carName: c.name, guestToken: token,
+        deposit: 0, carName: c.name, guestToken: token, deliveryFee,
       });
     }
 
@@ -125,7 +127,7 @@ Deno.serve(async (req) => {
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
-      const { carId, pickupDate, dropDate, pickupLocation, dropLocation } = await req.json();
+      const { carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: odc } = await req.json();
       const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
       const c = car as Record<string, unknown> | null;
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
@@ -136,13 +138,15 @@ Deno.serve(async (req) => {
       if (conflict) return json({ error: "Car is already booked for these dates or in preparation (4-hour buffer after last trip)" }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const deliveryFee = typeof odc === "number" && odc > 0 ? odc : 0;
+      const total = baseTotal + deliveryFee;
 
       const order = await razorpayCreate({ amount: total * 100, currency: "INR", receipt: makeBookingId(), notes: { carId, phone: user.phone } });
       return json({
         orderId: order.id, amount: total, currency: "INR",
         keyId: Deno.env.get("RAZORPAY_KEY_ID"),
-        days, pricePerDay: c.price_per_day, discount, deposit: 0, carName: c.name,
+        days, pricePerDay: c.price_per_day, discount, deposit: 0, carName: c.name, deliveryFee,
       });
     }
 
@@ -151,7 +155,7 @@ Deno.serve(async (req) => {
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
-      const { razorpayOrderId, razorpayPaymentId, razorpaySignature, carId, pickupDate, dropDate, pickupLocation, dropLocation } = await req.json();
+      const { razorpayOrderId, razorpayPaymentId, razorpaySignature, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: vdc } = await req.json();
 
       if (!await verifyRazorpay(razorpayOrderId, razorpayPaymentId, razorpaySignature))
         return json({ error: "Payment verification failed" }, 400);
@@ -163,7 +167,9 @@ Deno.serve(async (req) => {
       const c = car as Record<string, unknown>, p = profile as Record<string, unknown>;
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
+      const total = baseTotal + deliveryFee;
       const bookingId = makeBookingId();
 
       const { data: booking, error } = await sb.from("bookings").insert({
@@ -173,7 +179,7 @@ Deno.serve(async (req) => {
         pickup_date: pickup.toISOString(), pickup_location: pickupLocation ?? "Pune",
         drop_date: drop.toISOString(), drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
-        deposit: 0, discount,
+        deposit: 0, discount, delivery_fee: deliveryFee,
         razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
         razorpay_signature: razorpaySignature, payment_status: "paid",
         paid_at: new Date().toISOString(),
@@ -218,9 +224,8 @@ Deno.serve(async (req) => {
         pickup_date: pISO, pickup_location: pickupLocation ?? "Katraj Hub, Pune",
         drop_date: dISO, drop_location: dropLocation ?? "Katraj Hub, Pune",
         days, price_per_day: c.price_per_day, total,
-        deposit: deliveryFee, discount,
+        deposit: 0, discount, delivery_fee: deliveryFee,
         payment_status: "demo",
-        notes: deliveryFee > 0 ? `delivery:${deliveryFee}:${pickupLocation}` : "",
         // Auto-confirm if KYC already verified
         status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
       }).select("*").maybeSingle();
@@ -232,7 +237,7 @@ Deno.serve(async (req) => {
 
     // POST /guest-direct — create booking for demo/offline users (no JWT, just phone)
     if (req.method === "POST" && path === "/guest-direct") {
-      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation } = await req.json();
+      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gddc } = await req.json();
       if (!phone) return json({ error: "Phone required" }, 400);
 
       const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
@@ -256,7 +261,9 @@ Deno.serve(async (req) => {
       const p = prof as Record<string, unknown>;
 
       const pickup = new Date(pISO2), drop = new Date(dISO2);
-      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const deliveryFee2 = typeof gddc === "number" && gddc > 0 ? gddc : 0;
+      const total = baseTotal2 + deliveryFee2;
       const bookingId = makeBookingId();
 
       const { data: booking, error } = await sb.from("bookings").insert({
@@ -266,7 +273,7 @@ Deno.serve(async (req) => {
         pickup_date: pISO2, pickup_location: pickupLocation ?? "Pune",
         drop_date: dISO2, drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
-        deposit: 0, discount,
+        deposit: 0, discount, delivery_fee: deliveryFee2,
         payment_status: "demo",
         status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
       }).select("*").maybeSingle();

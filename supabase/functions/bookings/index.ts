@@ -10,6 +10,31 @@ const sb = createClient(
 const CHECKIN_WINDOW_MINS = 30;
 function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
 
+function calcMultiplier(hours: number): number {
+  const days = hours / 24;
+  if (hours <= 8)  return 1.30;
+  if (hours <= 12) return 1.15;
+  if (days <= 1)   return 1.00;
+  if (days <= 3)   return 0.95;
+  if (days <= 5)   return 0.92;
+  if (days <= 7)   return 0.90;
+  if (days <= 14)  return 0.85;
+  if (days <= 21)  return 0.80;
+  return 0.75;
+}
+
+function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
+  const hours    = (drop.getTime() - pickup.getTime()) / 3600000;
+  const mult     = calcMultiplier(hours);
+  const base     = Math.round(pricePerDay * mult * hours / 24);
+  const gst      = Math.round(base * 0.18);
+  const total    = base + gst;
+  const full     = Math.round(pricePerDay * hours / 24);
+  const discount = Math.max(0, full - base);
+  const days     = Math.max(1, Math.ceil(hours / 24));
+  return { base, gst, total, discount, days };
+}
+
 async function getUser(req: Request) {
   const token = getBearer(req);
   if (!token) return null;
@@ -41,7 +66,7 @@ function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] 
     pickup: { date: b.pickup_date, location: b.pickup_location },
     drop:   { date: b.drop_date,   location: b.drop_location },
     days: b.days, pricePerDay: b.price_per_day, total: b.total,
-    deposit: b.deposit, discount: b.discount,
+    deposit: b.deposit, discount: b.discount, deliveryFee: b.delivery_fee ?? 0,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
       photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },

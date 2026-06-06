@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
-import { signJwt, verifyJwt, getBearer } from "../_shared/jwt.ts";
+import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -35,7 +35,7 @@ function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
 }
 
 async function getUser(req: Request) {
-  const token = getBearer(req);
+  const token = getUserToken(req);
   if (!token) return null;
   try {
     return await verifyJwt(token, Deno.env.get("JWT_SECRET")!) as { id: string; phone: string };

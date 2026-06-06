@@ -35,3 +35,8 @@ export function getBearer(req: Request): string | null {
   const auth = req.headers.get("authorization") ?? "";
   return auth.startsWith("Bearer ") ? auth.slice(7) : null;
 }
+
+// Returns user JWT from x-user-token (preferred) or Authorization Bearer
+export function getUserToken(req: Request): string | null {
+  return req.headers.get("x-user-token") || getBearer(req);
+}

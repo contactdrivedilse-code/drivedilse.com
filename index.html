@@ -1473,6 +1473,7 @@ window.addEventListener('scroll',function(){
 // ← REPLACE WHATSAPP number above before going live
 // ── API CONFIG ──
 var API = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
+var ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
 var WHATSAPP = "919999999999"; // ← your WhatsApp number
 
 // HTML-escape any string before putting it in innerHTML — prevents XSS
@@ -1518,7 +1519,9 @@ function mapApiCar(c){
 function apiFetch(path, opts){
   opts = opts || {};
   opts.headers = opts.headers || {};
-  if(authToken) opts.headers["Authorization"] = "Bearer " + authToken;
+  // Always send anon key for Supabase gateway; user JWT goes in x-user-token
+  opts.headers["Authorization"] = "Bearer " + ANON_KEY;
+  if(authToken && !authToken.startsWith("demo_")) opts.headers["x-user-token"] = authToken;
   return fetch(API + path, opts).then(function(r){
     if(!r.ok) return r.json().then(function(e){ throw new Error(e.error||"Request failed"); });
     return r.json();

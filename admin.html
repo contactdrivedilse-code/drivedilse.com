@@ -345,6 +345,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 
 <script>
 var API         = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
+var ANON_KEY    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
 var adminToken  = localStorage.getItem("dds_admin_token") || "";
 var currentRole = localStorage.getItem("dds_role") || "admin"; // "admin" | "fleet"
 var selectedLoginRole = new URLSearchParams(location.search).get("role") || "admin";
@@ -461,7 +462,7 @@ async function doLogin(){
   try {
     var r = await fetch(API + "/admin/login", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: {"Content-Type":"application/json", "Authorization":"Bearer " + ANON_KEY},
       body: JSON.stringify({ password: pass, role: selectedLoginRole })
     });
     var d = await r.json();

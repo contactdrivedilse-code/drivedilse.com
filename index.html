@@ -2217,7 +2217,7 @@ function openVerifyModal(){
   document.getElementById("dl-bar").style.display     = "none";
   vmOtpVerified = false; aadhaarSet = false; dlVerified = false;
 
-  if(userVerified === true){
+  if(userProfile && userProfile.kycStatus === "verified"){
     document.getElementById("vm-already-verified").style.display = "block";
     document.getElementById("vm-form-wrap").style.display        = "none";
   }

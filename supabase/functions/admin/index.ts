@@ -41,12 +41,13 @@ function mapBooking(b: Record<string, unknown>) {
   };
 }
 
-async function getAdmin(req: Request) {
+async function getAdmin(req: Request, requireAdmin = false) {
   const token = getBearer(req);
   if (!token) return null;
   try {
     const p = await verifyJwt(token, Deno.env.get("ADMIN_JWT_SECRET")!) as { role?: string };
-    return p.role === "admin" ? p : null;
+    if (requireAdmin && p.role !== "admin") return null;
+    return (p.role === "admin" || p.role === "fleet") ? p : null;
   } catch { return null; }
 }
 
@@ -59,27 +60,65 @@ Deno.serve(async (req) => {
   try {
     // POST /login
     if (req.method === "POST" && path === "/login") {
-      const { password } = await req.json();
+      const { password, role } = await req.json();
+      if (role === "fleet") {
+        if (password !== Deno.env.get("FLEET_PASSWORD"))
+          return json({ error: "Invalid password" }, 401);
+        const token = await signJwt({ role: "fleet" }, Deno.env.get("ADMIN_JWT_SECRET")!, 12 * 60 * 60);
+        return json({ token, role: "fleet" });
+      }
       if (password !== Deno.env.get("ADMIN_PASSWORD"))
         return json({ error: "Invalid password" }, 401);
       const token = await signJwt({ role: "admin" }, Deno.env.get("ADMIN_JWT_SECRET")!, 24 * 60 * 60);
-      return json({ token });
+      return json({ token, role: "admin" });
     }
 
-    // All routes below require admin auth
+    // All routes below require admin or fleet auth
     const admin = await getAdmin(req);
     if (!admin) return json({ error: "Admin access required" }, 401);
+    const isAdmin = (admin as Record<string, unknown>).role === "admin";
+
+    // DELETE /clear-phone/:phone — temp endpoint to clear test data (admin only)
+    const clearPhoneMatch = path.match(/^\/clear-phone\/([^/]+)$/);
+    if (req.method === "DELETE" && clearPhoneMatch && isAdmin) {
+      const phone = clearPhoneMatch[1];
+      const { data: prof } = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
+      if (prof) {
+        await sb.from("bookings").delete().eq("phone", phone);
+        await sb.from("profiles").delete().eq("phone", phone);
+      }
+      return json({ success: true, message: `Cleared data for ${phone}` });
+    }
+
+    // PUT /selfie/:bookingId — approve or reject selfie (fleet/admin)
+    const selfieMatch = path.match(/^\/selfie\/([^/]+)$/);
+    if (req.method === "PUT" && selfieMatch) {
+      const bookingId = selfieMatch[1];
+      const { status, reason } = await req.json();
+      const noteVal = status === "approved" ? "selfie:approved" : `selfie:rejected:${reason || "Identity could not be verified"}`;
+      await sb.from("bookings").update({ notes: noteVal, updated_at: new Date().toISOString() }).eq("id", bookingId);
+      return json({ success: true, status });
+    }
 
     // GET /dashboard
     if (req.method === "GET" && path === "/dashboard") {
-      const [{ count: totalCars }, { count: totalBookings }, { count: totalCustomers }, { data: paid }] = await Promise.all([
+      const queries: Promise<unknown>[] = [
         sb.from("cars").select("*", { count: "exact", head: true }).eq("active", true),
         sb.from("bookings").select("*", { count: "exact", head: true }),
         sb.from("profiles").select("*", { count: "exact", head: true }).eq("phone_verified", true),
-        sb.from("bookings").select("total").eq("payment_status", "paid"),
-      ]);
-      const revenue = (paid ?? []).reduce((s: number, b: Record<string, unknown>) => s + (b.total as number), 0);
-      return json({ totalCars, totalBookings, totalCustomers, revenue });
+      ];
+      if (isAdmin) queries.push(sb.from("bookings").select("total").eq("payment_status", "paid"));
+      const results = await Promise.all(queries) as Record<string, unknown>[];
+      const [carsRes, bookingsRes, customersRes] = results;
+      const revenue = isAdmin
+        ? ((results[3] as { data: Record<string, unknown>[] }).data ?? []).reduce((s: number, b: Record<string, unknown>) => s + (b.total as number), 0)
+        : null;
+      return json({
+        totalCars: (carsRes as { count: number }).count,
+        totalBookings: (bookingsRes as { count: number }).count,
+        totalCustomers: (customersRes as { count: number }).count,
+        ...(isAdmin ? { revenue } : {}),
+      });
     }
 
     // GET /bookings
@@ -150,11 +189,17 @@ Deno.serve(async (req) => {
       const { data, error } = await sb.from("profiles").update(updates).eq("id", kycMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "User not found" }, 404);
+      const p2 = data as Record<string, unknown>;
       // When KYC is verified, confirm all pending_kyc bookings for this user
+      // Match by BOTH user_id AND phone to handle profile recreations
       if (status === "verified") {
         await sb.from("bookings")
           .update({ status: "confirmed", updated_at: new Date().toISOString() })
           .eq("user_id", kycMatch[1]).eq("status", "pending_kyc");
+        // Also match by phone in case user_id changed after profile recreation
+        await sb.from("bookings")
+          .update({ status: "confirmed", updated_at: new Date().toISOString() })
+          .eq("phone", p2.phone as string).eq("status", "pending_kyc");
       }
       const p = data as Record<string, unknown>;
       return json({

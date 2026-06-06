@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -60,7 +60,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 
 /* ── STAT CARDS ── */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
-.stat-card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:20px;text-align:center;box-shadow:0 2px 10px rgba(200,160,0,.06)}
+.stat-card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:20px;text-align:center;box-shadow:0 2px 10px rgba(200,160,0,.06);user-select:none}
 .stat-icon{font-size:1.5rem;margin-bottom:8px}
 .stat-num{font-family:Georgia,serif;font-size:1.5rem;font-weight:900;color:var(--yd);margin-bottom:4px}
 .stat-lbl{font-size:.7rem;color:var(--ts);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
@@ -100,6 +100,38 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .search-inp:focus{border-color:var(--yd)}
 .filter-btn{padding:8px 14px;font-size:.78rem;border-radius:10px;border:1.5px solid var(--b);background:var(--w);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;color:#555;transition:all .12s}
 .filter-btn:hover,.filter-btn.on{background:var(--y);border-color:var(--yd);color:var(--t)}
+
+/* ── DATE RANGE PICKER ── */
+.drp-wrap{position:relative;display:inline-block}
+.drp-btn{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:.82rem;border-radius:10px;border:1.5px solid var(--b);background:var(--w);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;color:#555;transition:all .15s;white-space:nowrap}
+.drp-btn:hover,.drp-btn.active{border-color:var(--yd);background:rgba(245,197,24,.07);color:var(--t)}
+.drp-btn .drp-icon{font-size:1rem}
+.drp-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:500;background:#fff;border:1px solid var(--b);border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.15);display:none;flex-direction:row;overflow:hidden;min-width:720px}
+.drp-panel.open{display:flex}
+.drp-presets{width:170px;border-right:1px solid var(--b);padding:16px 0;flex-shrink:0;background:#faf9f6}
+.drp-preset{display:block;width:100%;text-align:left;padding:9px 18px;font-size:.82rem;font-weight:500;color:#555;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:background .12s,color .12s}
+.drp-preset:hover{background:rgba(245,197,24,.12);color:var(--t)}
+.drp-preset.sel{background:rgba(245,197,24,.2);color:var(--yd);font-weight:700}
+.drp-calendars{display:flex;gap:0;padding:20px 24px;flex:1}
+.drp-cal{flex:1}
+.drp-cal+.drp-cal{padding-left:24px;border-left:1px solid var(--b);margin-left:0}
+.drp-cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.drp-cal-nav{background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:6px;color:#666;transition:background .1s}
+.drp-cal-nav:hover{background:rgba(245,197,24,.15)}
+.drp-cal-title{font-weight:800;font-size:.9rem;color:var(--t)}
+.drp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.drp-dow{text-align:center;font-size:.62rem;font-weight:700;color:var(--ts);text-transform:uppercase;padding:4px 0;letter-spacing:.5px}
+.drp-day{text-align:center;padding:6px 2px;border-radius:8px;font-size:.8rem;cursor:pointer;transition:background .1s,color .1s;user-select:none;min-width:32px;min-height:30px;display:flex;align-items:center;justify-content:center}
+.drp-day:hover:not(.drp-empty):not(.drp-past){background:rgba(245,197,24,.25)}
+.drp-day.drp-empty,.drp-day.drp-past{cursor:default;color:#ccc}
+.drp-day.drp-start,.drp-day.drp-end{background:var(--yd)!important;color:#fff;font-weight:700}
+.drp-day.drp-in-range{background:rgba(245,197,24,.18);border-radius:0}
+.drp-day.drp-start{border-radius:8px 0 0 8px}
+.drp-day.drp-end{border-radius:0 8px 8px 0}
+.drp-day.drp-start.drp-end{border-radius:8px}
+.drp-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-top:1px solid var(--b);gap:12px}
+.drp-range-lbl{font-size:.8rem;color:var(--ts);font-weight:500}
+.drp-range-lbl strong{color:var(--t)}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:12px;font-size:.85rem;font-weight:600;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px}
@@ -149,14 +181,29 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="login-logo-icon">🚗</div>
       <div>
         <div class="login-logo-text">DriveDilSe</div>
-        <div class="login-logo-sub">Admin Portal</div>
+        <div class="login-logo-sub">Staff Portal</div>
       </div>
     </div>
-    <div class="login-title">Welcome back</div>
-    <div class="login-sub">Sign in to manage bookings, fleet & customers.</div>
-    <div style="margin-bottom:20px">
-      <label class="lbl">Admin Password</label>
-      <input class="inp" type="password" id="adm-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <!-- Role tabs -->
+    <div style="display:flex;background:#1e1e1e;border-radius:12px;padding:4px;gap:4px;margin-bottom:22px">
+      <button id="role-tab-admin" onclick="selectRole('admin')"
+        style="flex:1;padding:9px;border-radius:9px;border:none;cursor:pointer;font-size:.82rem;font-weight:700;font-family:'Inter',sans-serif;background:var(--yd);color:#fff;transition:all .2s">
+        🔑 Admin
+      </button>
+      <button id="role-tab-fleet" onclick="selectRole('fleet')"
+        style="flex:1;padding:9px;border-radius:9px;border:none;cursor:pointer;font-size:.82rem;font-weight:700;font-family:'Inter',sans-serif;background:transparent;color:#888;transition:all .2s">
+        🚗 Fleet Manager
+      </button>
+    </div>
+
+    <div id="login-role-label" style="font-size:.72rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px">Admin Access</div>
+    <div class="login-title" style="margin-bottom:4px">Welcome back</div>
+    <div class="login-sub" id="login-sub-text">Full access to bookings, fleet, customers & finance.</div>
+
+    <div style="margin:18px 0">
+      <label class="lbl" id="pass-label">Admin Password</label>
+      <input class="inp" type="password" id="adm-pass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
       <div class="login-err" id="login-err">Incorrect password. Try again.</div>
     </div>
     <button class="btn btn-y btn-lg" onclick="doLogin()" id="login-btn">Sign In →</button>
@@ -173,10 +220,10 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   <div class="top-bar">
     <div class="top-bar-left">
       <div class="top-logo">DriveDilSe</div>
-      <span class="top-badge">ADMIN</span>
+      <span class="top-badge" id="top-role-badge">ADMIN</span>
     </div>
     <div class="top-bar-right">
-      <span class="admin-name">Admin</span>
+      <span class="admin-name" id="top-role-name">Admin</span>
       <button class="logout-btn" onclick="doLogout()">Sign Out</button>
       <a href="index.html" style="font-size:.75rem;color:#aaa;text-decoration:none;margin-left:4px">← Site</a>
     </div>
@@ -193,6 +240,11 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="nav-item" data-tab="active"    onclick="navTo('active',this)">   <span class="nav-icon">🟢</span>Active <span class="nav-badge" id="nb-active">0</span></div>
       <div class="nav-item" data-tab="upcoming"  onclick="navTo('upcoming',this)"> <span class="nav-icon">🟡</span>Upcoming <span class="nav-badge" id="nb-upcoming">0</span></div>
       <div class="nav-item" data-tab="completed" onclick="navTo('completed',this)"><span class="nav-icon">✅</span>Completed</div>
+      <div class="sidebar-section">Verification</div>
+      <div class="nav-item" data-tab="kycapprovals" onclick="navTo('kycapprovals',this)"><span class="nav-icon">📋</span>KYC Approvals <span class="nav-badge" id="nb-kyc">0</span></div>
+      <div class="nav-item" data-tab="faceverify" onclick="navTo('faceverify',this)"><span class="nav-icon">🤳</span>Face Verify <span class="nav-badge" id="nb-faceverify">0</span></div>
+      <div class="sidebar-section">Finance</div>
+      <div class="nav-item" data-tab="revenue"   onclick="navTo('revenue',this)">  <span class="nav-icon">💰</span>Revenue</div>
       <div class="sidebar-section">Manage</div>
       <div class="nav-item" data-tab="fleet"     onclick="navTo('fleet',this)">    <span class="nav-icon">🚗</span>Fleet</div>
       <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
@@ -294,6 +346,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 <script>
 var API         = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
 var adminToken  = localStorage.getItem("dds_admin_token") || "";
+var currentRole = localStorage.getItem("dds_role") || "admin"; // "admin" | "fleet"
+var selectedLoginRole = new URLSearchParams(location.search).get("role") || "admin";
 var pauseCarId  = null;
 var allBookings = [], allCars = [], allCustomers = [];
 
@@ -372,6 +426,31 @@ function badge(s){
   return '<span class="sbadge '+(m[s]||"sb-done")+'">'+(labels[s]||s)+'</span>';
 }
 
+// ── ROLE SELECTOR ──
+function selectRole(role){
+  selectedLoginRole = role;
+  var tabAdmin = document.getElementById("role-tab-admin");
+  var tabFleet = document.getElementById("role-tab-fleet");
+  var label    = document.getElementById("login-role-label");
+  var sub      = document.getElementById("login-sub-text");
+  var passLbl  = document.getElementById("pass-label");
+  if(role === "admin"){
+    tabAdmin.style.background = "var(--yd)"; tabAdmin.style.color = "#fff";
+    tabFleet.style.background = "transparent"; tabFleet.style.color = "#888";
+    label.textContent   = "Admin Access";
+    sub.textContent     = "Full access to bookings, fleet, customers & finance.";
+    passLbl.textContent = "Admin Password";
+  } else {
+    tabFleet.style.background = "#4a7c59"; tabFleet.style.color = "#fff";
+    tabAdmin.style.background = "transparent"; tabAdmin.style.color = "#888";
+    label.textContent   = "Fleet Manager Access";
+    sub.textContent     = "Access to bookings, fleet & customers.";
+    passLbl.textContent = "Fleet Manager Password";
+  }
+  document.getElementById("adm-pass").value = "";
+  document.getElementById("login-err").style.display = "none";
+}
+
 // ── AUTH ──
 async function doLogin(){
   var pass = document.getElementById("adm-pass").value;
@@ -383,36 +462,86 @@ async function doLogin(){
     var r = await fetch(API + "/admin/login", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ password: pass })
+      body: JSON.stringify({ password: pass, role: selectedLoginRole })
     });
     var d = await r.json();
     if(!r.ok) throw new Error(d.error || "Invalid password");
-    adminToken = d.token;
+    adminToken  = d.token;
+    currentRole = d.role || selectedLoginRole;
     localStorage.setItem("dds_admin_token", adminToken);
+    localStorage.setItem("dds_role", currentRole);
     enterAdmin();
   } catch(e){
-    err.innerHTML = e.message || "Could not connect";
-    err.style.display = "block";
-    btn.textContent = "Sign In →"; btn.disabled = false;
+    // Network fallback only — wrong password shows the real error
+    var msg = (e && e.message) ? e.message : String(e);
+    var netErr = msg.includes("fetch") || msg.includes("Failed") ||
+                 msg.includes("NetworkError") || msg.includes("Load failed");
+    if(netErr){
+      adminToken  = "local";
+      currentRole = selectedLoginRole;
+      localStorage.setItem("dds_admin_token", "local");
+      localStorage.setItem("dds_role", currentRole);
+      enterAdmin();
+    } else {
+      err.innerHTML = msg || "Invalid password";
+      err.style.display = "block";
+      btn.textContent = "Sign In →"; btn.disabled = false;
+    }
   }
 }
 
 function doLogout(){
-  adminToken = "";
+  adminToken  = "";
+  currentRole = "admin";
   localStorage.removeItem("dds_admin_token");
+  localStorage.removeItem("dds_role");
   document.getElementById("admin-page").style.display = "none";
   document.getElementById("login-page").style.display = "flex";
   document.getElementById("adm-pass").value = "";
+  selectRole("admin");
+}
+
+function updateKycBadge(){
+  var badge = document.getElementById("nb-kyc");
+  if(!badge) return;
+  var count = allCustomers.filter(function(u){ return u.kyc && u.kyc.status === "uploaded"; }).length;
+  badge.textContent = count;
+  badge.style.display = count ? "inline-flex" : "none";
+}
+
+function applyRoleUI(){
+  updateFaceVerifyBadge();
+  updateKycBadge();
+  var isFleet = currentRole === "fleet";
+  // Top bar
+  document.getElementById("top-role-badge").textContent = isFleet ? "FLEET MGR" : "ADMIN";
+  document.getElementById("top-role-badge").style.background = isFleet ? "#4a7c59" : "";
+  document.getElementById("top-role-name").textContent = isFleet ? "Fleet Manager" : "Admin";
+  // Sidebar: hide Finance section for fleet manager
+  document.querySelectorAll(".sidebar-section, .nav-item[data-tab='revenue']").forEach(function(el){
+    if(el.classList.contains("sidebar-section") && el.textContent.trim() === "Finance"){
+      el.style.display = isFleet ? "none" : "";
+    }
+    if(el.dataset && el.dataset.tab === "revenue"){
+      el.style.display = isFleet ? "none" : "";
+    }
+  });
 }
 
 function enterAdmin(){
   document.getElementById("login-page").style.display = "none";
   document.getElementById("admin-page").style.display = "flex";
+  applyRoleUI();
   navTo("dashboard", document.querySelector('[data-tab="dashboard"]'));
 }
 
 // ── NAV ──
 function navTo(tab, el){
+  // Block finance tab for fleet manager
+  if(tab === "revenue" && currentRole === "fleet"){
+    toast("Finance access is restricted for Fleet Manager.", "error");
+    return;
+  }
   document.querySelectorAll(".nav-item").forEach(function(n){ n.classList.remove("on"); });
   if(el) el.classList.add("on");
   renderTab(tab);
@@ -446,6 +575,12 @@ async function renderTab(tab){
     await renderBookings(["confirmed","pending","pending_kyc"], isLocal, c);
   } else if(tab === "completed"){
     await renderBookings("completed", isLocal, c);
+  } else if(tab === "kycapprovals"){
+    await renderKycApprovals(isLocal, c);
+  } else if(tab === "faceverify"){
+    renderFaceVerify(c);
+  } else if(tab === "revenue"){
+    await renderRevenue(isLocal, c);
   } else if(tab === "fleet"){
     await renderFleet(isLocal, c);
   } else if(tab === "customers"){
@@ -460,33 +595,50 @@ async function renderDashboard(isLocal, c){
       var dash = await adminFetch("/admin/dashboard");
       allBookings = await adminFetch("/admin/bookings");
       updateBadges();
-      var rev = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; }).reduce(function(s,b){ return s+b.total; },0);
+      var paidBks = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
+      var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);
+      var gst = Math.round(rev * 18 / 118);
+      var bookingFee = rev - gst;
       stats = [
-        {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles"},
-        {icon:"📋", num: allBookings.length,   lbl: "Total Bookings"},
-        {icon:"🟢", num: allBookings.filter(function(b){ return b.status==="active"; }).length,    lbl: "Active Drives"},
-        {icon:"🟡", num: allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; }).length, lbl: "Upcoming"},
-        {icon:"👥", num: dash.totalCustomers,  lbl: "Customers"},
-        {icon:"💰", num: inr(rev),             lbl: "Revenue Collected"},
+        {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab:"fleet"},
+        {icon:"📋", num: allBookings.length,   lbl: "Total Bookings",   tab:"bookings"},
+        {icon:"🟢", num: allBookings.filter(function(b){ return b.status==="active"; }).length,    lbl: "Active Drives", tab:"active"},
+        {icon:"🟡", num: allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; }).length, lbl: "Upcoming", tab:"upcoming"},
+        {icon:"👥", num: dash.totalCustomers,  lbl: "Customers",        tab:"customers"},
       ];
+      if(currentRole !== "fleet"){
+        stats.push({icon:"💰", num: inr(bookingFee), lbl: "Booking Fee Collected", tab:"revenue"});
+        stats.push({icon:"🧾", num: inr(gst),        lbl: "GST Collected (18%)",   tab:"revenue"});
+        stats.push({icon:"📈", num: inr(rev),         lbl: "Total Revenue",         tab:"revenue"});
+      }
     } catch(e){ isLocal = true; }
   }
   if(isLocal){
     allBookings  = DEMO_BOOKINGS.slice();
     allCustomers = DEMO_CUSTOMERS.slice();
     updateBadges();
-    var demoRev = DEMO_BOOKINGS.filter(function(b){ return b.payment&&b.payment.status==="paid"; }).reduce(function(s,b){ return s+b.total; },0);
+    var demoPaidBks = DEMO_BOOKINGS.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
+    var demoRev = demoPaidBks.reduce(function(s,b){ return s+b.total; },0);
+    var demoGst = Math.round(demoRev * 18 / 118);
+    var demoFee = demoRev - demoGst;
     stats = [
-      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles"},
-      {icon:"📋",num:DEMO_BOOKINGS.length,lbl:"Total Bookings"},
-      {icon:"🟢",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="active"; }).length,lbl:"Active Drives"},
-      {icon:"🟡",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length,lbl:"Upcoming"},
-      {icon:"👥",num:DEMO_CUSTOMERS.length,lbl:"Customers"},
-      {icon:"💰",num:inr(demoRev),lbl:"Revenue Collected"},
+      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles", tab:"fleet"},
+      {icon:"📋",num:DEMO_BOOKINGS.length,lbl:"Total Bookings",  tab:"bookings"},
+      {icon:"🟢",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="active"; }).length,lbl:"Active Drives", tab:"active"},
+      {icon:"🟡",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length,lbl:"Upcoming", tab:"upcoming"},
+      {icon:"👥",num:DEMO_CUSTOMERS.length,lbl:"Customers", tab:"customers"},
     ];
+    if(currentRole !== "fleet"){
+      stats.push({icon:"💰",num:inr(demoFee),lbl:"Booking Fee Collected", tab:"revenue"});
+      stats.push({icon:"🧾",num:inr(demoGst),lbl:"GST Collected (18%)",   tab:"revenue"});
+      stats.push({icon:"📈",num:inr(demoRev),lbl:"Total Revenue",         tab:"revenue"});
+    }
   }
   var statHtml = stats.map(function(s){
-    return '<div class="stat-card"><div class="stat-icon">'+s.icon+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
+    var clickable = s.tab
+      ? ' onclick="navTo(\''+s.tab+'\',document.querySelector(\'[data-tab='+s.tab+']\'))" style="cursor:pointer;transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(200,160,0,.18)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'"'
+      : '';
+    return '<div class="stat-card"'+clickable+'><div class="stat-icon">'+s.icon+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
   }).join("");
 
   var recentHtml = "";
@@ -498,6 +650,10 @@ async function renderDashboard(isLocal, c){
   c.innerHTML =
     '<div class="page-title">Dashboard</div>' +
     '<div class="page-sub">Overview of DriveDilSe operations.</div>' +
+    (isLocal
+      ? '<div style="background:#fff3cd;border:1px solid #e8b800;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#856404;display:flex;align-items:center;gap:8px">⚠️ <strong>Demo mode</strong> — backend unreachable. Showing sample data.</div>'
+      : '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#15803d;display:flex;align-items:center;gap:8px">✅ <strong>Live Backend Connected</strong> — showing real data from database.</div>'
+    ) +
     '<div class="stat-grid">' + statHtml + '</div>' +
     recentHtml;
 }
@@ -534,6 +690,35 @@ async function renderBookings(statusFilter, isLocal, c){
       '<button class="filter-btn" onclick="filterBookingStatus(\'confirmed\',this)">Confirmed</button>' +
       '<button class="filter-btn" onclick="filterBookingStatus(\'active\',this)">Active</button>' +
       '<button class="filter-btn" onclick="filterBookingStatus(\'completed\',this)">Completed</button>' +
+      '<div class="drp-wrap" id="drp-wrap">' +
+        '<button class="drp-btn" id="drp-btn" onclick="toggleDRP()"><span class="drp-icon">📅</span><span id="drp-label">Filter by Date</span></button>' +
+        '<div class="drp-panel" id="drp-panel">' +
+          '<div class="drp-presets">' +
+            '<button class="drp-preset" onclick="drpPreset(\'today\')">Today</button>' +
+            '<button class="drp-preset" onclick="drpPreset(\'7d\')">Last 7 Days</button>' +
+            '<button class="drp-preset" onclick="drpPreset(\'30d\')">Last 30 Days</button>' +
+            '<button class="drp-preset" onclick="drpPreset(\'90d\')">Last 90 Days</button>' +
+            '<button class="drp-preset" onclick="drpPreset(\'thismonth\')">This Month</button>' +
+            '<button class="drp-preset" onclick="drpPreset(\'lastmonth\')">Last Month</button>' +
+            '<button class="drp-preset" onclick="drpPreset(\'thisyear\')">This Year</button>' +
+            '<hr style="margin:8px 16px;border:none;border-top:1px solid var(--b)">' +
+            '<button class="drp-preset" onclick="drpPreset(\'clear\')" style="color:#c0392b">Clear Filter</button>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;flex:1">' +
+            '<div class="drp-calendars">' +
+              '<div class="drp-cal" id="drp-cal-left"></div>' +
+              '<div class="drp-cal" id="drp-cal-right"></div>' +
+            '</div>' +
+            '<div class="drp-footer">' +
+              '<div class="drp-range-lbl" id="drp-range-lbl">Select start date</div>' +
+              '<div style="display:flex;gap:8px">' +
+                '<button class="btn btn-g btn-sm" onclick="closeDRP()">Cancel</button>' +
+                '<button class="btn btn-y btn-sm" onclick="applyDRP()">Apply →</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
     '</div>' +
     '<div class="card"><div class="table-wrap" id="bk-table-wrap">' + buildTable(bks, true) + '</div></div>';
   window._curBks = bks;
@@ -616,6 +801,7 @@ function buildTable(bks, showActions){
             return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>';
           }).join('') + '</select></td>'
       : '';
+    var isFleet = currentRole === "fleet";
     return '<tr>' +
       '<td style="font-weight:700;color:var(--yd);font-family:monospace">'+(b.bookingId||b._id||"—")+'</td>' +
       '<td style="font-weight:600">'+carName+'</td>' +
@@ -623,17 +809,22 @@ function buildTable(bks, showActions){
       '<td style="color:var(--ts)">'+phone+'</td>' +
       '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(pickup).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
       '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(drop).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
-      '<td style="font-weight:700">'+inr(b.total)+'</td>' +
+      (isFleet ? '' : '<td style="font-weight:700">'+inr(b.total)+'</td>') +
       '<td>'+badge(b.status)+'</td>' +
-      '<td>'+payBadge+'</td>' +
+      (isFleet ? '' : '<td>'+payBadge+'</td>') +
       otpCell +
       coOtpCell +
       actCell +
     '</tr>';
   }).join("");
+  var isFleet = currentRole === "fleet";
   var actHdr = showActions ? '<th>Change Status</th>' : '';
   return '<table class="adm-table"><thead><tr>' +
-    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th><th>Payment</th><th>Check-In OTP</th><th>Check-Out OTP</th>' + actHdr +
+    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th>' +
+    (isFleet ? '' : '<th>Total</th>') +
+    '<th>Status</th>' +
+    (isFleet ? '' : '<th>Payment</th>') +
+    '<th>Check-In OTP</th><th>Check-Out OTP</th>' + actHdr +
     '</tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
@@ -656,6 +847,243 @@ async function updateStatus(id, status){
     toast("Status updated to " + status, "success");
     updateBadges();
   } catch(e){ toast("Failed: " + e.message, "error"); }
+}
+
+async function renderKycApprovals(isLocal, c){
+  var custs = [];
+  if(!isLocal){
+    try {
+      custs = await adminFetch("/admin/customers");
+      allCustomers = custs;
+    } catch(e){ isLocal = true; }
+  }
+  if(isLocal){ custs = DEMO_CUSTOMERS.slice(); }
+
+  var pending = custs.filter(function(u){ return u.kyc && u.kyc.status === "uploaded"; });
+
+  // Update badge
+  var badge = document.getElementById("nb-kyc");
+  if(badge){ badge.textContent = pending.length; badge.style.display = pending.length ? "inline-flex" : "none"; }
+
+  if(!pending.length){
+    c.innerHTML =
+      '<div class="page-title">KYC Approvals</div>' +
+      '<div class="page-sub">Review and verify customer identity documents.</div>' +
+      '<div class="empty"><div class="empty-icon">✅</div><div class="empty-msg">No pending KYC reviews.</div></div>';
+    return;
+  }
+
+  var cards = pending.map(function(u){
+    var name     = u.name || "—";
+    var phone    = u.phone || "—";
+    var aadhaar  = u.kyc && u.kyc.aadhaarUrl;
+    var dl       = u.kyc && u.kyc.dlUrl;
+    var joined   = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+
+    var docImg = function(url, label){
+      return url
+        ? '<div style="text-align:center">' +
+            '<a href="'+url+'" target="_blank">' +
+              '<img src="'+url+'" style="width:140px;height:100px;object-fit:cover;border-radius:10px;border:2px solid var(--b);display:block;margin:0 auto">' +
+            '</a>' +
+            '<div style="font-size:.7rem;font-weight:700;color:var(--ts);margin-top:6px;letter-spacing:.5px;text-transform:uppercase">'+label+'</div>' +
+            '<a href="'+url+'" target="_blank" style="font-size:.7rem;color:var(--yd);font-weight:700">View Full ↗</a>' +
+          '</div>'
+        : '<div style="text-align:center;color:#ccc;font-size:.8rem">Not uploaded</div>';
+    };
+
+    return '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between">' +
+        '<div>' +
+          '<span class="card-title">'+name+'</span>' +
+          '<span style="font-size:.75rem;color:var(--ts);margin-left:10px">+91 '+phone+'</span>' +
+          '<span style="font-size:.72rem;color:var(--ts);margin-left:10px">Joined '+joined+'</span>' +
+        '</div>' +
+        '<span class="sbadge sb-up">⏳ Awaiting Review</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:32px;align-items:flex-start;justify-content:center;padding:24px;flex-wrap:wrap">' +
+        docImg(aadhaar, "Aadhaar Card") +
+        docImg(dl, "Driving Licence") +
+      '</div>' +
+      '<div style="display:flex;gap:12px;justify-content:center;padding:0 24px 20px">' +
+        '<button class="btn btn-y btn-sm" style="padding:10px 28px;font-size:.9rem" onclick="approveKyc(\''+u._id+'\')">✅ Approve KYC</button>' +
+        '<button class="btn" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:10px 28px;font-size:.9rem;font-weight:700;cursor:pointer" onclick="rejectKyc(\''+u._id+'\')">❌ Reject</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  c.innerHTML =
+    '<div class="page-title">KYC Approvals</div>' +
+    '<div class="page-sub">'+pending.length+' customer'+(pending.length!==1?'s':'')+' waiting for document verification.</div>' +
+    cards;
+}
+
+function updateFaceVerifyBadge(){
+  var pending = JSON.parse(localStorage.getItem("dds_pending_selfie") || "[]").filter(function(v){ return v.status === "pending"; });
+  var badge = document.getElementById("nb-faceverify");
+  if(badge){ badge.textContent = pending.length; badge.style.display = pending.length ? "inline-flex" : "none"; }
+}
+
+function renderFaceVerify(c){
+  updateFaceVerifyBadge();
+  var records = JSON.parse(localStorage.getItem("dds_pending_selfie") || "[]");
+
+  if(!records.length){
+    c.innerHTML = '<div class="page-title">Face Verification</div><div class="page-sub">Selfie identity checks for customer check-ins.</div>' +
+      '<div class="empty"><div class="empty-icon">✅</div><div class="empty-msg">No pending face verifications.</div></div>';
+    return;
+  }
+
+  var cards = records.map(function(v, i){
+    var statusBadge = v.status === "approved"
+      ? '<span style="background:#dcfce7;color:#15803d;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">✅ Approved</span>'
+      : v.status === "rejected"
+      ? '<span style="background:#fee2e2;color:#b91c1c;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">❌ Rejected</span>'
+      : '<span style="background:#fef9c3;color:#a16207;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">⏳ Pending Review</span>';
+
+    var profileImg = v.profilePhoto
+      ? '<img src="'+v.profilePhoto+'" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--yd);display:block;margin:0 auto">'
+      : '<div style="width:110px;height:110px;border-radius:50%;background:var(--wg);border:3px dashed var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:2rem">👤</div>';
+
+    var selfieImg = v.selfie
+      ? '<img src="'+v.selfie+'" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--yd);display:block;margin:0 auto">'
+      : '<div style="width:110px;height:110px;border-radius:50%;background:var(--wg);border:3px dashed var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:2rem">🤳</div>';
+
+    var actions = v.status === "pending"
+      ? '<button class="btn btn-y btn-sm" onclick="faceVerifyAction('+i+',\'approved\')">✅ Approve</button>' +
+        '<button class="btn" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:8px 18px;font-size:.82rem;font-weight:700;cursor:pointer" onclick="faceVerifyAction('+i+',\'rejected\')">❌ Reject</button>'
+      : '<button class="btn btn-g btn-sm" onclick="faceVerifyAction('+i+',\'pending\')">↺ Reset</button>';
+
+    var ts = v.ts ? new Date(v.ts).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) : "";
+
+    return '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between">' +
+        '<div><span class="card-title">Booking: '+v.bookingId+'</span><span style="font-size:.72rem;color:var(--ts);margin-left:12px">'+ts+'</span></div>' +
+        statusBadge +
+      '</div>' +
+      '<div style="display:flex;gap:32px;align-items:center;justify-content:center;padding:24px;flex-wrap:wrap">' +
+        '<div style="text-align:center">'+profileImg+'<div style="font-size:.75rem;font-weight:700;color:var(--ts);margin-top:10px;letter-spacing:.5px;text-transform:uppercase">Profile Photo</div></div>' +
+        '<div style="font-size:2rem;color:var(--ts)">↔</div>' +
+        '<div style="text-align:center">'+selfieImg+'<div style="font-size:.75rem;font-weight:700;color:var(--ts);margin-top:10px;letter-spacing:.5px;text-transform:uppercase">Check-In Selfie</div></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center;padding:0 24px 20px">'+actions+'</div>' +
+    '</div>';
+  }).join("");
+
+  c.innerHTML = '<div class="page-title">Face Verification</div>' +
+    '<div class="page-sub">'+records.length+' selfie submission'+(records.length!==1?'s':'')+'</div>' +
+    cards;
+}
+
+async function faceVerifyAction(idx, status){
+  var records = JSON.parse(localStorage.getItem("dds_pending_selfie") || "[]");
+  var record = records[idx];
+  if(!record) return;
+
+  // Call backend to update booking notes with selfie status
+  if(adminToken && adminToken !== "local"){
+    try {
+      var reason = status === "rejected" ? prompt("Reason for rejection (optional):") || "Identity could not be verified" : "";
+      await adminFetch("/admin/selfie/" + record.bookingId, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: status, reason: reason })
+      });
+    } catch(e){ toast("Backend update failed: " + e.message, "error"); }
+  }
+
+  // Update localStorage for same-device display
+  records[idx].status = status;
+  localStorage.setItem("dds_pending_selfie", JSON.stringify(records));
+  updateFaceVerifyBadge();
+  toast(status === "approved" ? "✅ Selfie approved — customer notified" : "❌ Selfie rejected — customer notified", status === "approved" ? "success" : "error");
+  renderFaceVerify(document.getElementById("main-content"));
+}
+
+async function renderRevenue(isLocal, c){
+  var bks = [];
+  if(!isLocal){
+    try {
+      if(!allBookings.length) allBookings = await adminFetch("/admin/bookings");
+      bks = allBookings;
+    } catch(e){ isLocal = true; }
+  }
+  if(isLocal){ bks = DEMO_BOOKINGS.slice(); }
+
+  // Include all bookings that have a total (not just Razorpay-paid)
+  var countable = bks.filter(function(b){
+    return b.total && b.total > 0 && b.status !== "cancelled";
+  });
+
+  // Group by car name
+  var carMap = {};
+  countable.forEach(function(b){
+    var car = b.carName || (b.car && b.car.name) || "Unknown";
+    if(!carMap[car]) carMap[car] = {bookings:0, total:0};
+    carMap[car].bookings++;
+    carMap[car].total += (b.total || 0);
+  });
+
+  var grandTotal = 0, grandGst = 0, grandFee = 0, grandBks = 0;
+  var rows = Object.keys(carMap).sort().map(function(car){
+    var d   = carMap[car];
+    var gst = Math.round(d.total * 18 / 118);
+    var fee = d.total - gst;
+    grandTotal += d.total; grandGst += gst; grandFee += fee; grandBks += d.bookings;
+    return '<tr>' +
+      '<td style="font-weight:700;color:var(--t);font-size:.88rem">'+car+'</td>' +
+      '<td style="text-align:center;font-weight:600">'+d.bookings+'</td>' +
+      '<td style="font-weight:700;color:var(--t)">'+inr(fee)+'</td>' +
+      '<td style="font-weight:700;color:#c0392b">'+inr(gst)+'</td>' +
+      '<td style="font-weight:900;color:var(--yd);font-size:.95rem">'+inr(d.total)+'</td>' +
+    '</tr>';
+  }).join("");
+
+  // Summary stat cards
+  var summaryHtml = [
+    {icon:"💰", val:inr(grandFee),   lbl:"Total Booking Fee",   sub:"Excl. GST (18%)"},
+    {icon:"🧾", val:inr(grandGst),   lbl:"GST Collected",        sub:"SAC 9966 @ 18%"},
+    {icon:"📈", val:inr(grandTotal), lbl:"Total Revenue",         sub:"Booking Fee + GST"},
+  ].map(function(s){
+    return '<div class="stat-card" style="flex:1;min-width:180px">'+
+      '<div class="stat-icon">'+s.icon+'</div>'+
+      '<div class="stat-num">'+s.val+'</div>'+
+      '<div class="stat-lbl">'+s.lbl+'</div>'+
+      '<div style="font-size:.68rem;color:var(--ts);margin-top:4px">'+s.sub+'</div>'+
+    '</div>';
+  }).join("");
+
+  var tableHtml = rows
+    ? '<div class="table-wrap"><table class="adm-table">'+
+        '<thead><tr>'+
+          '<th>Car</th>'+
+          '<th style="text-align:center">Bookings</th>'+
+          '<th>Revenue (excl. GST)</th>'+
+          '<th>GST Collected (18%)</th>'+
+          '<th>Total Revenue</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+
+          '<tr style="background:linear-gradient(135deg,#fffde8,#fff9d0)">'+
+            '<td style="font-weight:900;font-size:.88rem">Grand Total</td>'+
+            '<td style="text-align:center;font-weight:900">'+grandBks+'</td>'+
+            '<td style="font-weight:900;color:var(--t)">'+inr(grandFee)+'</td>'+
+            '<td style="font-weight:900;color:#c0392b">'+inr(grandGst)+'</td>'+
+            '<td style="font-weight:900;color:var(--yd);font-size:1rem">'+inr(grandTotal)+'</td>'+
+          '</tr>'+
+        '</tbody>'+
+      '</table></div>'
+    : '<div class="empty"><div class="empty-icon">📊</div><div class="empty-msg">No bookings with revenue yet.</div></div>';
+
+  c.innerHTML =
+    '<div class="page-title">Revenue</div>'+
+    '<div class="page-sub">Per-car revenue, GST collected and total — all non-cancelled bookings.</div>'+
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px">'+summaryHtml+'</div>'+
+    '<div class="card">'+
+      '<div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between">'+
+        '<span class="card-title">Revenue by Car</span>'+
+        '<span style="font-size:.72rem;color:var(--ts);font-weight:500">GST 18% · SAC 9966 · Motor Vehicle Rental</span>'+
+      '</div>'+tableHtml+
+    '</div>';
 }
 
 async function renderFleet(isLocal, c){
@@ -1010,36 +1438,47 @@ async function approveKyc(id){
   if(adminToken === "local"){
     var u = allCustomers.find(function(c){ return c._id===id; });
     if(u&&u.kyc) u.kyc.status = "verified";
-    toast("KYC approved.", "success");
-    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    toast("✅ KYC approved — booking confirmed.", "success");
+    updateKycBadge();
+    navTo("kycapprovals", document.querySelector('[data-tab="kycapprovals"]'));
     return;
   }
   try {
     await adminFetch("/admin/customers/"+id+"/kyc", {
       method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"verified"})
     });
-    toast("KYC approved.", "success");
-    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    var u2 = allCustomers.find(function(c){ return c._id===id; });
+    if(u2&&u2.kyc) u2.kyc.status = "verified";
+    toast("✅ KYC approved — booking confirmed.", "success");
+    updateKycBadge();
+    navTo("kycapprovals", document.querySelector('[data-tab="kycapprovals"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
+
 async function rejectKyc(id){
+  var reason = prompt("Reason for rejection (optional):", "Documents unclear or invalid") || "";
   if(adminToken === "local"){
     var u = allCustomers.find(function(c){ return c._id===id; });
     if(u&&u.kyc) u.kyc.status = "rejected";
-    toast("KYC rejected.", "success");
-    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    toast("❌ KYC rejected.", "error");
+    updateKycBadge();
+    navTo("kycapprovals", document.querySelector('[data-tab="kycapprovals"]'));
     return;
   }
   try {
     await adminFetch("/admin/customers/"+id+"/kyc", {
-      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"rejected"})
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status:"rejected", reason: reason})
     });
-    toast("KYC rejected.", "success");
-    navTo("customers", document.querySelector('[data-tab="customers"]'));
+    var u2 = allCustomers.find(function(c){ return c._id===id; });
+    if(u2&&u2.kyc) u2.kyc.status = "rejected";
+    toast("❌ KYC rejected.", "error");
+    updateKycBadge();
+    navTo("kycapprovals", document.querySelector('[data-tab="kycapprovals"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
 function updateBadges(){
+  updateKycBadge();
   var active   = allBookings.filter(function(b){ return b.status==="active"; }).length;
   var upcoming = allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length;
   document.getElementById("nb-bookings").textContent = allBookings.length || "";
@@ -1049,12 +1488,189 @@ function updateBadges(){
 
 // ── INIT: auto-login if token exists ──
 window.addEventListener("DOMContentLoaded", function(){
+  // Auto-select role tab from URL param (?role=fleet or ?role=admin)
+  selectRole(selectedLoginRole);
+
   if(adminToken){
     document.getElementById("login-page").style.display = "none";
     document.getElementById("admin-page").style.display = "flex";
+    applyRoleUI();
     navTo("dashboard", document.querySelector('[data-tab="dashboard"]'));
   }
 });
+
+// ── DATE RANGE PICKER ──
+var drpStart = null, drpEnd = null, drpHover = null;
+var drpLeftYear, drpLeftMonth; // left calendar month
+
+function drpFmt(d){ return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}); }
+
+function toggleDRP(){
+  var panel = document.getElementById("drp-panel");
+  var btn   = document.getElementById("drp-btn");
+  if(panel.classList.contains("open")){ closeDRP(); return; }
+  // Init to current month / next month
+  var now = new Date();
+  drpLeftYear  = now.getFullYear();
+  drpLeftMonth = now.getMonth();
+  renderDRPCals();
+  panel.classList.add("open");
+  btn.classList.add("active");
+  // Close on outside click
+  setTimeout(function(){
+    document.addEventListener("click", drpOutside, {once:true});
+  }, 50);
+}
+
+function drpOutside(e){
+  var wrap = document.getElementById("drp-wrap");
+  if(wrap && !wrap.contains(e.target)) closeDRP();
+}
+
+function closeDRP(){
+  document.getElementById("drp-panel").classList.remove("open");
+  document.getElementById("drp-btn").classList.remove("active");
+}
+
+function renderDRPCals(){
+  renderDRPCal("drp-cal-left",  drpLeftYear, drpLeftMonth);
+  var ry = drpLeftMonth===11 ? drpLeftYear+1 : drpLeftYear;
+  var rm = drpLeftMonth===11 ? 0 : drpLeftMonth+1;
+  renderDRPCal("drp-cal-right", ry, rm);
+  updateDRPLabel();
+}
+
+function renderDRPCal(id, year, month){
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var el = document.getElementById(id);
+  if(!el) return;
+
+  var isLeft = id==="drp-cal-left";
+  var prevBtn = isLeft
+    ? '<button class="drp-cal-nav" onclick="drpNav(-1)">‹</button>'
+    : '<button class="drp-cal-nav" onclick="drpNav(1)">›</button>';
+  var nextBtn = isLeft ? '' : '';
+
+  var html = '<div class="drp-cal-hdr">' +
+    (isLeft ? prevBtn : '') +
+    '<span class="drp-cal-title">'+MONTHS[month]+' '+year+'</span>' +
+    (isLeft ? '' : prevBtn.replace("drpNav(-1)","drpNav(1)")) +
+  '</div>';
+
+  // Day-of-week headers
+  html += '<div class="drp-grid">';
+  DAYS.forEach(function(d){ html += '<div class="drp-dow">'+d+'</div>'; });
+
+  // Empty cells before first day
+  var first = new Date(year, month, 1).getDay();
+  for(var i=0;i<first;i++) html += '<div class="drp-day drp-empty"></div>';
+
+  // Days
+  var daysInMonth = new Date(year, month+1, 0).getDate();
+  var today = new Date(); today.setHours(0,0,0,0);
+  for(var d=1; d<=daysInMonth; d++){
+    var dt = new Date(year, month, d);
+    var cls = "drp-day";
+    var ts  = dt.getTime();
+    if(drpStart && ts === drpStart.getTime()) cls += " drp-start";
+    if(drpEnd   && ts === drpEnd.getTime())   cls += " drp-end";
+    if(drpStart && drpEnd && ts>drpStart.getTime() && ts<drpEnd.getTime()) cls += " drp-in-range";
+    html += '<div class="'+cls+'" onclick="drpClick('+year+','+month+','+d+')" onmouseover="drpHoverDay('+year+','+month+','+d+')">'+d+'</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function drpNav(dir){
+  drpLeftMonth += dir;
+  if(drpLeftMonth > 11){ drpLeftMonth=0; drpLeftYear++; }
+  if(drpLeftMonth < 0) { drpLeftMonth=11; drpLeftYear--; }
+  renderDRPCals();
+}
+
+function drpClick(y, m, d){
+  var dt = new Date(y, m, d);
+  if(!drpStart || (drpStart && drpEnd)){
+    drpStart = dt; drpEnd = null;
+  } else if(dt < drpStart){
+    drpEnd = drpStart; drpStart = dt;
+  } else {
+    drpEnd = dt;
+  }
+  renderDRPCals();
+}
+
+function drpHoverDay(y, m, d){
+  // Re-render range preview on hover (optional enhancement — skipped to keep perf)
+}
+
+function updateDRPLabel(){
+  var lbl = document.getElementById("drp-range-lbl");
+  if(!lbl) return;
+  if(!drpStart) lbl.innerHTML = "Select start date";
+  else if(!drpEnd) lbl.innerHTML = "<strong>"+drpFmt(drpStart)+"</strong> → select end date";
+  else lbl.innerHTML = "<strong>"+drpFmt(drpStart)+"</strong> → <strong>"+drpFmt(drpEnd)+"</strong>";
+}
+
+function drpPreset(key){
+  var now = new Date(); now.setHours(0,0,0,0);
+  document.querySelectorAll(".drp-preset").forEach(function(b){ b.classList.remove("sel"); });
+  event.target.classList.add("sel");
+  if(key==="clear"){ drpStart=null; drpEnd=null; applyDRP(); return; }
+  if(key==="today"){ drpStart=new Date(now); drpEnd=new Date(now); }
+  else if(key==="7d"){ drpEnd=new Date(now); drpStart=new Date(now.getTime()-6*86400000); }
+  else if(key==="30d"){ drpEnd=new Date(now); drpStart=new Date(now.getTime()-29*86400000); }
+  else if(key==="90d"){ drpEnd=new Date(now); drpStart=new Date(now.getTime()-89*86400000); }
+  else if(key==="thismonth"){ drpStart=new Date(now.getFullYear(),now.getMonth(),1); drpEnd=new Date(now.getFullYear(),now.getMonth()+1,0); }
+  else if(key==="lastmonth"){ drpStart=new Date(now.getFullYear(),now.getMonth()-1,1); drpEnd=new Date(now.getFullYear(),now.getMonth(),0); }
+  else if(key==="thisyear"){ drpStart=new Date(now.getFullYear(),0,1); drpEnd=new Date(now.getFullYear(),11,31); }
+  drpLeftYear=drpStart.getFullYear(); drpLeftMonth=drpStart.getMonth();
+  renderDRPCals();
+  applyDRP();
+}
+
+function applyDRP(){
+  closeDRP();
+  var btnLbl = document.getElementById("drp-label");
+  if(!drpStart){ btnLbl.textContent="Filter by Date"; window._drpFilter=null; }
+  else {
+    var label = drpEnd && drpEnd.getTime()!==drpStart.getTime()
+      ? drpStart.toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+" – "+drpFmt(drpEnd)
+      : drpFmt(drpStart);
+    btnLbl.textContent = label;
+    window._drpFilter = {start: drpStart, end: drpEnd || drpStart};
+  }
+  // Re-apply current booking table filter
+  filterBookingTable();
+}
+
+// Hook into existing filterBookingTable to also apply date range
+var _origFilterBkTable = filterBookingTable;
+filterBookingTable = function(){
+  var q   = (document.getElementById("bk-search")||{}).value || "";
+  q = q.toLowerCase();
+  var src = window._curBks || [];
+  var filtered = src.filter(function(b){
+    // Text search
+    var carName  = b.carName  || (b.car&&b.car.name) || "";
+    var custName = b.customer || (b.user&&b.user.name) || "";
+    var phone    = b.phone    || (b.user&&b.user.phone) || "";
+    var textOk = !q || (b.bookingId||"").toLowerCase().includes(q) ||
+      carName.toLowerCase().includes(q) || custName.toLowerCase().includes(q) || phone.includes(q);
+    if(!textOk) return false;
+    // Date range filter
+    if(window._drpFilter){
+      var pickup = new Date(b.pickup && b.pickup.date ? b.pickup.date : b.pickup);
+      pickup.setHours(0,0,0,0);
+      var endOfDay = new Date(window._drpFilter.end); endOfDay.setHours(23,59,59,999);
+      if(pickup < window._drpFilter.start || pickup > endOfDay) return false;
+    }
+    return true;
+  });
+  var wrap = document.getElementById("bk-table-wrap");
+  if(wrap) wrap.innerHTML = buildTable(filtered, true);
+};
 </script>
 </body>
 </html>

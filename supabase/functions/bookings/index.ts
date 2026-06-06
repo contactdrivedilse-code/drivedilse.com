@@ -97,6 +97,22 @@ Deno.serve(async (req) => {
       return json((bookings ?? []).map((b: Record<string, unknown>) => mapBooking(b, extMap[b.id as string])));
     }
 
+    // GET /:id/selfie-status — customer polls for selfie verification result
+    const selfieStatusMatch = path.match(/^\/([^/]+)\/selfie-status$/);
+    if (req.method === "GET" && selfieStatusMatch) {
+      const id = selfieStatusMatch[1];
+      const { data: booking } = await sb.from("bookings").select("notes").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      const notes = (b.notes as string) || "";
+      if (notes.startsWith("selfie:approved")) return json({ status: "approved" });
+      if (notes.startsWith("selfie:rejected")) {
+        const reason = notes.replace("selfie:rejected:", "") || "Identity could not be verified";
+        return json({ status: "rejected", reason });
+      }
+      return json({ status: "pending" });
+    }
+
     // POST /:id/checkin — upload 4 photos
     const checkinMatch = path.match(/^\/([^/]+)\/checkin$/);
     if (req.method === "POST" && checkinMatch) {
@@ -170,15 +186,29 @@ Deno.serve(async (req) => {
       if (!["confirmed", "active"].includes(b.status as string))
         return json({ error: "Can only extend confirmed or active bookings" }, 400);
 
-      const pph  = Math.round((b.price_per_day as number) / 24);
-      const cost = hours < 24 ? pph * hours : (b.price_per_day as number) * (hours / 24);
+      const nowMs     = Date.now();
+      const dropMs    = new Date(b.drop_date as string).getTime();
+      const isLate    = nowMs > dropMs;
+      const pph       = Math.round((b.price_per_day as number) / 24);
+      const rateMulti = isLate ? 2 : 1;
+      const pphFinal  = pph * rateMulti;
+      const base = hours < 24
+        ? pphFinal * hours
+        : (b.price_per_day as number) * rateMulti * (hours / 24);
+      const gst   = Math.round(base * 0.18);
+      const total = Math.round(base) + gst;
+
       const order = await razorpayCreate({
-        amount: Math.round(cost) * 100, currency: "INR",
+        amount: total * 100, currency: "INR",
         receipt: "EXT_" + b.booking_id,
-        notes: { bookingId: b.booking_id, hours },
+        notes: { bookingId: b.booking_id, hours, isLate: isLate ? "1" : "0" },
       });
 
-      return json({ orderId: order.id, amount: Math.round(cost), currency: "INR", keyId: Deno.env.get("RAZORPAY_KEY_ID") });
+      return json({
+        orderId: order.id, amount: total, base: Math.round(base), gst, currency: "INR",
+        keyId: Deno.env.get("RAZORPAY_KEY_ID"),
+        isLate, pph: pphFinal, rateMulti,
+      });
     }
 
     // POST /:id/extend/verify
@@ -194,24 +224,147 @@ Deno.serve(async (req) => {
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
 
-      const pph     = Math.round((b.price_per_day as number) / 24);
-      const cost    = hours < 24 ? pph * hours : (b.price_per_day as number) * (hours / 24);
-      const newDrop = new Date(new Date(b.drop_date as string).getTime() + hours * 3600000);
-      const newDays = Math.max(1, Math.ceil((newDrop.getTime() - new Date(b.pickup_date as string).getTime()) / 86400000));
+      const isLateExt  = Date.now() > new Date(b.drop_date as string).getTime();
+      const pph        = Math.round((b.price_per_day as number) / 24);
+      const rateM      = isLateExt ? 2 : 1;
+      const baseExt    = hours < 24 ? pph * rateM * hours : (b.price_per_day as number) * rateM * (hours / 24);
+      const gstExt     = Math.round(baseExt * 0.18);
+      const cost       = Math.round(baseExt) + gstExt;
+      const newDrop    = new Date(new Date(b.drop_date as string).getTime() + hours * 3600000);
+      const newDays    = Math.max(1, Math.ceil((newDrop.getTime() - new Date(b.pickup_date as string).getTime()) / 86400000));
+      const newTotal   = (b.total as number) + cost;
 
       await sb.from("bookings").update({
         drop_date: newDrop.toISOString(), days: newDays,
-        total: (b.total as number) + Math.round(cost),
-        updated_at: new Date().toISOString(),
+        total: newTotal, updated_at: new Date().toISOString(),
       }).eq("id", id);
 
       await sb.from("extensions").insert({
-        id: crypto.randomUUID(), booking_id: id, hours, cost: Math.round(cost),
+        id: crypto.randomUUID(), booking_id: id, hours, cost,
         razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
         razorpay_signature: razorpaySignature,
       });
 
-      return json({ success: true, newDrop: newDrop.toISOString() });
+      // Return full updated booking so frontend can sync
+      const { data: updated } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();
+      const { data: exts }    = await sb.from("extensions").select("*").eq("booking_id", id);
+      const extList = (exts ?? []).map((e: Record<string, unknown>) => ({
+        hours: e.hours, cost: e.cost, extendedAt: e.created_at,
+      }));
+      return json({
+        success: true, newDrop: newDrop.toISOString(), hours, cost,
+        booking: mapBooking(updated as Record<string, unknown>, extList),
+      });
+    }
+
+    // PUT /:id/reschedule — change booking pickup/drop dates
+    const rescheduleMatch = path.match(/^\/([^/]+)\/reschedule$/);
+    if (req.method === "PUT" && rescheduleMatch) {
+      const id = rescheduleMatch[1];
+      const { pickupDate, dropDate } = await req.json();
+
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.status !== "confirmed") return json({ error: "Only confirmed bookings can be rescheduled" }, 400);
+
+      const newPickup = new Date(pickupDate);
+      const newDrop   = new Date(dropDate);
+
+      if (newPickup < new Date()) return json({ error: "Pickup time cannot be in the past" }, 400);
+      if (newDrop <= newPickup)   return json({ error: "Drop time must be after pickup time" }, 400);
+
+      const pISOR = newPickup.toISOString(), dISOR = newDrop.toISOString();
+
+      // Conflict check — exclude current booking
+      const { data: conflict } = await sb.from("bookings").select("id")
+        .eq("car_id", b.car_id as string).neq("id", id)
+        .in("status", ["confirmed", "active", "completed"])
+        .lt("pickup_date", dISOR).gt("drop_date", pISOR).maybeSingle();
+      if (conflict) return json({ error: "Car is not available for the selected dates" }, 400);
+
+      const { total, discount, days } = calcPrice(b.price_per_day as number, newPickup, newDrop);
+
+      await sb.from("bookings").update({
+        pickup_date: pISOR, drop_date: dISOR,
+        days, total, discount, updated_at: new Date().toISOString(),
+      }).eq("id", id);
+
+      const { data: updated } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();
+      return json({ success: true, booking: mapBooking(updated as Record<string, unknown>) });
+    }
+
+    // POST /:id/damage — upload damage photos (pre check-in or post checkout)
+    const damageMatch = path.match(/^\/([^/]+)\/damage$/);
+    if (req.method === "POST" && damageMatch) {
+      const id  = damageMatch[1];
+      const { data: booking } = await sb.from("bookings").select("id, user_id").eq("id", id).eq("user_id", user.id).maybeSingle();
+      if (!booking) return json({ error: "Booking not found" }, 404);
+
+      const fd       = await req.formData();
+      const typeVal  = (fd.get("type") as string) || "checkin";
+      const photos: string[] = [];
+
+      for (let i = 0; i < 10; i++) {
+        const file = fd.get("photo" + i) as File | null;
+        if (!file) break;
+        const buf  = new Uint8Array(await file.arrayBuffer());
+        const fpath = `${id}/damage_${typeVal}_${i}_${Date.now()}.jpg`;
+        const { error: upErr } = await sb.storage.from("checkin").upload(fpath, buf, { contentType: file.type, upsert: true });
+        if (!upErr) photos.push(sb.storage.from("checkin").getPublicUrl(fpath).data.publicUrl);
+      }
+
+      // Store URLs in booking notes (append to existing)
+      const { data: bk } = await sb.from("bookings").select("notes").eq("id", id).maybeSingle();
+      const existing = (bk as Record<string, unknown>)?.notes as string || "";
+      const noteKey  = typeVal === "checkout" ? "damage_checkout" : "damage_checkin";
+      const newNote  = existing + "\n" + noteKey + ":" + photos.join(",");
+      await sb.from("bookings").update({ notes: newNote.trim(), updated_at: new Date().toISOString() }).eq("id", id);
+
+      return json({ success: true, uploaded: photos.length });
+    }
+
+    // POST /:id/extend/direct — extend without Razorpay (when payment gateway not configured)
+    const extDirectMatch = path.match(/^\/([^/]+)\/extend\/direct$/);
+    if (req.method === "POST" && extDirectMatch) {
+      const id = extDirectMatch[1];
+      const { hours } = await req.json();
+      if (!hours || hours <= 0) return json({ error: "Invalid hours" }, 400);
+
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (!["confirmed", "active"].includes(b.status as string))
+        return json({ error: "Can only extend confirmed or active bookings" }, 400);
+
+      const isLateD  = Date.now() > new Date(b.drop_date as string).getTime();
+      const pph      = Math.round((b.price_per_day as number) / 24);
+      const rateM    = isLateD ? 2 : 1;
+      const baseD    = hours < 24 ? pph * rateM * hours : (b.price_per_day as number) * rateM * (hours / 24);
+      const gstD     = Math.round(baseD * 0.18);
+      const costD    = Math.round(baseD) + gstD;
+      const newDropD = new Date(new Date(b.drop_date as string).getTime() + hours * 3600000);
+      const newDaysD = Math.max(1, Math.ceil((newDropD.getTime() - new Date(b.pickup_date as string).getTime()) / 86400000));
+
+      await sb.from("bookings").update({
+        drop_date: newDropD.toISOString(), days: newDaysD,
+        total: (b.total as number) + costD, updated_at: new Date().toISOString(),
+      }).eq("id", id);
+
+      await sb.from("extensions").insert({
+        id: crypto.randomUUID(), booking_id: id, hours, cost: costD,
+        razorpay_order_id: "", razorpay_payment_id: "direct", razorpay_signature: "",
+      });
+
+      const { data: updatedD } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();
+      const { data: extsD }    = await sb.from("extensions").select("*").eq("booking_id", id);
+      const extListD = (extsD ?? []).map((e: Record<string, unknown>) => ({
+        hours: e.hours, cost: e.cost, extendedAt: e.created_at,
+      }));
+      return json({
+        success: true, newDrop: newDropD.toISOString(), hours, cost: costD,
+        booking: mapBooking(updatedD as Record<string, unknown>, extListD),
+      });
     }
 
     // PUT /:id/cancel
@@ -242,9 +395,14 @@ Deno.serve(async (req) => {
       if (!b.checkout_otp) return json({ error: "Checkout OTP not yet generated" }, 400);
       if (b.checkout_otp !== otp) return json({ error: "Incorrect OTP. Get it from the DriveDilSe representative." }, 400);
 
+      const checkedOutAt = new Date().toISOString();
+      // Car unavailable for 4 hours after completion (cleaning/inspection buffer)
+      const availableAt  = new Date(Date.now() + 4 * 3600000).toISOString();
+
       await sb.from("bookings").update({
-        checkout_otp_verified: true, checked_out_at: new Date().toISOString(),
-        status: "completed", updated_at: new Date().toISOString(),
+        checkout_otp_verified: true, checked_out_at: checkedOutAt,
+        drop_date: availableAt, // overwrite original drop — car free after 4h
+        status: "completed", updated_at: checkedOutAt,
       }).eq("id", id);
 
       return json({ success: true, message: "Booking closed. Thank you for driving with DriveDilSe!" });

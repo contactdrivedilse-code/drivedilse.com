@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Policies & Terms — DriveDilSe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--y:#f5c518;--yd:#c9a010;--w:#fff;--ow:#faf9f6;--wg:#f4f1e8;--b:#ede9db;--t:#3a2c00;--ts:#9a8060;--shadow:0 2px 24px rgba(200,160,0,.10)}
+body{font-family:'Inter',sans-serif;color:var(--t);background:var(--ow);line-height:1.7}
+::selection{background:rgba(245,197,24,.45);color:#3a2c00}
+
+/* ---- HEADER ---- */
+.hdr{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.85);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid var(--b);padding:0 48px;height:68px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 24px rgba(200,160,0,.10),0 1px 0 rgba(245,197,24,.18)}
+.logo{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:900;color:var(--t);text-decoration:none;letter-spacing:-.3px}
+.logo span{color:var(--yd)}
+.nav-links{display:flex;gap:8px;align-items:center}
+.nav-link{font-size:.84rem;font-weight:600;color:#555;text-decoration:none;padding:6px 14px;border-radius:8px;transition:color .2s,background .2s}
+.nav-link:hover{color:var(--yd);background:rgba(245,197,24,.1)}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;font-weight:600;color:var(--yd);text-decoration:none;padding:7px 16px;border-radius:10px;border:1.5px solid rgba(245,197,24,.5);background:rgba(245,197,24,.07);transition:background .2s}
+.nav-back:hover{background:rgba(245,197,24,.18)}
+
+/* ---- PAGE HERO ---- */
+.policy-hero{background:linear-gradient(135deg,#fffde8 0%,#fff9d0 40%,#fffef5 100%);position:relative;padding:64px 48px 48px;border-bottom:1px solid var(--b);overflow:hidden}
+.policy-hero::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(201,160,16,.16) 1.5px,transparent 1.5px);background-size:28px 28px;pointer-events:none}
+.policy-hero-inner{position:relative;z-index:1;max-width:900px;margin:0 auto}
+.policy-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.4);border-radius:20px;padding:5px 16px;font-size:.73rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--yd);margin-bottom:20px}
+.policy-hero h1{font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:900;color:var(--t);letter-spacing:-.5px;line-height:1.15;margin-bottom:14px}
+.policy-hero p{font-size:1rem;color:var(--ts);max-width:600px;line-height:1.65}
+.policy-meta{display:flex;gap:24px;margin-top:24px;flex-wrap:wrap}
+.policy-meta-item{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--ts);font-weight:500}
+.policy-meta-dot{width:6px;height:6px;border-radius:50%;background:var(--y)}
+
+/* ---- LAYOUT ---- */
+.policy-wrap{max-width:1100px;margin:0 auto;padding:56px 48px;display:grid;grid-template-columns:240px 1fr;gap:48px;align-items:start}
+@media(max-width:860px){.policy-wrap{grid-template-columns:1fr;padding:32px 20px}}
+@media(max-width:600px){.policy-hero{padding:48px 20px 36px}.policy-hero h1{font-size:2rem}}
+@media(max-width:600px){.hdr{padding:0 20px}.nav-links{gap:4px}}
+
+/* ---- SIDEBAR TOC ---- */
+.toc{position:sticky;top:90px;background:var(--w);border:1px solid var(--b);border-radius:18px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,.05)}
+.toc-title{font-size:.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:14px}
+.toc a{display:block;font-size:.82rem;color:var(--ts);text-decoration:none;padding:6px 10px;border-radius:8px;font-weight:500;transition:color .15s,background .15s;margin-bottom:2px}
+.toc a:hover{color:var(--yd);background:rgba(245,197,24,.1)}
+.toc a.active{color:var(--yd);background:rgba(245,197,24,.12);font-weight:700}
+@media(max-width:860px){.toc{position:relative;top:0}}
+
+/* ---- POLICY CONTENT ---- */
+.policy-content{display:flex;flex-direction:column;gap:40px}
+.policy-section{background:var(--w);border:1px solid var(--b);border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.05);transition:box-shadow .3s}
+.policy-section:hover{box-shadow:0 8px 36px rgba(200,160,0,.12)}
+.ps-header{background:linear-gradient(135deg,#fffde8,#fff9d0);border-bottom:1px solid var(--b);padding:22px 28px;display:flex;align-items:center;gap:14px}
+.ps-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;box-shadow:0 4px 14px rgba(245,197,24,.4)}
+.ps-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;color:var(--t)}
+.ps-body{padding:28px}
+
+/* Typography inside sections */
+.ps-body h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--t);margin:22px 0 8px}
+.ps-body h3:first-child{margin-top:0}
+.ps-body p{font-size:.9rem;color:#4a3a1a;line-height:1.75;margin-bottom:12px}
+.ps-body p:last-child{margin-bottom:0}
+.ps-body ul,.ps-body ol{padding-left:20px;margin-bottom:14px}
+.ps-body li{font-size:.875rem;color:#4a3a1a;line-height:1.7;margin-bottom:4px}
+.ps-body strong{font-weight:700;color:var(--t)}
+.highlight-box{background:linear-gradient(135deg,#fffde8,#fff9d0);border:1px solid rgba(245,197,24,.4);border-radius:12px;padding:16px 20px;margin:16px 0}
+.highlight-box p{margin:0;font-size:.875rem}
+.warn-box{background:#fffbe6;border:1px solid rgba(245,197,24,.5);border-left:4px solid var(--yd);border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0}
+.warn-box p{margin:0;font-size:.85rem;color:var(--t)}
+.tag{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.tag-ok{background:#dcfce7;color:#15803d}
+.tag-no{background:#fee2e2;color:#b91c1c}
+.tag-info{background:rgba(245,197,24,.2);color:var(--yd)}
+.divider{border:none;border-top:1px solid var(--b);margin:20px 0}
+
+/* ---- FOOTER ---- */
+footer{background:linear-gradient(135deg,#fffde8,#fffbe0,#fff8d0);border-top:1.5px solid rgba(201,160,16,.3);padding:36px 48px;box-shadow:0 -4px 24px rgba(200,160,0,.07)}
+.footer-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.footer-brand{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:900;color:var(--t);margin-bottom:4px}
+.footer-brand span{color:var(--yd)}
+.footer-copy{font-size:.74rem;color:var(--ts)}
+.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+.footer-links a{font-size:.8rem;color:var(--ts);text-decoration:none;font-weight:500;transition:color .2s}
+.footer-links a:hover{color:var(--yd)}
+@media(max-width:600px){footer{padding:28px 20px}.footer-inner{flex-direction:column;text-align:center}.footer-links{justify-content:center}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <a href="index.html" class="logo">Drive<span>DilSe</span></a>
+  <div class="nav-links">
+    <a href="index.html#fleet-sec" class="nav-link">Fleet</a>
+    <a href="index.html#how-sec" class="nav-link">How It Works</a>
+    <a href="index.html" class="nav-back">&#8592; Back to Home</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="policy-hero">
+  <div class="policy-hero-inner">
+    <div class="policy-eyebrow">&#9998; Legal &amp; Policies</div>
+    <h1>Policies &amp; Terms of Use</h1>
+    <p>These terms govern your use of DriveDilSe's self-drive platform. By completing a booking you agree to all terms below. Please read them carefully before your trip.</p>
+    <div class="policy-meta">
+      <div class="policy-meta-item"><div class="policy-meta-dot"></div>Effective: January 2025</div>
+      <div class="policy-meta-item"><div class="policy-meta-dot"></div>Jurisdiction: Pune, Maharashtra, India</div>
+      <div class="policy-meta-item"><div class="policy-meta-dot"></div>Governed by: Motor Vehicles Act, 1988 &amp; IT Act, 2000</div>
+    </div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="policy-wrap">
+
+  <!-- TABLE OF CONTENTS -->
+  <aside class="toc" id="toc">
+    <div class="toc-title">On This Page</div>
+    <a href="#sec-agreement">1. Lease Agreement</a>
+    <a href="#sec-booking">2. Booking Policy</a>
+    <a href="#sec-usage">3. Vehicle Usage</a>
+    <a href="#sec-deposit">4. Security Deposit</a>
+    <a href="#sec-damage">5. Damage &amp; Accident</a>
+    <a href="#sec-traffic">6. Traffic Violations</a>
+    <a href="#sec-insurance">7. Insurance</a>
+    <a href="#sec-kyc">8. KYC &amp; Verification</a>
+    <a href="#sec-cancellation">9. Cancellation &amp; Refund</a>
+    <a href="#sec-privacy">10. Privacy Policy</a>
+    <a href="#sec-liability">11. Liability &amp; Indemnity</a>
+    <a href="#sec-governing">12. Governing Law</a>
+  </aside>
+
+  <!-- SECTIONS -->
+  <div class="policy-content">
+
+    <!-- 1. LEASE AGREEMENT -->
+    <div class="policy-section" id="sec-agreement">
+      <div class="ps-header">
+        <div class="ps-icon">&#128196;</div>
+        <div class="ps-title">1. Lease Agreement for Self-Drive</div>
+      </div>
+      <div class="ps-body">
+        <p>This document is an electronic record under the <strong>Information Technology Act, 2000</strong> and complies with provisions of the <strong>Motor Vehicles Act, 1988 (Section 51)</strong> which recognises leasing of vehicles for personal use. This agreement is generated digitally and does not require a physical signature.</p>
+        <p>By confirming a booking on DriveDilSe ("Platform"), the Guest (you) enters into a lease agreement with DriveDilSe ("Lessor") for the specified vehicle for the duration of the Booking Period.</p>
+        <div class="highlight-box">
+          <p><strong>This is a lease — not a transfer of ownership.</strong> The vehicle remains the absolute property of DriveDilSe / its registered owner at all times. The Guest holds the vehicle as trustee during the Booking Period.</p>
+        </div>
+        <h3>Key Definitions</h3>
+        <ul>
+          <li><strong>Booking Period</strong> — from the confirmed start date/time to the confirmed end date/time.</li>
+          <li><strong>Primary Guest</strong> — the person who created the booking and completed KYC verification.</li>
+          <li><strong>Co-Driver</strong> — an additional registered driver added to the booking via the Platform.</li>
+          <li><strong>Permitted Territory</strong> — entire territory of India, excluding Ladakh and international borders (Nepal, Bhutan, Bangladesh, Pakistan).</li>
+          <li><strong>Designated Location</strong> — the pickup/drop address specified in the booking confirmation.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 2. BOOKING POLICY -->
+    <div class="policy-section" id="sec-booking">
+      <div class="ps-header">
+        <div class="ps-icon">&#128197;</div>
+        <div class="ps-title">2. Booking Policy</div>
+      </div>
+      <div class="ps-body">
+        <h3>Booking Confirmation</h3>
+        <p>A booking is confirmed only upon full payment of the Booking Fee and Security Deposit through the Platform. The Booking Period commences on the Booking Start Date irrespective of whether the Guest takes delivery.</p>
+
+        <h3>Delivery of Vehicle</h3>
+        <p>The Primary Guest or registered Co-Driver must be present in person to receive the vehicle and must produce:</p>
+        <ul>
+          <li>Original valid driving licence</li>
+          <li>Recent passport-size photograph</li>
+          <li>Additional address proof (Aadhaar, Voter ID, or valid Passport)</li>
+        </ul>
+        <p>The Guest must inspect the vehicle (exterior walk-around + interior check) before accepting delivery. Any pre-existing damage must be reported immediately. Post-acceptance, the vehicle condition is the Guest's responsibility.</p>
+
+        <h3>Booking Extension</h3>
+        <p>Extensions must be requested and confirmed through the Platform before the Booking End Date. Unauthorised use of the vehicle beyond the Booking Period will attract late-return penalties as per the Fee Policy.</p>
+
+        <h3>Return of Vehicle</h3>
+        <p>The vehicle must be returned to the Designated Location with all Vehicle Documentation, keys, key fob, and in-vehicle devices in the same condition as at the time of delivery (normal wear and tear excepted).</p>
+        <div class="warn-box">
+          <p>Returning the vehicle at a location other than the Designated Location will incur transportation costs charged to the Guest.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. VEHICLE USAGE -->
+    <div class="policy-section" id="sec-usage">
+      <div class="ps-header">
+        <div class="ps-icon">&#128663;</div>
+        <div class="ps-title">3. Vehicle Usage Policy</div>
+      </div>
+      <div class="ps-body">
+        <h3><span class="tag tag-ok">Permitted</span> Allowed Uses</h3>
+        <ul>
+          <li>Personal travel within the Permitted Territory (India, excluding Ladakh and international borders)</li>
+          <li>Driving only by the Primary Guest or verified, registered Co-Driver</li>
+          <li>Use in compliance with all applicable traffic laws and the Motor Vehicles Act, 1988</li>
+        </ul>
+
+        <h3><span class="tag tag-no">Prohibited</span> Strictly Forbidden Uses</h3>
+        <p>The following constitute a <strong>material breach</strong> of the lease agreement:</p>
+        <ul>
+          <li>Commercial use — transporting passengers or goods for hire or reward</li>
+          <li>Providing driving lessons</li>
+          <li>Use by any person other than the Primary Guest or registered Co-Driver</li>
+          <li>Racing, rallies, off-road events, endurance tests</li>
+          <li>Towing or pushing another vehicle or trailer</li>
+          <li>Any criminal, illegal, or unlawful activity</li>
+          <li>Transporting hazardous, combustible, or overweight goods</li>
+          <li>Travel outside the Permitted Territory</li>
+          <li>Driving under the influence of alcohol, drugs, or any intoxicant</li>
+          <li>Using a mobile phone while driving (hands-free or otherwise)</li>
+          <li>Smoking, tobacco, or alcohol use inside the vehicle</li>
+          <li>Transporting animals</li>
+          <li>Exceeding the vehicle's rated passenger capacity</li>
+          <li>Jump-starting the vehicle without prior written consent</li>
+          <li>Tampering with or removing in-vehicle tracking/safety devices</li>
+        </ul>
+        <div class="warn-box">
+          <p>Any prohibited use voids insurance coverage and renders the Guest solely liable for all resulting damages, costs, and legal consequences.</p>
+        </div>
+
+        <h3>Guest Obligations During Booking</h3>
+        <ul>
+          <li>Maintain vehicle cleanliness and operating condition throughout the Booking Period</li>
+          <li>Maintain a valid, current driving licence at all times</li>
+          <li>Notify DriveDilSe immediately if driving licence is suspended or revoked</li>
+          <li>Keep vehicle doors locked and windows closed when parked</li>
+          <li>Not modify, alter, or repair the vehicle without written consent</li>
+          <li>Keep vehicle free from any liens, claims, or encumbrances</li>
+          <li>Ensure all original Vehicle Documentation remains in the vehicle at all times</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 4. SECURITY DEPOSIT -->
+    <div class="policy-section" id="sec-deposit">
+      <div class="ps-header">
+        <div class="ps-icon">&#128176;</div>
+        <div class="ps-title">4. Security Deposit Policy</div>
+      </div>
+      <div class="ps-body">
+        <p>A refundable Security Deposit is charged at the time of booking as specified in the booking details. The deposit is held by DriveDilSe until the vehicle is returned in satisfactory condition.</p>
+
+        <h3>Refund Conditions</h3>
+        <ul>
+          <li><strong>Full refund</strong> — vehicle returned on time, at Designated Location, in original condition, with all documentation, with no outstanding dues</li>
+          <li><strong>Partial / No refund</strong> — outstanding Booking Fee, damage charges, traffic fines, fuel shortfall, cleaning charges, or late return penalties will be deducted from the deposit</li>
+        </ul>
+
+        <h3>Forfeiture</h3>
+        <ul>
+          <li>If the Guest cancels after booking and before taking delivery, the Security Deposit and Booking Fee may be forfeited per the Cancellation Policy</li>
+          <li>If DriveDilSe cancels due to no fault of the Guest, the Security Deposit and Booking Fee will be fully refunded</li>
+        </ul>
+
+        <div class="highlight-box">
+          <p>Security Deposit refunds are processed within <strong>5–7 business days</strong> after vehicle return and inspection.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. DAMAGE & ACCIDENT -->
+    <div class="policy-section" id="sec-damage">
+      <div class="ps-header">
+        <div class="ps-icon">&#9888;&#65039;</div>
+        <div class="ps-title">5. Damage, Accident &amp; Theft Policy</div>
+      </div>
+      <div class="ps-body">
+        <p>The Guest assumes sole financial liability for the vehicle during the entire Booking Period. DriveDilSe shall not be liable for any loss or damage suffered by the Guest or any third party arising from the use of the vehicle.</p>
+
+        <h3>Immediate Obligations on Damage / Accident / Theft</h3>
+        <p>Within <strong>24 hours</strong> of any incident, the Guest must:</p>
+        <ol>
+          <li>Notify DriveDilSe in writing with full details of the incident</li>
+          <li>File an FIR at the nearest police station and provide DriveDilSe a copy</li>
+          <li>Take the vehicle to the workshop specified by DriveDilSe (for accidents/damage)</li>
+          <li>Provide full cooperation for insurance claim processing</li>
+        </ol>
+        <div class="warn-box">
+          <p>Failure to fulfil these obligations makes the Guest solely liable for all resulting costs and consequences, including loss of insurance coverage.</p>
+        </div>
+
+        <h3>Financial Liability</h3>
+        <ul>
+          <li><strong>Deliberate damage / Prohibited Use</strong> — Guest bears 100% of all costs including third-party claims, repair costs, and insurance declared value if claim is rejected</li>
+          <li><strong>Accidental / Unintentional damage</strong> — Guest pays only the amount exceeding insurance coverage (excess/deductible as per the applicable policy)</li>
+          <li><strong>Theft (vehicle recovered)</strong> — Agreement terminates; Guest pays all unpaid dues and costs incurred</li>
+          <li><strong>Total loss</strong> — Guest liable for shortfall between insurance payout and book value of vehicle, plus any unpaid dues</li>
+        </ul>
+
+        <h3>Vehicle Condition at Return</h3>
+        <p>Normal wear and tear is acceptable. Damage beyond normal wear and tear will be assessed and charged as per the Damage Policy, including costs to restore the vehicle to its original condition.</p>
+      </div>
+    </div>
+
+    <!-- 6. TRAFFIC VIOLATIONS -->
+    <div class="policy-section" id="sec-traffic">
+      <div class="ps-header">
+        <div class="ps-icon">&#128681;</div>
+        <div class="ps-title">6. Traffic Violations &amp; Confiscation</div>
+      </div>
+      <div class="ps-body">
+        <p>The Guest is solely responsible for all traffic violations, toll evasion, and related fines incurred during the Booking Period, including:</p>
+        <ul>
+          <li>Unauthorised parking</li>
+          <li>Speeding and red-light violations</li>
+          <li>Toll non-payment / FASTag deductions</li>
+          <li>Interstate road tax / permit charges</li>
+          <li>Any other violations under the Motor Vehicles Act</li>
+        </ul>
+
+        <h3>Reporting Obligation</h3>
+        <p>Any traffic violation must be reported to DriveDilSe in writing within <strong>24 hours</strong> of occurrence (or at least 24 hours before any court date). The Guest must settle fines directly with the relevant authority and provide DriveDilSe proof of payment.</p>
+        <p>If the Guest fails to pay, DriveDilSe reserves the right to pay on the Guest's behalf and recover the amount from the Security Deposit or by other means.</p>
+
+        <h3>Vehicle Confiscation / Seizure</h3>
+        <p>If the vehicle is confiscated or impounded during the Booking Period, the Guest must notify DriveDilSe within 24 hours and provide full cooperation for its release. All costs of release, fines, and penalties shall be borne by the Guest.</p>
+      </div>
+    </div>
+
+    <!-- 7. INSURANCE -->
+    <div class="policy-section" id="sec-insurance">
+      <div class="ps-header">
+        <div class="ps-icon">&#128737;</div>
+        <div class="ps-title">7. Insurance Policy</div>
+      </div>
+      <div class="ps-body">
+        <p>DriveDilSe maintains valid vehicle insurance covering <strong>third-party liability, own damage, and theft</strong> for all vehicles listed on the Platform.</p>
+
+        <h3>What is Covered</h3>
+        <ul>
+          <li>Third-party bodily injury, death, or property damage arising from permitted use of the vehicle</li>
+          <li>Own damage and theft subject to policy terms and Guest compliance</li>
+        </ul>
+
+        <h3>What is NOT Covered</h3>
+        <ul>
+          <li>Damage caused by deliberate acts or Prohibited Use by the Guest</li>
+          <li>Claims by the Guest, Co-Driver, or their immediate family members travelling in the vehicle</li>
+          <li>Damage where the Guest failed to report the incident or cooperate with claim processing</li>
+          <li>Damage due to driving under the influence of alcohol or drugs</li>
+          <li>Damage from use outside the Permitted Territory</li>
+          <li>Consequential, indirect, or loss-of-profit damages</li>
+        </ul>
+
+        <div class="highlight-box">
+          <p>Any insurance claim that is <strong>repudiated</strong> due to Guest's negligence, rash driving, or unlawful use makes the Guest solely liable for all related costs.</p>
+        </div>
+
+        <h3>Parts & Accessories</h3>
+        <p>All parts and accessories replaced or added during the Booking Period remain the exclusive property of DriveDilSe. The Guest is not entitled to compensation for such replacements.</p>
+      </div>
+    </div>
+
+    <!-- 8. KYC -->
+    <div class="policy-section" id="sec-kyc">
+      <div class="ps-header">
+        <div class="ps-icon">&#128100;</div>
+        <div class="ps-title">8. KYC &amp; Verification Requirements</div>
+      </div>
+      <div class="ps-body">
+        <p>All guests must complete KYC verification before taking delivery of any vehicle. The following documents are mandatory:</p>
+
+        <h3>Required Documents</h3>
+        <ul>
+          <li><strong>Driving Licence</strong> — valid, original, for the class of vehicle being rented</li>
+          <li><strong>Photo ID</strong> — Aadhaar Card, Voter ID, or valid Passport</li>
+          <li><strong>Passport-size photograph</strong> — recent, clear</li>
+        </ul>
+
+        <h3>Co-Driver Requirements</h3>
+        <p>If a Co-Driver will operate the vehicle, they must also complete KYC on the Platform before the Booking Start Date. The Primary Guest is jointly and severally liable for any unregistered Co-Driver operating the vehicle.</p>
+
+        <div class="warn-box">
+          <p>Allowing an unverified person to drive the vehicle is a <strong>material breach</strong> of the lease and results in full personal liability for the Primary Guest for any damages, fines, or consequences.</p>
+        </div>
+
+        <h3>Minimum Age & Eligibility</h3>
+        <ul>
+          <li>Minimum age: 21 years</li>
+          <li>Driving licence must be at least 1 year old</li>
+          <li>Guest must have no active DUI convictions or suspended licence</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 9. CANCELLATION & REFUND -->
+    <div class="policy-section" id="sec-cancellation">
+      <div class="ps-header">
+        <div class="ps-icon">&#8635;</div>
+        <div class="ps-title">9. Cancellation &amp; Refund Policy</div>
+      </div>
+      <div class="ps-body">
+        <h3>Guest-Initiated Cancellation</h3>
+        <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:14px">
+          <thead>
+            <tr style="background:linear-gradient(135deg,#fffde8,#fff9d0);border-bottom:2px solid var(--b)">
+              <th style="padding:10px 14px;text-align:left;color:var(--t);font-weight:700">Cancellation Timing</th>
+              <th style="padding:10px 14px;text-align:left;color:var(--t);font-weight:700">Booking Fee Refund</th>
+              <th style="padding:10px 14px;text-align:left;color:var(--t);font-weight:700">Security Deposit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--b)">
+              <td style="padding:10px 14px;color:#4a3a1a">More than 48 hrs before pickup</td>
+              <td style="padding:10px 14px;color:#15803d;font-weight:600">Full refund</td>
+              <td style="padding:10px 14px;color:#15803d;font-weight:600">Full refund</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--b)">
+              <td style="padding:10px 14px;color:#4a3a1a">24–48 hrs before pickup</td>
+              <td style="padding:10px 14px;color:#a16207;font-weight:600">50% refund</td>
+              <td style="padding:10px 14px;color:#15803d;font-weight:600">Full refund</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--b)">
+              <td style="padding:10px 14px;color:#4a3a1a">Less than 24 hrs / No-show</td>
+              <td style="padding:10px 14px;color:#b91c1c;font-weight:600">No refund</td>
+              <td style="padding:10px 14px;color:#15803d;font-weight:600">Full refund</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;color:#4a3a1a">After pickup (early return)</td>
+              <td style="padding:10px 14px;color:#b91c1c;font-weight:600">No refund for unused hours</td>
+              <td style="padding:10px 14px;color:#15803d;font-weight:600">Refunded after inspection</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+
+        <h3>DriveDilSe-Initiated Cancellation</h3>
+        <p>If DriveDilSe cancels a booking for reasons not attributable to the Guest (e.g., vehicle unavailability), the Guest will receive a <strong>full refund</strong> of both the Booking Fee and Security Deposit within 5–7 business days.</p>
+
+        <h3>Refund Processing</h3>
+        <p>Approved refunds are credited to the original payment method. Processing time: 5–7 business days from approval. For UPI/wallet payments, refunds may reflect within 2–3 business days.</p>
+      </div>
+    </div>
+
+    <!-- 10. PRIVACY -->
+    <div class="policy-section" id="sec-privacy">
+      <div class="ps-header">
+        <div class="ps-icon">&#128274;</div>
+        <div class="ps-title">10. Privacy Policy</div>
+      </div>
+      <div class="ps-body">
+        <h3>Information We Collect</h3>
+        <ul>
+          <li>Identity documents (Aadhaar, Driving Licence, Passport) for KYC</li>
+          <li>Mobile number and email address for account creation and OTP verification</li>
+          <li>Payment information (processed securely via Razorpay — we do not store card details)</li>
+          <li>Trip data including GPS location during the Booking Period</li>
+          <li>Device information and usage data for security and fraud prevention</li>
+        </ul>
+
+        <h3>How We Use Your Data</h3>
+        <ul>
+          <li>To verify identity, process bookings, and fulfil the lease agreement</li>
+          <li>To process payments and refunds</li>
+          <li>To send booking confirmations, trip updates, and service communications via SMS/WhatsApp</li>
+          <li>To monitor vehicle location during the Booking Period for safety and recovery</li>
+          <li>To comply with legal and regulatory obligations</li>
+        </ul>
+
+        <h3>Data Sharing</h3>
+        <p>We do not sell your personal data. We share data only with:</p>
+        <ul>
+          <li>Payment processors (Razorpay) for transaction processing</li>
+          <li>SMS/communication providers for OTP and notifications</li>
+          <li>Law enforcement or regulatory authorities when required by law</li>
+          <li>Insurance companies for claim processing</li>
+        </ul>
+
+        <h3>Data Retention</h3>
+        <p>KYC documents and transaction records are retained for a minimum of 5 years as required by applicable Indian law. You may request deletion of non-mandatory data by contacting us at <strong>contact.drivedilse@gmail.com</strong>.</p>
+
+        <div class="highlight-box">
+          <p>We use industry-standard encryption (TLS) to protect all data in transit and at rest. KYC documents are stored securely and accessible only to authorised personnel.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11. LIABILITY -->
+    <div class="policy-section" id="sec-liability">
+      <div class="ps-header">
+        <div class="ps-icon">&#9878;&#65039;</div>
+        <div class="ps-title">11. Liability &amp; Indemnity</div>
+      </div>
+      <div class="ps-body">
+        <h3>Guest Liability</h3>
+        <p>The Primary Guest and all registered Co-Drivers are <strong>jointly and severally liable</strong> for:</p>
+        <ul>
+          <li>All obligations, charges, penalties, and damages arising during the Booking Period</li>
+          <li>Traffic violations, fines, and legal consequences</li>
+          <li>Vehicle damage, theft, or destruction</li>
+          <li>Any act or omission by a Co-Driver</li>
+        </ul>
+
+        <h3>Guest Indemnity</h3>
+        <p>The Guest agrees to indemnify and hold harmless DriveDilSe and its authorised agents against all costs, expenses, losses, damages, and liabilities arising from:</p>
+        <ul>
+          <li>Wilful default, misconduct, negligence, or fraud by the Guest</li>
+          <li>Breach of any term of the lease agreement</li>
+          <li>Violation of applicable laws during the Booking Period</li>
+        </ul>
+        <p>This indemnity survives the expiration or termination of the booking.</p>
+
+        <h3>DriveDilSe Limitation of Liability</h3>
+        <p>DriveDilSe shall not be liable for any indirect, incidental, special, consequential, or punitive damages including loss of profits, arising from or related to the use of the vehicle or the Platform, even if advised of the possibility of such damages.</p>
+
+        <div class="warn-box">
+          <p>DriveDilSe's total liability to the Guest under any circumstances shall not exceed the Booking Fee paid for the specific trip in question.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12. GOVERNING LAW -->
+    <div class="policy-section" id="sec-governing">
+      <div class="ps-header">
+        <div class="ps-icon">&#9878;&#65039;</div>
+        <div class="ps-title">12. Governing Law &amp; Dispute Resolution</div>
+      </div>
+      <div class="ps-body">
+        <h3>Applicable Law</h3>
+        <p>This agreement and all policies are governed by and construed in accordance with the <strong>laws of India</strong>, including the Motor Vehicles Act, 1988 and the Information Technology Act, 2000.</p>
+
+        <h3>Jurisdiction</h3>
+        <p>Courts at <strong>Pune, Maharashtra</strong> shall have sole and exclusive jurisdiction over any disputes, claims, or questions arising under or pursuant to these policies and the lease agreement.</p>
+
+        <h3>Amendments</h3>
+        <p>DriveDilSe reserves the right to update these policies at any time. Updated policies will be effective upon posting on the Platform. Continued use of the Platform after updates constitutes acceptance of the revised terms.</p>
+
+        <h3>Severability</h3>
+        <p>If any provision of these terms is held to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.</p>
+
+        <h3>Contact Us</h3>
+        <p>For queries regarding these policies, please reach out to us:</p>
+        <ul>
+          <li>Email: <strong>contact.drivedilse@gmail.com</strong></li>
+          <li>WhatsApp: Available on the Platform</li>
+          <li>Address: Pune, Maharashtra, India</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- /policy-content -->
+</div><!-- /policy-wrap -->
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">Drive<span>DilSe</span></div>
+      <div class="footer-copy">&copy; 2025 DriveDilSe &middot; Self-Drive Platform &middot; Pune</div>
+    </div>
+    <div class="footer-links">
+      <a href="index.html">Home</a>
+      <a href="policy.html">Policies</a>
+      <a href="mailto:contact.drivedilse@gmail.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// TOC active state on scroll
+(function(){
+  var sections = document.querySelectorAll('.policy-section[id]');
+  var links = document.querySelectorAll('.toc a');
+  function onScroll(){
+    var scrollY = window.scrollY + 110;
+    var current = '';
+    sections.forEach(function(s){ if(s.offsetTop <= scrollY) current = s.id; });
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href') === '#'+current);
+    });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>

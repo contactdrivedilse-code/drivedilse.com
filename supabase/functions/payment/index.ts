@@ -132,8 +132,8 @@ Deno.serve(async (req) => {
 
       const pISO = new Date(pickupDate).toISOString(), dISO = new Date(dropDate).toISOString();
       const { data: conflict } = await sb.from("bookings").select("id").eq("car_id", carId)
-        .in("status", ["confirmed", "active"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
-      if (conflict) return json({ error: "Car is already booked for these dates" }, 400);
+        .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
+      if (conflict) return json({ error: "Car is already booked for these dates or in preparation (4-hour buffer after last trip)" }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
@@ -176,7 +176,8 @@ Deno.serve(async (req) => {
         deposit: 0, discount,
         razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
         razorpay_signature: razorpaySignature, payment_status: "paid",
-        paid_at: new Date().toISOString(), status: "pending_kyc",
+        paid_at: new Date().toISOString(),
+        status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
       }).select("*").maybeSingle();
       if (error) throw error;
 
@@ -189,7 +190,7 @@ Deno.serve(async (req) => {
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
-      const { carId, pickupDate, dropDate, pickupLocation, dropLocation } = await req.json();
+      const { carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: dc } = await req.json();
       const [{ data: car }, { data: profile }] = await Promise.all([
         sb.from("cars").select("*").eq("id", carId).maybeSingle(),
         sb.from("profiles").select("*").eq("id", user.id).maybeSingle(),
@@ -202,21 +203,26 @@ Deno.serve(async (req) => {
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const pISO = pickup.toISOString(), dISO = drop.toISOString();
       const { data: conflict } = await sb.from("bookings").select("id").eq("car_id", carId)
-        .in("status", ["confirmed", "active"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
-      if (conflict) return json({ error: "Car is already booked for these dates" }, 400);
+        .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
+      if (conflict) return json({ error: "Car is already booked for these dates or in preparation (4-hour buffer after last trip)" }, 400);
 
-      const { total, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
+      const total = baseTotal + deliveryFee;
       const bookingId = makeBookingId();
 
       const { data: booking, error } = await sb.from("bookings").insert({
         id: crypto.randomUUID(), booking_id: bookingId,
         car_id: c.id, car_name: c.name,
         user_id: p.id, customer: p.name ?? "", phone: p.phone,
-        pickup_date: pISO, pickup_location: pickupLocation ?? "Pune",
-        drop_date: dISO, drop_location: dropLocation ?? "Pune",
+        pickup_date: pISO, pickup_location: pickupLocation ?? "Katraj Hub, Pune",
+        drop_date: dISO, drop_location: dropLocation ?? "Katraj Hub, Pune",
         days, price_per_day: c.price_per_day, total,
-        deposit: 0, discount,
-        payment_status: "demo", status: "pending_kyc",
+        deposit: deliveryFee, discount,
+        payment_status: "demo",
+        notes: deliveryFee > 0 ? `delivery:${deliveryFee}:${pickupLocation}` : "",
+        // Auto-confirm if KYC already verified
+        status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
       }).select("*").maybeSingle();
       if (error) throw error;
 
@@ -235,8 +241,8 @@ Deno.serve(async (req) => {
 
       const pISO2 = new Date(pickupDate).toISOString(), dISO2 = new Date(dropDate).toISOString();
       const { data: conflict2 } = await sb.from("bookings").select("id").eq("car_id", carId)
-        .in("status", ["confirmed", "active"]).lt("pickup_date", dISO2).gt("drop_date", pISO2).maybeSingle();
-      if (conflict2) return json({ error: "Car is already booked for these dates" }, 400);
+        .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO2).gt("drop_date", pISO2).maybeSingle();
+      if (conflict2) return json({ error: "Car is already booked for these dates or in preparation (4-hour buffer after last trip)" }, 400);
 
       let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
       if (!prof) {
@@ -261,7 +267,8 @@ Deno.serve(async (req) => {
         drop_date: dISO2, drop_location: dropLocation ?? "Pune",
         days, price_per_day: c.price_per_day, total,
         deposit: 0, discount,
-        payment_status: "demo", status: "pending_kyc",
+        payment_status: "demo",
+        status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
       }).select("*").maybeSingle();
       if (error) throw error;
 

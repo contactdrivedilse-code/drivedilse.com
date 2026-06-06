@@ -1519,10 +1519,13 @@ function mapApiCar(c){
 function apiFetch(path, opts){
   opts = opts || {};
   opts.headers = opts.headers || {};
-  // Always send anon key for Supabase gateway; user JWT goes in x-user-token
+  // Always send anon key for Supabase gateway; user JWT goes in x-user-token + _ut param
   opts.headers["Authorization"] = "Bearer " + ANON_KEY;
-  if(authToken && !authToken.startsWith("demo_")) opts.headers["x-user-token"] = authToken;
-  return fetch(API + path, opts).then(function(r){
+  var _ut = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
+  if(_ut) opts.headers["x-user-token"] = _ut;
+  var _sep = path.includes("?") ? "&" : "?";
+  var _url = API + path + (_ut ? _sep + "_ut=" + encodeURIComponent(_ut) : "");
+  return fetch(_url, opts).then(function(r){
     if(!r.ok) return r.json().then(function(e){ throw new Error(e.error||"Request failed"); });
     return r.json();
   });
@@ -2947,9 +2950,11 @@ function showSelfieWaiting(result){
 function startSelfiePolling(result){
   if(selfieVerifyPoll) clearInterval(selfieVerifyPoll);
   selfieVerifyPoll = setInterval(function(){
-    fetch(API + "/bookings/" + ciBookingId + "/selfie-status", {
-      headers: { "Authorization": "Bearer " + authToken }
-    })
+    var _h = { "Authorization": "Bearer " + ANON_KEY };
+    var _ut2 = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
+    if(_ut2) _h["x-user-token"] = _ut2;
+    var _sfUrl = API + "/bookings/" + ciBookingId + "/selfie-status" + (_ut2 ? "?_ut=" + encodeURIComponent(_ut2) : "");
+    fetch(_sfUrl, { headers: _h })
     .then(function(r){ return r.json(); })
     .then(function(d){
       var pollStatus = document.getElementById("selfie-poll-status");

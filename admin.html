@@ -1004,7 +1004,7 @@ async function faceVerifyAction(idx, status){
   localStorage.setItem("dds_pending_selfie", JSON.stringify(records));
   updateFaceVerifyBadge();
   toast(status === "approved" ? "✅ Selfie approved — customer notified" : "❌ Selfie rejected — customer notified", status === "approved" ? "success" : "error");
-  renderFaceVerify(document.getElementById("main-content"));
+  renderFaceVerify(document.getElementById("content"));
 }
 
 var _revBookings = [], _revFilter = "all", _revFrom = "", _revTo = "";

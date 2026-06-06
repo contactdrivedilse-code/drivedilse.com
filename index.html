@@ -2772,15 +2772,33 @@ function ciCloseCamera(){
 var ciBookingId = null;
 var ciPhotos    = { front: null, rear: null, passengerSide: null, driverSide: null };
 
+function compressPhoto(file, cb){
+  var MAX = 1024, QUALITY = 0.75;
+  var img = new Image();
+  var url = URL.createObjectURL(file);
+  img.onload = function(){
+    URL.revokeObjectURL(url);
+    var w = img.width, h = img.height;
+    if(w > MAX || h > MAX){ var r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+    var c = document.createElement("canvas"); c.width=w; c.height=h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    c.toBlob(function(blob){ cb(new File([blob], file.name, {type:"image/jpeg"})); }, "image/jpeg", QUALITY);
+  };
+  img.onerror = function(){ cb(file); }; // fallback: use original
+  img.src = url;
+}
+
 function ciPhotoSet(side, input) {
   if (!input.files || !input.files[0]) return;
-  ciPhotos[side] = input.files[0];
   var icon   = document.getElementById("ci-" + side + "-icon");
   var status = document.getElementById("ci-" + side + "-status");
   var box    = document.getElementById("ci-" + side + "-box");
-  icon.textContent   = "✅";
-  status.textContent = input.files[0].name.slice(0, 20) + (input.files[0].name.length > 20 ? "…" : "");
-  box.classList.add("ok");
+  compressPhoto(input.files[0], function(compressed){
+    ciPhotos[side] = compressed;
+    icon.textContent   = "✅";
+    status.textContent = "Photo captured ✓";
+    box.classList.add("ok");
+  });
 }
 
 // ── SELFIE / PROFILE PHOTO ──
@@ -3083,18 +3101,21 @@ async function ciUploadPhotos() {
     var _ciUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     if(_ciUt) _ciH["x-user-token"] = _ciUt;
     var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin" + (_ciUt ? "?_ut=" + encodeURIComponent(_ciUt) : "");
+    var _ciAbort = new AbortController();
+    var _ciTimeout = setTimeout(function(){ _ciAbort.abort(); }, 60000);
     var resp = await fetch(_ciUrl, {
       method: "POST",
       headers: _ciH,
-      body: fd
+      body: fd,
+      signal: _ciAbort.signal
     });
+    clearTimeout(_ciTimeout);
     var data = await resp.json();
     if (!resp.ok) {
-      // Show the real error — never silently ignore backend errors
       var errMsg = data.error || "Upload failed";
       if(resp.status === 401) errMsg = "Session expired. Please log out and log in again, then retry.";
       else if(errMsg.includes("not in confirmed")) errMsg = "Your booking is not yet confirmed. Complete KYC verification first.";
-      else if(errMsg.includes("Check-in opens")) errMsg = errMsg; // timing message from backend
+      else if(errMsg.includes("Check-in opens")) errMsg = errMsg;
       document.getElementById("ci-photo-err").textContent = "⚠️ " + errMsg;
       document.getElementById("ci-photo-err").style.display = "block";
       btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false;
@@ -3107,10 +3128,16 @@ async function ciUploadPhotos() {
     document.getElementById("ci-damage-step").style.display = "block";
     document.getElementById("ci-otp-hint").style.display    = "none";
   } catch(e) {
-    // Only reach here on genuine network failure (no internet)
+    clearTimeout(_ciTimeout);
+    var isAborted = e.name === "AbortError";
+    if(isAborted){
+      document.getElementById("ci-photo-err").textContent = "⚠️ Upload timed out. Check your connection and try again.";
+      document.getElementById("ci-photo-err").style.display = "block";
+      if(btn){ btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false; }
+      return;
+    }
     var netFail = e.message && (e.message.includes("fetch") || e.message.includes("Failed") || e.message.includes("NetworkError"));
     if(netFail){
-      // Offline fallback — show demo OTP
       document.getElementById("ci-photo-step").style.display = "none";
       document.getElementById("ci-otp-step").style.display   = "block";
       var hint = document.getElementById("ci-otp-hint");

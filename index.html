@@ -2361,8 +2361,9 @@ async function vmSubmit(){
   if(authToken && !authToken.startsWith("demo_")){
     try {
       var fd = new FormData();
-      fd.append("name", name);
-      fd.append("dob",  dob);
+      fd.append("name",  name);
+      fd.append("dob",   dob);
+      fd.append("phone", phone); // fallback identifier if JWT expired
       var aadhaarFile = document.getElementById("aadhaar-input") && document.getElementById("aadhaar-input").files[0];
       var dlFile      = document.getElementById("dl-input")      && document.getElementById("dl-input").files[0];
       if(aadhaarFile) fd.append("aadhaar", aadhaarFile);
@@ -2376,6 +2377,7 @@ async function vmSubmit(){
       if(!kycResp.ok){ var ke = await kycResp.json(); throw new Error(ke.error || "Upload failed"); }
       var kycData = await kycResp.json();
       if(kycData.user) userProfile = Object.assign(userProfile, kycData.user);
+      if(kycData.token){ authToken = kycData.token; localStorage.setItem("dds_token", authToken); }
     } catch(e){
       errEl.innerHTML = "⚠️ " + esc(e.message || "KYC upload failed. Check your connection.");
       errEl.style.display = "block";

@@ -112,10 +112,23 @@ Deno.serve(async (req) => {
 
     // POST /profile — KYC with file uploads
     if (req.method === "POST" && path === "/profile") {
-      const user = await getUser(req);
-      if (!user) return json({ error: "Unauthorized" }, 401);
+      // Try JWT auth first; fallback to phone from form data
+      let profileId: string | null = null;
+      const jwtUser = await getUser(req);
+      if (jwtUser) {
+        profileId = jwtUser.id;
+      } else {
+        // Clone request body to read form data for phone lookup
+        const tempForm = await req.clone().formData().catch(() => null);
+        const phone = tempForm?.get("phone") as string | null;
+        if (phone) {
+          const { data: byPhone } = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
+          if (byPhone) profileId = (byPhone as Record<string, string>).id;
+        }
+      }
+      if (!profileId) return json({ error: "Unauthorized" }, 401);
 
-      const { data: existing } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      const { data: existing } = await sb.from("profiles").select("*").eq("id", profileId).maybeSingle();
       if (!existing) return json({ error: "User not found" }, 404);
 
       const formData = await req.formData();
@@ -132,7 +145,7 @@ Deno.serve(async (req) => {
       if (aadhaarFile) {
         const ext  = aadhaarFile.type.includes("pdf") ? "pdf" : "jpg";
         const buf  = new Uint8Array(await aadhaarFile.arrayBuffer());
-        const path = `${user.id}/aadhaar.${ext}`;
+        const path = `${profileId}/aadhaar.${ext}`;
         const { error } = await sb.storage.from("kyc").upload(path, buf, { contentType: aadhaarFile.type, upsert: true });
         if (error) throw error;
         updates.aadhaar_url      = sb.storage.from("kyc").getPublicUrl(path).data.publicUrl;
@@ -143,7 +156,7 @@ Deno.serve(async (req) => {
       const photoFile = formData.get("profile_photo") as File | null;
       if (photoFile) {
         const buf   = new Uint8Array(await photoFile.arrayBuffer());
-        const ppath = `${user.id}/profile.jpg`;
+        const ppath = `${profileId}/profile.jpg`;
         const { error: perr } = await sb.storage.from("kyc").upload(ppath, buf, { contentType: "image/jpeg", upsert: true });
         if (!perr) updates.profile_photo_url = sb.storage.from("kyc").getPublicUrl(ppath).data.publicUrl;
       }
@@ -152,16 +165,18 @@ Deno.serve(async (req) => {
       if (dlFile) {
         const ext  = dlFile.type.includes("pdf") ? "pdf" : "jpg";
         const buf  = new Uint8Array(await dlFile.arrayBuffer());
-        const path = `${user.id}/dl.${ext}`;
+        const path = `${profileId}/dl.${ext}`;
         const { error } = await sb.storage.from("kyc").upload(path, buf, { contentType: dlFile.type, upsert: true });
         if (error) throw error;
         updates.dl_url     = sb.storage.from("kyc").getPublicUrl(path).data.publicUrl;
         updates.kyc_status = "uploaded";
       }
 
-      await sb.from("profiles").update(updates).eq("id", user.id);
-      const { data: updated } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-      return json({ success: true, user: mapProfile(updated as Record<string, unknown>) });
+      await sb.from("profiles").update(updates).eq("id", profileId);
+      const { data: updated } = await sb.from("profiles").select("*").eq("id", profileId).maybeSingle();
+      // Issue fresh token so frontend session is renewed
+      const freshToken = jwtUser ? null : await signJwt({ id: profileId, phone: (existing as Record<string,unknown>).phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
+      return json({ success: true, user: mapProfile(updated as Record<string, unknown>), ...(freshToken ? { token: freshToken } : {}) });
     }
 
     return json({ error: "Not found" }, 404);

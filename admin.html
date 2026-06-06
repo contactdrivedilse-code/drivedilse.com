@@ -554,7 +554,8 @@ function navTo(tab, el){
 async function adminFetch(path, opts){
   opts = opts || {};
   opts.headers = opts.headers || {};
-  opts.headers["Authorization"] = "Bearer " + adminToken;
+  opts.headers["Authorization"] = "Bearer " + ANON_KEY;
+  opts.headers["x-admin-token"] = adminToken;
   // Don't set Content-Type for FormData — browser sets it with boundary
   if(opts.body instanceof FormData) delete opts.headers["Content-Type"];
   var r = await fetch(API + path, opts);

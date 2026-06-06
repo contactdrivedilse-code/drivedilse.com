@@ -42,7 +42,7 @@ function mapBooking(b: Record<string, unknown>) {
 }
 
 async function getAdmin(req: Request, requireAdmin = false) {
-  const token = getBearer(req);
+  const token = req.headers.get("x-admin-token") || getBearer(req);
   if (!token) return null;
   try {
     const p = await verifyJwt(token, Deno.env.get("ADMIN_JWT_SECRET")!) as { role?: string };

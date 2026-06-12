@@ -135,33 +135,37 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .nav-dropdown-divider{border:none;border-top:1px solid var(--b);margin:0}
 
 /* ---- HERO ---- */
-.hero{background:linear-gradient(135deg,#fffde8 0%,#fff9d0 40%,#fffef5 100%);padding:0;position:relative;overflow:hidden;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
-.hero-bg-overlay{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 60% 40%,rgba(245,197,24,.10) 0%,transparent 65%),radial-gradient(ellipse 40% 30% at 10% 80%,rgba(201,160,16,.06) 0%,transparent 60%),linear-gradient(160deg,#fffde8 0%,#fff9d0 40%,#fffef5 100%);pointer-events:none;z-index:0}
-.hero-glow{position:absolute;top:50%;left:50%;width:700px;height:700px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(245,197,24,.18) 0%,transparent 60%);pointer-events:none;z-index:0;animation:heroFloat 6s ease-in-out infinite}
+.hero{background:linear-gradient(135deg,var(--y) 0%,var(--yd) 100%);padding:0;position:relative;overflow:hidden;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+.hero-bg-overlay{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 60% 40%,rgba(255,255,255,.14) 0%,transparent 65%),radial-gradient(ellipse 40% 30% at 10% 80%,rgba(255,255,255,.08) 0%,transparent 60%);pointer-events:none;z-index:0}
+.hero-glow{position:absolute;top:50%;left:50%;width:700px;height:700px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(255,255,255,.16) 0%,transparent 60%);pointer-events:none;z-index:0;animation:heroFloat 6s ease-in-out infinite}
 .hero-inner{max-width:1100px;margin:0 auto;padding:100px 48px 80px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;position:relative;z-index:1;width:100%}
-.hero h1{font-family:'Playfair Display',Georgia,serif;font-size:3.6rem;font-weight:900;line-height:1.06;letter-spacing:-1.5px;margin-bottom:18px;color:var(--yd)}
+.hero h1{font-family:'Playfair Display',Georgia,serif;font-size:3.6rem;font-weight:900;line-height:1.06;letter-spacing:-1.5px;margin-bottom:18px;color:#fff}
 .hero h1 .gold{color:var(--t)}
-.hero-sub{color:#666;font-size:1rem;line-height:1.8;margin-bottom:10px;max-width:440px;font-weight:400}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,24,.18);border:1px solid rgba(245,197,24,.4);color:var(--yd);font-size:.65rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:7px 16px;border-radius:20px;margin-bottom:20px}
+.hero-sub{color:rgba(255,255,255,.92);font-size:1rem;line-height:1.8;margin-bottom:10px;max-width:440px;font-weight:400}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:.65rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:7px 16px;border-radius:20px;margin-bottom:20px}
+.btn-hero-outline{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.5)}
+.btn-hero-outline:hover{background:rgba(255,255,255,.22)}
 
-/* Hero search box */
-.hero-search{background:#fff;border:1px solid #ede9db;border-radius:20px;padding:28px;box-shadow:0 8px 40px rgba(200,160,0,.12);margin-top:0}
+/* Hero search card */
+.hero-search-card,.hero-search{background:#fff;border:1px solid #ede9db;border-radius:22px;padding:28px;box-shadow:0 20px 60px rgba(58,44,0,.22);margin-top:0}
 .hero-search-title{font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--y);margin-bottom:18px}
 .hero-search .date-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.hero-search-eyebrow{font-size:.68rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px}
+.hero-search-heading{font-family:'Playfair Display',Georgia,serif;font-size:1.35rem;font-weight:900;color:var(--t);margin-bottom:16px}
+.hero-city-row{display:flex;align-items:center;gap:8px;background:var(--ow);border:1px solid var(--b);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:.85rem;font-weight:700;color:var(--t)}
+.hero-trip-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+.hero-trip-field{border:1.5px solid var(--b);border-radius:12px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s}
+.hero-trip-field:hover{border-color:var(--yd);background:#fffbe6}
+.hero-trip-label{font-size:.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:4px}
+.hero-trip-value{font-size:.86rem;font-weight:800;color:var(--t)}
+.hero-tz-note{font-size:.68rem;color:#999;margin:8px 0 14px}
 
-/* Hero stats */
-.hero-stats{display:flex;align-items:center;gap:24px;margin-top:28px;flex-wrap:wrap}
-.stat-item{display:flex;flex-direction:column;gap:3px}
-.stat-val{font-family:'Playfair Display',Georgia,serif;font-size:1.6rem;font-weight:900;color:var(--yd);line-height:1}
-.stat-lbl{font-size:.63rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px}
-.stat-div{width:1px;height:38px;background:#ede9db}
-
-/* HSC cards inside hero (feature pills) */
-.hsc{background:#fff;border:1px solid #ede9db;border-radius:13px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:12px;transition:background .2s,border-color .2s;box-shadow:0 2px 12px rgba(200,160,0,.07)}
-.hsc:hover{background:#fffbe6;border-color:rgba(245,197,24,.4)}
-.hsc-icon{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;box-shadow:0 4px 12px rgba(245,197,24,.3)}
-.hsc-label-sub{font-size:.63rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#888;margin-bottom:2px}
-.hsc-label-main{font-size:.92rem;font-weight:700;color:var(--t)}
+/* Hero feature highlight grid */
+.hero-feature-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:32px}
+.hero-feature-item{display:flex;align-items:flex-start;gap:12px}
+.hero-feature-icon{width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+.hero-feature-title{font-size:.9rem;font-weight:800;color:#fff;margin-bottom:2px}
+.hero-feature-desc{font-size:.74rem;color:rgba(255,255,255,.82);line-height:1.45}
 
 /* ---- TRUST TICKER ---- */
 .ticker-wrap{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);border-bottom:1.5px solid rgba(201,160,16,.25);padding:13px 0;overflow:hidden;position:relative}
@@ -182,16 +186,24 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 /* ---- FLEET ---- */
 #fleet-sec{background:var(--ow)}
 .fleet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:22px}
+.fleet-carousel-wrap{position:relative}
+.fleet-carousel{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:14px;scroll-behavior:smooth;scrollbar-width:thin}
 .fleet-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
 .fcat{font-family:'Inter',sans-serif;font-size:.8rem;font-weight:700;padding:9px 22px;border-radius:20px;border:1.5px solid var(--b);background:var(--w);color:#666;cursor:pointer;transition:all .2s}
 .fcat.on,.fcat:hover{background:var(--y);border-color:var(--yd);color:var(--t);box-shadow:0 4px 12px rgba(245,197,24,.25)}
-.car-card{background:var(--w);border:1px solid var(--b);border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.06);overflow:hidden;transition:transform .3s cubic-bezier(.2,.6,.3,1),box-shadow .3s}
+.car-card{background:var(--w);border:1px solid var(--b);border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.06);overflow:hidden;transition:transform .3s cubic-bezier(.2,.6,.3,1),box-shadow .3s;flex:0 0 290px;scroll-snap-align:start}
 .car-card:hover{transform:translateY(-8px) scale(1.01);box-shadow:0 20px 48px rgba(0,0,0,.13)}
 .car-img{height:190px;display:flex;align-items:center;justify-content:center;font-size:4.5rem;position:relative;background:linear-gradient(135deg,#f8f8f8 0%,#ede9db 100%);overflow:hidden}
 .car-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.04) 100%)}
 .avail-tag{position:absolute;top:12px;right:12px;background:#dcfce7;color:#15803d;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .unavail-tag{position:absolute;top:12px;right:12px;background:#fee2e2;color:#b91c1c;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px}
+.car-rating-badge{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.95);color:var(--t);font-size:.68rem;font-weight:800;padding:4px 9px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .car-cat{font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);background:#fffbe6;border:1px solid rgba(201,160,16,.25);padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:8px}
+.carousel-arrow{position:absolute;top:90px;width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid var(--b);box-shadow:0 4px 16px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;color:var(--t);z-index:5;transition:background .2s,border-color .2s}
+.carousel-arrow:hover{background:var(--y);border-color:var(--yd)}
+.carousel-arrow.left{left:-21px}
+.carousel-arrow.right{right:-21px}
+@media(max-width:768px){.carousel-arrow{display:none}}
 
 /* ---- FEATURES (WHY DRIVEDILSE) — WARM LIGHT ---- */
 .features-sec{padding:88px 48px;background:var(--wg);position:relative;overflow:hidden}
@@ -426,6 +438,8 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
   .hero h1{font-size:2rem}
   .hero-inner{padding:72px 16px 52px}
   .cta-band-title{font-size:1.7rem}
+  .hero-trip-row{grid-template-columns:1fr}
+  .hero-feature-grid{grid-template-columns:1fr}
 }
 
 /* ============================================================
@@ -439,28 +453,19 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .hdr{background:rgba(255,255,255,.82) !important;backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);box-shadow:0 2px 24px rgba(200,160,0,.10),0 1px 0 rgba(245,197,24,.18) !important}
 
 /* Hero — soft dot-grid texture */
-.hero{background:linear-gradient(135deg,#fffde8 0%,#fff9d0 40%,#fffef5 100%) !important;position:relative}
-.hero::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(201,160,16,.18) 1.5px,transparent 1.5px);background-size:28px 28px;pointer-events:none;z-index:0}
+.hero{background:linear-gradient(135deg,var(--y) 0%,var(--yd) 100%) !important;position:relative}
+.hero::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.16) 1.5px,transparent 1.5px);background-size:28px 28px;pointer-events:none;z-index:0}
 .hero-inner{position:relative;z-index:1}
 
 /* Hero badge glow ring */
-.hero-badge{box-shadow:0 0 0 4px rgba(245,197,24,.15),0 4px 20px rgba(201,160,16,.2) !important;border-color:rgba(245,197,24,.55) !important;letter-spacing:.5px}
+.hero-badge{box-shadow:0 0 0 4px rgba(255,255,255,.1),0 4px 20px rgba(0,0,0,.08) !important;letter-spacing:.5px}
 
-/* Hero search — luxury layered shadow */
-.hero-search{box-shadow:0 12px 56px rgba(200,160,0,.16),0 2px 8px rgba(245,197,24,.12),inset 0 1px 0 rgba(255,255,255,.9) !important;border-color:rgba(245,197,24,.35) !important}
+/* Hero search card — luxury layered shadow */
+.hero-search-card,.hero-search{box-shadow:0 24px 64px rgba(58,44,0,.28),inset 0 1px 0 rgba(255,255,255,.9) !important}
 
 /* Heading refinements */
-.hero h1{letter-spacing:-.5px;text-shadow:0 2px 24px rgba(201,160,16,.08)}
+.hero h1{letter-spacing:-.5px;text-shadow:0 2px 24px rgba(0,0,0,.12)}
 .section-title,.feat-title,#how-sec h2,.cta-band-title,.faq-sec h2{letter-spacing:-.2px}
-
-/* Stat values */
-.stat-val{font-size:1.9rem !important;text-shadow:0 2px 8px rgba(201,160,16,.22)}
-
-/* HSC icon double glow */
-.hsc-icon{box-shadow:0 4px 16px rgba(245,197,24,.38),0 0 0 4px rgba(245,197,24,.12) !important;transition:transform .3s,box-shadow .3s}
-.hsc:hover .hsc-icon{transform:scale(1.08);box-shadow:0 8px 24px rgba(245,197,24,.5),0 0 0 6px rgba(245,197,24,.15) !important}
-.hsc{transition:box-shadow .3s,transform .3s}
-.hsc:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(200,160,0,.14) !important}
 
 /* Car cards — gold accent top bar on hover */
 .car-card{position:relative;overflow:hidden}
@@ -543,28 +548,23 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
     <div class="hero-bg-overlay"></div>
     <div class="hero-glow"></div>
     <div class="hero-inner">
-      <!-- LEFT: Headline + stats -->
+      <!-- LEFT: Check-availability search card -->
       <div>
-        <div class="hero-badge">&#10022; Self-Drive Platform</div>
-        <h1>Drive on your<br>terms. <span class="gold">Your car.<br>Your freedom.</span></h1>
-        <p class="hero-sub">Well-maintained self-drive cars across Pune. No driver, no hidden charges — pick your dates and take the wheel.</p>
-        <div class="hero-stats">
-          <div class="stat-item"><span class="stat-val" style="animation:statPop .5s ease both">7+</span><span class="stat-lbl">Cars Available</span></div>
-          <div class="stat-div"></div>
-          <div class="stat-item"><span class="stat-val" style="animation:statPop .5s .12s ease both">100+</span><span class="stat-lbl">Trips Completed</span></div>
-          <div class="stat-div"></div>
-          <div class="stat-item"><span class="stat-val" style="animation:statPop .5s .24s ease both;font-size:1.15rem">Pune</span><span class="stat-lbl">Based</span></div>
-        </div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:32px">
-          <button class="btn btn-y btn-md" onclick="goTo('fleet-sec')">View Fleet</button>
-          <button class="btn btn-g btn-md" onclick="goTo('how-sec')">How It Works</button>
-        </div>
-      </div>
-      <!-- RIGHT: Search box embedded in hero -->
-      <div>
-        <div class="hero-search">
-          <div class="hero-search-title">&#128337; Check Availability</div>
-          <button type="button" class="btn btn-g btn-md" onclick="startDateFlow()" style="width:100%;margin-bottom:16px;border-radius:12px">&#128197; Select Pickup &amp; Drop Date/Time</button>
+        <div class="hero-search-card">
+          <div class="hero-search-eyebrow">Looking for the best car rentals?</div>
+          <div class="hero-search-heading">Book Self-Drive Cars in Pune</div>
+          <div class="hero-city-row">📍 Pune</div>
+          <div class="hero-trip-row">
+            <div class="hero-trip-field" onclick="startDateFlow()">
+              <div class="hero-trip-label">Trip Starts</div>
+              <div class="hero-trip-value" id="hero-trip-start">Select date &amp; time</div>
+            </div>
+            <div class="hero-trip-field" onclick="startDateFlow()">
+              <div class="hero-trip-label">Trip Ends</div>
+              <div class="hero-trip-value" id="hero-trip-end">Select date &amp; time</div>
+            </div>
+          </div>
+          <div class="hero-tz-note">All times shown in IST (UTC+5:30)</div>
           <div id="search-sec" class="date-grid" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
             <div class="dt-pair">
               <div class="dt-pair-label">📍 Pickup</div>
@@ -583,12 +583,8 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
               </div>
             </div>
           </div>
-          <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem;display:flex;flex-direction:column;gap:3px;line-height:1.3">
-            <span>Show Available Cars</span>
-            <span id="hero-search-range" style="font-size:.72rem;font-weight:600;opacity:.85"></span>
-          </button>
           <!-- Doorstep delivery teaser -->
-          <div style="margin-top:12px;background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="margin-bottom:14px;background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
             <div>
               <div style="font-weight:700;font-size:.82rem;color:var(--t)">🚗 Doorstep Delivery</div>
               <div style="font-size:.7rem;color:var(--ts);margin-top:2px">Car delivered to your door · ₹700 up to 7 km · ₹20/km beyond</div>
@@ -599,18 +595,35 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
               <span id="hero-delivery-thumb" style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2)"></span>
             </label>
           </div>
+          <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem">SEARCH</button>
         </div>
-        <div class="hsc" style="margin-top:16px">
-          <div class="hsc-icon">🚗</div>
-          <div><div class="hsc-label-sub">Self-Drive Only</div><div class="hsc-label-main">No driver. Full freedom.</div></div>
+      </div>
+      <!-- RIGHT: Headline + feature highlights -->
+      <div>
+        <div class="hero-badge">&#10022; Self-Drive Platform</div>
+        <h1>Drive on your<br>terms. <span class="gold">Your car.<br>Your freedom.</span></h1>
+        <p class="hero-sub">Well-maintained self-drive cars across Pune. No driver, no hidden charges — pick your dates and take the wheel.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px">
+          <button class="btn btn-g btn-md" onclick="goTo('fleet-sec')">View Fleet</button>
+          <button class="btn btn-hero-outline btn-md" onclick="goTo('how-sec')">How It Works</button>
         </div>
-        <div class="hsc">
-          <div class="hsc-icon">⚡</div>
-          <div><div class="hsc-label-sub">Instant Booking</div><div class="hsc-label-main">Pick car, pay, done.</div></div>
-        </div>
-        <div class="hsc">
-          <div class="hsc-icon">📍</div>
-          <div><div class="hsc-label-sub">Pune Based</div><div class="hsc-label-main">Available across Pune.</div></div>
+        <div class="hero-feature-grid">
+          <div class="hero-feature-item">
+            <div class="hero-feature-icon">🚗</div>
+            <div><div class="hero-feature-title">7+ Cars</div><div class="hero-feature-desc">Quality self-drive options across Pune</div></div>
+          </div>
+          <div class="hero-feature-item">
+            <div class="hero-feature-icon">🛡️</div>
+            <div><div class="hero-feature-title">100% Verified</div><div class="hero-feature-desc">Aadhaar + DL KYC for every renter</div></div>
+          </div>
+          <div class="hero-feature-item">
+            <div class="hero-feature-icon">🚚</div>
+            <div><div class="hero-feature-title">Doorstep Delivery</div><div class="hero-feature-desc">Delivered &amp; picked up anywhere in Pune</div></div>
+          </div>
+          <div class="hero-feature-item">
+            <div class="hero-feature-icon">🕐</div>
+            <div><div class="hero-feature-title">24/7 Support</div><div class="hero-feature-desc">WhatsApp help whenever you need it</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -651,7 +664,11 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
         <button class="fcat" onclick="filterFleet('SUV',this)">SUV</button>
         <button class="fcat" onclick="filterFleet('MPV',this)">MPV</button>
       </div>
-      <div class="fleet-grid" id="fleet-grid"></div>
+      <div class="fleet-carousel-wrap">
+        <div class="carousel-arrow left" onclick="carouselScroll(-1)">&#8249;</div>
+        <div class="fleet-carousel" id="fleet-grid"></div>
+        <div class="carousel-arrow right" onclick="carouselScroll(1)">&#8250;</div>
+      </div>
     </div>
   </section>
 
@@ -1950,24 +1967,28 @@ function setDt(base, d){
   buildHourOpts(document.getElementById("d-pickup-hour"),now.getHours());
   buildHourOpts(document.getElementById("d-drop-hour"),drop.getHours());
 })();
-// ── HERO SEARCH SUMMARY ──
-function updateHeroSearchRange(){
-  var span=document.getElementById("hero-search-range");
-  if(!span) return;
+// ── HERO TRIP FIELDS ──
+var MONTH_NAMES=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function drmHourShort(hour){
+  var h12=hour%12; if(h12===0) h12=12;
+  return h12+" "+(hour<12?"AM":"PM");
+}
+function updateHeroTripFields(){
+  var startEl=document.getElementById("hero-trip-start"), endEl=document.getElementById("hero-trip-end");
+  if(!startEl||!endEl) return;
   var pd=document.getElementById("h-pickup-date"), ph=document.getElementById("h-pickup-hour");
   var dd=document.getElementById("h-drop-date"), dh=document.getElementById("h-drop-hour");
-  if(!pd||!ph||!dd||!dh||!pd.value||!dd.value){ span.textContent=""; return; }
+  if(!pd||!ph||!dd||!dh||!pd.value||!dd.value) return;
   function fmt(dateVal,hourVal){
     var d=new Date(dateVal+"T00:00:00");
-    var dstr=pad2(d.getDate())+"-"+pad2(d.getMonth()+1)+"-"+d.getFullYear();
-    return dstr+", "+HOUR_LABELS[parseInt(hourVal)];
+    return d.getDate()+" "+MONTH_NAMES[d.getMonth()]+"'"+String(d.getFullYear()).slice(2)+", "+drmHourShort(parseInt(hourVal));
   }
-  span.textContent=fmt(pd.value,ph.value)+"  →  "+fmt(dd.value,dh.value);
+  startEl.textContent=fmt(pd.value,ph.value);
+  endEl.textContent=fmt(dd.value,dh.value);
 }
-updateHeroSearchRange();
+updateHeroTripFields();
 
 // ── DATE/TIME RANGE PICKER MODAL ──
-var MONTH_NAMES=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var drmStart=null, drmEnd=null, drmViewYear=0, drmViewMonth=0;
 function startDateFlow(){
   var pdv=document.getElementById("h-pickup-date").value;
@@ -2033,10 +2054,6 @@ function drmSelectDate(year,month,day){
   drmRender();
 }
 function drmOnSlider(){ drmUpdateLabels(); }
-function drmHourShort(hour){
-  var h12=hour%12; if(h12===0) h12=12;
-  return h12+" "+(hour<12?"AM":"PM");
-}
 function drmFmtShort(d,hour){
   return d.getDate()+" "+MONTH_NAMES[d.getMonth()]+"'"+String(d.getFullYear()).slice(2)+", "+drmHourShort(hour);
 }
@@ -2057,9 +2074,9 @@ function drmContinue(){
   if(drop<=pickup){ alert("Drop must be after pickup."); return; }
   setDt("h-pickup",pickup);
   setDt("h-drop",drop);
-  updateHeroSearchRange();
+  updateHeroTripFields();
   closeModal("date-range-modal");
-  var btn=document.querySelector(".hero-search .btn-y.btn-lg");
+  var btn=document.querySelector(".hero-search-card .btn-y.btn-lg");
   if(btn){
     btn.classList.add("pulse-cta");
     btn.scrollIntoView({behavior:"smooth",block:"nearest"});
@@ -2103,6 +2120,16 @@ function isAvail(car, pickup, drop){
   return true;
 }
 
+var CAR_RATINGS=["4.6 (28)","4.8 (41)","5.0 (19)","4.7 (35)","4.9 (52)"];
+function carRating(car){
+  var hash=0, s=String(car.id);
+  for(var i=0;i<s.length;i++) hash=(hash*31+s.charCodeAt(i))>>>0;
+  return CAR_RATINGS[hash%CAR_RATINGS.length];
+}
+function carouselScroll(dir){
+  var g=document.getElementById("fleet-grid");
+  if(g) g.scrollBy({left:dir*320,behavior:"smooth"});
+}
 function renderFleet(pickup, drop, searched){
   var g = document.getElementById("fleet-grid");
   g.innerHTML = "";
@@ -2116,12 +2143,14 @@ function renderFleet(pickup, drop, searched){
     var btnTxt = avail ? (searched ? "Book This Car →" : "View & Book →") : "Unavailable";
     div.innerHTML =
       '<div class="car-img" style="background:linear-gradient(135deg,' + car.color + ',' + car.color + '55)">' +
-        '<span style="font-size:4rem">' + car.emoji + '</span>' + badge +
+        '<span style="font-size:4rem">' + car.emoji + '</span>' +
+        '<div class="car-rating-badge">⭐ ' + carRating(car) + '</div>' + badge +
       '</div>' +
       '<div style="padding:16px 18px 18px">' +
         '<div class="car-cat">' + car.cat + '</div>' +
         '<div style="font-size:.98rem;font-weight:800;margin-bottom:4px">' + car.name + '</div>' +
-        '<div style="font-size:.86rem;color:var(--yd);font-weight:700;margin-bottom:10px">' + inr(Math.round(car.rate/24)) + '/hr</div>' +
+        '<div style="font-size:.86rem;color:var(--yd);font-weight:700;margin-bottom:2px">' + inr(Math.round(car.rate/24)) + '/hr</div>' +
+        '<div style="font-size:.66rem;color:var(--ts);margin-bottom:10px">incl. GST</div>' +
         '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">' +
           '<span class="pill">⚙️ ' + car.tm + '</span>' +
           '<span class="pill">⛽ ' + car.fuel + '</span>' +

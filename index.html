@@ -280,16 +280,45 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .detail-grid .btn-y::after,.pause-modal .btn-y::after,.profile-body .btn-y::after{display:none}
 .detail-strip{background:#fff;padding:24px 48px;border-bottom:1px solid #ede9db}
 .detail-strip .tag{color:var(--y)}
-.detail-grid{max-width:1000px;margin:0 auto;padding:40px 48px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.detail-grid{max-width:1100px;margin:0 auto;padding:40px 48px;display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:start}
 .car-main-img{width:100%;height:280px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:6rem;margin-bottom:12px;border:1px solid var(--b);background:linear-gradient(135deg,#f8f8f8,#f0ede4)}
 .thumbs{display:flex;gap:8px;margin-bottom:22px}
 .thumb{flex:1;height:76px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.7rem;cursor:pointer;border:2px solid var(--b);transition:all .2s;background:var(--ow)}
 .thumb.active{border-color:var(--yd);box-shadow:0 0 0 3px rgba(201,160,16,.15)}
-.rate-box{background:var(--ow);border:1px solid var(--b);border-radius:16px;padding:20px 22px}
+.rate-box{background:var(--ow);border:1px solid var(--b);border-radius:16px;padding:20px 22px;margin-bottom:18px}
 .price-result{background:#fffbe6;border:1.5px solid rgba(201,160,16,.3);border-radius:16px;padding:22px;margin-top:16px}
 .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;border-top:1px solid rgba(201,160,16,.2);padding-top:14px;margin-top:14px}
 .success-box{background:#f0fdf4;border:1.5px solid #16a34a;border-radius:18px;padding:36px;text-align:center}
 .clause-box{background:#fffbe6;border:1.5px solid var(--y);border-radius:12px;padding:16px 18px;margin:14px 0}
+
+/* ---- DETAIL PAGE: rating, tabs, reviews, FAQs ---- */
+.car-rating-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.16);color:#fff;font-weight:800;font-size:.78rem;padding:6px 13px;border-radius:20px;margin-left:10px;vertical-align:middle;border:1px solid rgba(255,255,255,.3)}
+.detail-right{position:sticky;top:20px}
+.detail-tabs{display:flex;gap:22px;border-bottom:1.5px solid var(--b);margin:26px 0 0;overflow-x:auto}
+.detail-tab-btn{background:none;border:none;font-size:.84rem;font-weight:700;color:var(--ts);padding:10px 2px 12px;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;transition:.2s}
+.detail-tab-btn.active{color:var(--yd);border-bottom-color:var(--yd)}
+.detail-tab-panel{display:none;padding:20px 0 4px}
+.detail-tab-panel.active{display:block}
+.feature-pill-grid{display:flex;flex-wrap:wrap;gap:8px}
+.feature-pill{font-size:.76rem;font-weight:600;color:#2f6b3a;background:#f0fdf4;border:1px solid #bbf0c9;border-radius:20px;padding:6px 12px;display:inline-flex;align-items:center;gap:5px}
+.review-summary{font-weight:800;font-size:1.05rem;margin-bottom:14px}
+.review-card{background:var(--ow);border:1px solid var(--b);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.review-card .rname{font-weight:700;font-size:.85rem}
+.review-card .rtrips{font-size:.7rem;color:var(--ts);margin-bottom:6px}
+.review-stars{color:var(--yd);font-size:.8rem;margin-bottom:6px}
+.review-card p{font-size:.8rem;color:#555;line-height:1.6;margin:0}
+.incl-list{margin:0;padding-left:0;list-style:none}
+.incl-list li{font-size:.82rem;color:#444;line-height:1.8}
+.cancel-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.cancel-table th{padding:9px 12px;text-align:left;background:linear-gradient(135deg,#fffde8,#fff9d0);border-bottom:2px solid var(--b);font-weight:700}
+.cancel-table td{padding:9px 12px;border-bottom:1px solid var(--b);color:#4a3a1a}
+.faq-item{border:1px solid var(--b);border-radius:10px;margin-bottom:10px;overflow:hidden;background:#fff}
+.faq-q{padding:13px 16px;font-weight:700;font-size:.84rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.faq-a{padding:0 16px;font-size:.8rem;color:var(--ts);line-height:1.65;max-height:0;overflow:hidden;transition:max-height .25s,padding .25s}
+.faq-item.open .faq-a{padding:0 16px 14px;max-height:300px}
+.faq-arrow{transition:transform .25s;font-size:.7rem;flex:none}
+.faq-item.open .faq-arrow{transform:rotate(180deg)}
+@media(max-width:768px){.detail-right{position:static}}
 .file-drop{display:flex;align-items:center;gap:12px;background:var(--ow);border:1.5px dashed var(--y);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .2s}
 .file-drop.ok{border-color:#16a34a;border-style:solid}
 .file-drop.verifying{border-color:#1a5fa8}
@@ -994,9 +1023,12 @@ window.addEventListener('scroll',function(){
     <button class="btn btn-g btn-sm" onclick="goHome()">← Back to Fleet</button>
   </header>
   <div class="detail-strip">
-    <div style="max-width:1000px;margin:0 auto">
+    <div style="max-width:1100px;margin:0 auto">
       <div style="font-size:.72rem;color:var(--y);font-weight:700;cursor:pointer;margin-bottom:8px;opacity:.8;transition:opacity .15s" onclick="goHome()" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">← Back to Fleet</div>
-      <div style="font-family:'Playfair Display',Georgia,serif;font-size:2.2rem;font-weight:900;letter-spacing:-.5px;color:#fff" id="d-name"></div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap">
+        <span style="font-family:'Playfair Display',Georgia,serif;font-size:2.2rem;font-weight:900;letter-spacing:-.5px;color:#fff" id="d-name"></span>
+        <span class="car-rating-pill" id="d-rating"></span>
+      </div>
       <div id="d-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"></div>
     </div>
   </div>
@@ -1005,13 +1037,83 @@ window.addEventListener('scroll',function(){
       <div class="tag">Photos</div>
       <div class="car-main-img" id="d-main-img"></div>
       <div class="thumbs" id="d-thumbs"></div>
+
+      <div class="detail-tabs" id="detail-tabs">
+        <button class="detail-tab-btn active" onclick="showDetailTab('features',this)">Features</button>
+        <button class="detail-tab-btn" onclick="showDetailTab('reviews',this)">Reviews</button>
+        <button class="detail-tab-btn" onclick="showDetailTab('cancellation',this)">Cancellation</button>
+        <button class="detail-tab-btn" onclick="showDetailTab('inclusions',this)">Inclusions/Exclusions</button>
+        <button class="detail-tab-btn" onclick="showDetailTab('faqs',this)">FAQs</button>
+      </div>
+
+      <div class="detail-tab-panel active" id="tab-features">
+        <div class="feature-pill-grid" id="d-features"></div>
+      </div>
+
+      <div class="detail-tab-panel" id="tab-reviews">
+        <div class="review-summary" id="d-review-summary"></div>
+        <div id="d-reviews"></div>
+      </div>
+
+      <div class="detail-tab-panel" id="tab-cancellation">
+        <h3 style="font-size:.9rem;font-weight:800;margin:0 0 10px">Guest-Initiated Cancellation</h3>
+        <div style="overflow-x:auto">
+        <table class="cancel-table">
+          <thead>
+            <tr><th>Cancellation Timing</th><th>Booking Fee Refund</th><th>Security Deposit</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>More than 48 hrs before pickup</td><td style="color:#15803d;font-weight:600">Full refund</td><td style="color:#15803d;font-weight:600">Full refund</td></tr>
+            <tr><td>24–48 hrs before pickup</td><td style="color:#a16207;font-weight:600">50% refund</td><td style="color:#15803d;font-weight:600">Full refund</td></tr>
+            <tr><td>Less than 24 hrs / No-show</td><td style="color:#b91c1c;font-weight:600">No refund</td><td style="color:#15803d;font-weight:600">Full refund</td></tr>
+            <tr><td>After pickup (early return)</td><td style="color:#b91c1c;font-weight:600">No refund for unused hours</td><td style="color:#15803d;font-weight:600">Refunded after inspection</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p style="font-size:.78rem;color:var(--ts);margin-top:14px;line-height:1.65">If DriveDilSe cancels a booking for reasons not attributable to the Guest, you'll receive a full refund of both the Booking Fee and Security Deposit within 5–7 business days. See our <a href="policy.html" style="color:var(--yd);font-weight:700;text-decoration:none">full policy</a> for details.</p>
+      </div>
+
+      <div class="detail-tab-panel" id="tab-inclusions">
+        <ul class="incl-list">
+          <li>✅ Refundable security deposit — released within 5–7 business days after vehicle return &amp; inspection</li>
+          <li>✅ 24/7 WhatsApp support during your trip</li>
+          <li>⛽ Fuel not included — return the car with the same fuel level as at pickup</li>
+          <li>🛣️ Toll / FASTag charges not included — recharge your own FASTag</li>
+          <li>📄 Traffic fines &amp; challans during the booking period are the guest's responsibility</li>
+          <li>⚠️ ₹2,000 compulsory damage deductible applies on any new damage during the rental</li>
+          <li>🚫 Trip protection excludes off-road use, driving under influence, over-speeding &amp; illegal use</li>
+        </ul>
+      </div>
+
+      <div class="detail-tab-panel" id="tab-faqs">
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')"><span>Who pays for fuel and FASTag?</span><span class="faq-arrow">▾</span></div>
+          <div class="faq-a">The guest pays for fuel and must return the car with the same fuel level as at pickup. FASTag recharges during the trip are also the guest's responsibility.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')"><span>What is the refundable security deposit and why do I pay it?</span><span class="faq-arrow">▾</span></div>
+          <div class="faq-a">The security deposit covers any damage, fines, or shortfall in fuel/cleaning charges. If the car is returned on time and in good condition, it's fully refunded within 5–7 business days.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')"><span>Can I modify or extend my trip after booking?</span><span class="faq-arrow">▾</span></div>
+          <div class="faq-a">Yes — message us on WhatsApp before your drop time and we'll try to extend the booking subject to availability. Extension charges apply per hour as per the car's hourly rate.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')"><span>How do I cancel my booking?</span><span class="faq-arrow">▾</span></div>
+          <div class="faq-a">Go to "My Bookings" in your profile and cancel from there, or message us on WhatsApp. Refunds follow the cancellation policy shown in the Cancellation tab.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')"><span>Is doorstep delivery available for this car?</span><span class="faq-arrow">▾</span></div>
+          <div class="faq-a">Yes — enable "Doorstep Delivery" on the homepage before searching, choose your location, and the delivery charge will be added to your total automatically.</div>
+        </div>
+      </div>
+    </div>
+    <div class="detail-right">
       <div class="rate-box">
         <div style="font-size:.67rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px">Base Rate</div>
         <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.9rem;font-weight:900;color:var(--yd)" id="d-rate"></div>
         <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Discounts on longer bookings</div>
       </div>
-    </div>
-    <div>
       <div class="tag" id="booking-tag">Book This Car</div>
       <div id="booking-form">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
@@ -2147,10 +2249,68 @@ function isAvail(car, pickup, drop){
 }
 
 var CAR_RATINGS=["4.6 (28)","4.8 (41)","5.0 (19)","4.7 (35)","4.9 (52)"];
-function carRating(car){
+function carHash(car){
   var hash=0, s=String(car.id);
   for(var i=0;i<s.length;i++) hash=(hash*31+s.charCodeAt(i))>>>0;
-  return CAR_RATINGS[hash%CAR_RATINGS.length];
+  return hash;
+}
+function carRating(car){
+  return CAR_RATINGS[carHash(car)%CAR_RATINGS.length];
+}
+
+// ── DETAIL PAGE: features / reviews / tabs ──
+var FEATURES_COMMON = ["🛞 Spare Tyre","📷 Reverse Camera","🛡️ Dual Front Airbags","🪟 Power Windows","🎚️ Power Steering","❄️ Air Conditioning","🎵 Music System","📱 Bluetooth","🔌 USB Charging","🔒 Central Locking"];
+var FEATURES_BY_CAT = {
+  Hatchback: FEATURES_COMMON,
+  Sedan:     FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","🚦 Cruise Control"]),
+  SUV:       FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","⛰️ Hill Hold Assist","🌄 Sunroof"]),
+  MPV:       FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","🪑 Captain Seats","💨 Rear AC Vents"])
+};
+var REVIEW_POOL = [
+  {name:"Rohit Sharma",   trips:"4 trips with DriveDilSe", text:"Car was clean and well-maintained. Pickup and drop process was smooth. Would recommend!"},
+  {name:"Priya Deshmukh", trips:"2 trips with DriveDilSe", text:"Great experience, host was very responsive on WhatsApp. Car drove perfectly throughout the trip."},
+  {name:"Aman Verma",     trips:"6 trips with DriveDilSe", text:"Good condition vehicle, fuel efficient. Delivery to my location was right on time."},
+  {name:"Sneha Iyer",     trips:"3 trips with DriveDilSe", text:"Smooth booking process and the car was exactly as shown. Will definitely book again."},
+  {name:"Karan Patil",    trips:"1 trip with DriveDilSe",  text:"Comfortable ride, AC worked great in the Pune heat. Easy check-in and check-out."},
+  {name:"Neha Kulkarni",  trips:"5 trips with DriveDilSe", text:"Reliable car, no issues during the trip. Support team was helpful when I had a question."}
+];
+function showDetailTab(tab, btn){
+  document.querySelectorAll(".detail-tab-btn").forEach(function(b){ b.classList.remove("active"); });
+  document.querySelectorAll(".detail-tab-panel").forEach(function(p){ p.classList.remove("active"); });
+  btn.classList.add("active");
+  document.getElementById("tab-"+tab).classList.add("active");
+}
+function renderCarDetailExtras(car){
+  var rating = carRating(car);
+  document.getElementById("d-rating").innerHTML = "⭐ " + rating;
+
+  var feats = FEATURES_BY_CAT[car.cat] || FEATURES_COMMON;
+  document.getElementById("d-features").innerHTML = feats.map(function(f){
+    return '<span class="feature-pill">' + f + '</span>';
+  }).join("");
+
+  var ratingMatch = rating.match(/^([\d.]+)\s*\((\d+)\)/);
+  var score = ratingMatch ? ratingMatch[1] : rating;
+  var count = ratingMatch ? ratingMatch[2] : "";
+  document.getElementById("d-review-summary").innerHTML = "⭐ " + score + (count ? " · Based on " + count + " trips" : "");
+
+  var hash = carHash(car);
+  var stars = Math.round(parseFloat(score));
+  var r1 = REVIEW_POOL[hash % REVIEW_POOL.length];
+  var r2 = REVIEW_POOL[(hash + 1) % REVIEW_POOL.length];
+  document.getElementById("d-reviews").innerHTML = [r1, r2].map(function(r){
+    return '<div class="review-card">' +
+      '<div class="rname">' + r.name + '</div>' +
+      '<div class="rtrips">' + r.trips + '</div>' +
+      '<div class="review-stars">' + "★".repeat(stars) + "☆".repeat(5-stars) + '</div>' +
+      '<p>' + r.text + '</p>' +
+    '</div>';
+  }).join("");
+
+  // Reset to first tab
+  document.querySelectorAll(".detail-tab-btn").forEach(function(b,i){ b.classList.toggle("active", i===0); });
+  document.querySelectorAll(".detail-tab-panel").forEach(function(p,i){ p.classList.toggle("active", i===0); });
+  document.querySelectorAll(".faq-item.open").forEach(function(f){ f.classList.remove("open"); });
 }
 function carouselScroll(dir){
   var g=document.getElementById("fleet-grid");
@@ -2231,6 +2391,8 @@ function openCar(id){
     '<span class="pill">⛽ ' + selCar.fuel + '</span>' +
     '<span class="pill">💺 ' + selCar.seats + ' Seats</span>' +
     '<span class="pill" style="background:#fffbe6;color:var(--yd);border-color:rgba(200,160,0,.2);font-weight:700">' + selCar.cat + '</span>';
+
+  renderCarDetailExtras(selCar);
 
   // Gallery
   var labels = ["Front","Side","Interior"];

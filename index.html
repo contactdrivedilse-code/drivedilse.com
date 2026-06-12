@@ -93,7 +93,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 
 /* ---- HEADER ---- */
 .hdr{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #ede9db;padding:0 48px;height:68px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(200,160,0,.08)}
-.logo-img{height:58px;cursor:pointer;filter:brightness(1.1)}
+.logo-img{height:90px;width:auto;cursor:pointer;filter:brightness(1.1)}
 .logo-text{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:var(--y);letter-spacing:-.5px}
 
 /* ---- NAV ---- */
@@ -371,7 +371,7 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
   .hero-inner,.detail-grid{grid-template-columns:1fr}
   .hdr,.detail-strip{padding-left:20px;padding-right:20px}
   .hdr{height:60px}
-  .logo-img{height:36px}
+  .logo-img{height:54px}
   .detail-grid{padding:24px 20px}
   .hero-inner{padding:80px 20px 60px;gap:36px}
   .hero h1{font-size:2.4rem}
@@ -492,7 +492,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 
   <!-- HEADER -->
   <header class="hdr">
-    <img src="assets/logo.png" class="logo-img" alt="DriveDilSe">
+    <img src="assets/logo-icon.png" class="logo-img" alt="DriveDilSe">
     <nav style="display:flex;gap:10px;align-items:center">
       <span class="nav-link" onclick="goTo('fleet-sec')">Fleet</span>
       <span class="nav-link" onclick="goTo('how-sec')">How It Works</span>
@@ -712,7 +712,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <footer>
     <div class="footer-inner">
       <div style="display:flex;align-items:center;gap:14px">
-        <img src="assets/logo.png" style="height:36px" alt="DriveDilSe">
+        <img src="assets/logo-icon.png" style="height:48px" alt="DriveDilSe">
         <div><div class="footer-brand">DriveDilSe</div><div class="footer-copy">&#169; 2025 DriveDilSe &#183; Self-Drive Platform &#183; Pune</div></div>
       </div>
       <div class="footer-links">
@@ -771,7 +771,7 @@ window.addEventListener('scroll',function(){
 <!-- ======== CUSTOMER PROFILE ======== -->
 <div id="pg-profile" class="page">
   <header class="hdr">
-    <img src="assets/logo.png" class="logo-img" alt="DriveDilSe">
+    <img src="assets/logo-icon.png" class="logo-img" alt="DriveDilSe">
     <nav style="display:flex;gap:10px;align-items:center">
       <button class="btn btn-g btn-sm" onclick="goHome()">&#8592; Back</button>
     </nav>
@@ -863,7 +863,7 @@ window.addEventListener('scroll',function(){
 <!-- ══════════ CAR DETAIL ══════════ -->
 <div id="pg-detail" class="page">
   <header class="hdr">
-    <img src="assets/logo.png" class="logo-img" alt="DriveDilSe" onclick="goHome()">
+    <img src="assets/logo-icon.png" class="logo-img" alt="DriveDilSe" onclick="goHome()">
     <button class="btn btn-g btn-sm" onclick="goHome()">← Back to Fleet</button>
   </header>
   <div class="detail-strip">
@@ -1082,7 +1082,7 @@ window.addEventListener('scroll',function(){
 <div class="modal-bg" id="admin-login-modal">
   <div class="modal" style="width:380px;text-align:center">
     <button class="modal-close" onclick="closeModal('admin-login-modal')">✕</button>
-    <img src="assets/logo.png" style="height:44px;margin-bottom:18px" alt="DriveDilSe">
+    <img src="assets/logo-icon.png" style="height:60px;margin-bottom:18px" alt="DriveDilSe">
     <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:4px">Admin Login</div>
     <div style="font-size:.8rem;color:var(--ts);margin-bottom:22px">DriveDilSe Management Panel</div>
     <div style="text-align:left;margin-bottom:12px"><label class="lbl">Password</label><input type="password" id="adm-pass" class="inp" placeholder="Enter password" onkeydown="if(event.key==='Enter')doAdminLogin()"></div>

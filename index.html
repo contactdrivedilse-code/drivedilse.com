@@ -2312,6 +2312,7 @@ function calcPrice(){
   if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
   else { db.style.display = "none"; }
   document.getElementById("price-section").style.display = "block";
+  updateDeliveryTotal();
 }
 
 // ── BOOKING CACHE (localStorage) ──
@@ -4039,6 +4040,7 @@ function updateDeliveryTotal(){
   var row = document.getElementById("r-delivery-row");
   var amt = document.getElementById("r-delivery-amt");
   var fin = document.getElementById("r-fin");
+  var top = document.getElementById("r-total");
   if(deliveryCharge>0){
     amt.textContent = "₹"+deliveryCharge.toLocaleString("en-IN");
     row.style.display = "flex";
@@ -4046,6 +4048,7 @@ function updateDeliveryTotal(){
     row.style.display = "none";
   }
   if(fin) fin.textContent = "₹"+newTotal.toLocaleString("en-IN");
+  if(top) top.textContent = "₹"+newTotal.toLocaleString("en-IN");
 }
 
 // ── RESCHEDULE ──

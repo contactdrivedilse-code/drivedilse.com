@@ -6,7 +6,7 @@
 <title>Policies & Terms — DriveDilSe</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--y:#f5c518;--yd:#c9a010;--w:#fff;--ow:#faf9f6;--wg:#f4f1e8;--b:#ede9db;--t:#3a2c00;--ts:#9a8060;--shadow:0 2px 24px rgba(200,160,0,.10)}
@@ -14,9 +14,14 @@ body{font-family:'Inter',sans-serif;color:var(--t);background:var(--ow);line-hei
 ::selection{background:rgba(245,197,24,.45);color:#3a2c00}
 
 /* ---- HEADER ---- */
-.hdr{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.85);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid var(--b);padding:0 48px;height:68px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 24px rgba(200,160,0,.10),0 1px 0 rgba(245,197,24,.18)}
+.hdr{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.85);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-bottom:1px solid var(--b);padding:0 48px;height:80px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 24px rgba(200,160,0,.10),0 1px 0 rgba(245,197,24,.18)}
 .logo{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:900;color:var(--t);text-decoration:none;letter-spacing:-.3px}
 .logo span{color:var(--yd)}
+.logo-wrap{display:flex;align-items:center;gap:10px;text-decoration:none;cursor:pointer}
+.logo-img{height:60px;width:auto;filter:brightness(1.1)}
+.logo-brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:-.3px;color:var(--t)}
+.logo-brand .gold{color:var(--yd)}
+@media(max-width:600px){.logo-img{height:48px}.logo-brand{font-size:1.05rem}}
 .nav-links{display:flex;gap:8px;align-items:center}
 .nav-link{font-size:.84rem;font-weight:600;color:#555;text-decoration:none;padding:6px 14px;border-radius:8px;transition:color .2s,background .2s}
 .nav-link:hover{color:var(--yd);background:rgba(245,197,24,.1)}
@@ -38,7 +43,7 @@ body{font-family:'Inter',sans-serif;color:var(--t);background:var(--ow);line-hei
 .policy-wrap{max-width:1100px;margin:0 auto;padding:56px 48px;display:grid;grid-template-columns:240px 1fr;gap:48px;align-items:start}
 @media(max-width:860px){.policy-wrap{grid-template-columns:1fr;padding:32px 20px}}
 @media(max-width:600px){.policy-hero{padding:48px 20px 36px}.policy-hero h1{font-size:2rem}}
-@media(max-width:600px){.hdr{padding:0 20px}.nav-links{gap:4px}}
+@media(max-width:600px){.hdr{padding:0 20px;height:64px}.nav-links{gap:4px}}
 
 /* ---- SIDEBAR TOC ---- */
 .toc{position:sticky;top:90px;background:var(--w);border:1px solid var(--b);border-radius:18px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,.05)}
@@ -91,7 +96,10 @@ footer{background:linear-gradient(135deg,#fffde8,#fffbe0,#fff8d0);border-top:1.5
 
 <!-- HEADER -->
 <header class="hdr">
-  <a href="index.html" class="logo">Drive<span>DilSe</span></a>
+  <a href="index.html" class="logo-wrap">
+    <img src="assets/logo-icon.png" class="logo-img" alt="DriveDilSe">
+    <span class="logo-brand">Drive<span class="gold">DilSe</span></span>
+  </a>
   <div class="nav-links">
     <a href="index.html#fleet-sec" class="nav-link">Fleet</a>
     <a href="index.html#how-sec" class="nav-link">How It Works</a>

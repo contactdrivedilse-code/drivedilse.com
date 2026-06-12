@@ -18,6 +18,24 @@
 @keyframes heroFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes ctaPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,197,24,.55)}50%{box-shadow:0 0 0 10px rgba(245,197,24,0)}}
 .pulse-cta{animation:ctaPulse 1s ease-out 3}
+
+/* Date range picker modal */
+.drm-month-title{text-align:center;font-weight:800;font-size:.9rem;margin-bottom:10px;color:var(--t)}
+.drm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.drm-dow{font-size:.62rem;font-weight:800;color:var(--ts);text-transform:uppercase;padding:4px 0}
+.drm-day{font-size:.8rem;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer;color:var(--t);transition:background .12s}
+.drm-day.empty{visibility:hidden}
+.drm-day.disabled{color:#ddd;cursor:default}
+.drm-day.in-range{background:rgba(245,197,24,.18)}
+.drm-day.selected{background:var(--yd);color:#fff;font-weight:800}
+.drm-day:not(.disabled):not(.selected):hover{background:rgba(245,197,24,.3)}
+@media(max-width:600px){
+  #drm-cal-grid{grid-template-columns:1fr !important}
+  .drm-grid{gap:1px}
+  .drm-day{font-size:.72rem;padding:5px 0}
+  .drm-month-title{font-size:.78rem}
+  .drm-dow{font-size:.56rem}
+}
 @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 @keyframes pulseRing{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.8);opacity:0}}
 @keyframes statPop{0%{opacity:0;transform:translateY(10px) scale(.92)}100%{opacity:1;transform:none scale(1)}}
@@ -1031,6 +1049,39 @@ window.addEventListener('scroll',function(){
   </div>
 </div>
 
+<!-- ══════════ DATE/TIME RANGE PICKER MODAL ══════════ -->
+<div class="modal-bg" id="date-range-modal" onclick="if(event.target===this)closeModal('date-range-modal')">
+  <div class="modal" style="width:640px;max-width:94vw;padding:26px 22px">
+    <button class="modal-close" onclick="closeModal('date-range-modal')">✕</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;padding-right:24px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-weight:800;font-size:.88rem;color:var(--t)">
+        <span>&#128197; <span id="drm-pickup-label">Select pickup</span></span>
+        <span style="color:var(--ts)">&#8594;</span>
+        <span>&#128197; <span id="drm-drop-label">Select drop</span></span>
+      </div>
+      <span style="color:var(--yd);font-weight:800;font-size:.78rem;cursor:pointer;letter-spacing:.05em" onclick="drmReset()">RESET</span>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:6px">
+      <button type="button" class="btn btn-g btn-sm" onclick="drmNavMonth(-1)" style="padding:4px 10px;margin-top:30px">&#8249;</button>
+      <div id="drm-cal-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;min-width:0"></div>
+      <button type="button" class="btn btn-g btn-sm" onclick="drmNavMonth(1)" style="padding:4px 10px;margin-top:30px">&#8250;</button>
+    </div>
+    <div style="margin-top:20px">
+      <div style="font-weight:800;font-size:.92rem;margin-bottom:2px">Select pickup &amp; drop time</div>
+      <div style="font-size:.72rem;color:var(--ts);margin-bottom:16px">All times shown in IST.</div>
+      <div style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:.85rem;margin-bottom:8px"><span>Pickup Time</span><span id="drm-pickup-time-label">12:00 AM</span></div>
+        <input type="range" id="drm-pickup-hour" min="0" max="23" step="1" value="0" style="width:100%;accent-color:var(--yd)" oninput="drmOnSlider()">
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:.85rem;margin-bottom:8px"><span>Drop Time</span><span id="drm-drop-time-label">12:00 AM</span></div>
+        <input type="range" id="drm-drop-hour" min="0" max="23" step="1" value="0" style="width:100%;accent-color:var(--yd)" oninput="drmOnSlider()">
+      </div>
+    </div>
+    <button type="button" class="btn btn-y btn-lg" style="width:100%;margin-top:22px;border-radius:12px" onclick="drmContinue()">CONTINUE</button>
+  </div>
+</div>
+
 <!-- ══════════ PROFILE VERIFY MODAL ══════════ -->
 <div class="modal-bg" id="verify-modal">
   <div class="modal">
@@ -1899,17 +1950,7 @@ function setDt(base, d){
   buildHourOpts(document.getElementById("d-pickup-hour"),now.getHours());
   buildHourOpts(document.getElementById("d-drop-hour"),drop.getHours());
 })();
-// ── AUTO-ADVANCE: pickup date → pickup hour → drop date → drop hour → highlight search ──
-function openPicker(el){
-  if(!el) return;
-  if(el.tagName==="INPUT" && typeof el.showPicker==="function"){
-    try{ el.showPicker(); return; }catch(e){}
-  }
-  el.focus();
-}
-function startDateFlow(){
-  openPicker(document.getElementById("h-pickup-date"));
-}
+// ── HERO SEARCH SUMMARY ──
 function updateHeroSearchRange(){
   var span=document.getElementById("hero-search-range");
   if(!span) return;
@@ -1923,24 +1964,108 @@ function updateHeroSearchRange(){
   }
   span.textContent=fmt(pd.value,ph.value)+"  →  "+fmt(dd.value,dh.value);
 }
-(function(){
-  var pd=document.getElementById("h-pickup-date");
-  var ph=document.getElementById("h-pickup-hour");
-  var dd=document.getElementById("h-drop-date");
-  var dh=document.getElementById("h-drop-hour");
-  if(pd) pd.addEventListener("change", function(){ openPicker(ph); updateHeroSearchRange(); });
-  if(ph) ph.addEventListener("change", function(){ openPicker(dd); updateHeroSearchRange(); });
-  if(dd) dd.addEventListener("change", function(){ openPicker(dh); updateHeroSearchRange(); });
-  if(dh) dh.addEventListener("change", function(){
-    updateHeroSearchRange();
-    var btn=document.querySelector(".hero-search .btn-y.btn-lg");
-    if(!btn) return;
+updateHeroSearchRange();
+
+// ── DATE/TIME RANGE PICKER MODAL ──
+var MONTH_NAMES=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var drmStart=null, drmEnd=null, drmViewYear=0, drmViewMonth=0;
+function startDateFlow(){
+  var pdv=document.getElementById("h-pickup-date").value;
+  var ddv=document.getElementById("h-drop-date").value;
+  var ph=parseInt(document.getElementById("h-pickup-hour").value||0);
+  var dh=parseInt(document.getElementById("h-drop-hour").value||0);
+  drmStart = pdv ? new Date(pdv+"T00:00:00") : null;
+  drmEnd   = ddv ? new Date(ddv+"T00:00:00") : null;
+  document.getElementById("drm-pickup-hour").value = ph;
+  document.getElementById("drm-drop-hour").value   = dh;
+  var ref = drmStart || new Date();
+  drmViewYear = ref.getFullYear();
+  drmViewMonth = ref.getMonth();
+  drmRender();
+  openModal("date-range-modal");
+}
+function drmReset(){ drmStart=null; drmEnd=null; drmRender(); }
+function drmNavMonth(delta){
+  drmViewMonth += delta;
+  if(drmViewMonth<0){ drmViewMonth=11; drmViewYear--; }
+  if(drmViewMonth>11){ drmViewMonth=0; drmViewYear++; }
+  drmRender();
+}
+function drmSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function drmBuildMonth(year,month){
+  var first=new Date(year,month,1);
+  var startDow=first.getDay();
+  var daysInMonth=new Date(year,month+1,0).getDate();
+  var today=new Date(); today.setHours(0,0,0,0);
+  var html='<div class="drm-month-title">'+MONTH_NAMES[month]+" '"+String(year).slice(2)+'</div><div class="drm-grid">';
+  ["S","M","T","W","T","F","S"].forEach(function(d){ html+='<div class="drm-dow">'+d+'</div>'; });
+  for(var i=0;i<startDow;i++) html+='<div class="drm-day empty"></div>';
+  for(var day=1;day<=daysInMonth;day++){
+    var cellDate=new Date(year,month,day);
+    var disabled=cellDate<today;
+    var cls="drm-day";
+    if(disabled) cls+=" disabled";
+    if(drmStart && drmSameDay(cellDate,drmStart)) cls+=" selected";
+    if(drmEnd && drmSameDay(cellDate,drmEnd)) cls+=" selected";
+    if(drmStart && drmEnd && cellDate>drmStart && cellDate<drmEnd) cls+=" in-range";
+    var onclick=disabled?"":' onclick="drmSelectDate('+year+','+month+','+day+')"';
+    html+='<div class="'+cls+'"'+onclick+'>'+day+'</div>';
+  }
+  html+='</div>';
+  return html;
+}
+function drmRender(){
+  var grid=document.getElementById("drm-cal-grid");
+  var m2=drmViewMonth+1, y2=drmViewYear;
+  if(m2>11){ m2=0; y2++; }
+  grid.innerHTML='<div>'+drmBuildMonth(drmViewYear,drmViewMonth)+'</div><div>'+drmBuildMonth(y2,m2)+'</div>';
+  drmUpdateLabels();
+}
+function drmSelectDate(year,month,day){
+  var d=new Date(year,month,day);
+  if(!drmStart || (drmStart && drmEnd)){
+    drmStart=d; drmEnd=null;
+  } else if(d.getTime()<=drmStart.getTime()){
+    drmStart=d; drmEnd=null;
+  } else {
+    drmEnd=d;
+  }
+  drmRender();
+}
+function drmOnSlider(){ drmUpdateLabels(); }
+function drmHourShort(hour){
+  var h12=hour%12; if(h12===0) h12=12;
+  return h12+" "+(hour<12?"AM":"PM");
+}
+function drmFmtShort(d,hour){
+  return d.getDate()+" "+MONTH_NAMES[d.getMonth()]+"'"+String(d.getFullYear()).slice(2)+", "+drmHourShort(hour);
+}
+function drmUpdateLabels(){
+  var ph=parseInt(document.getElementById("drm-pickup-hour").value);
+  var dh=parseInt(document.getElementById("drm-drop-hour").value);
+  document.getElementById("drm-pickup-time-label").textContent=HOUR_LABELS[ph];
+  document.getElementById("drm-drop-time-label").textContent=HOUR_LABELS[dh];
+  document.getElementById("drm-pickup-label").textContent = drmStart ? drmFmtShort(drmStart,ph) : "Select pickup";
+  document.getElementById("drm-drop-label").textContent   = drmEnd   ? drmFmtShort(drmEnd,dh)   : "Select drop";
+}
+function drmContinue(){
+  if(!drmStart || !drmEnd){ alert("Please select both pickup and drop dates."); return; }
+  var ph=parseInt(document.getElementById("drm-pickup-hour").value);
+  var dh=parseInt(document.getElementById("drm-drop-hour").value);
+  var pickup=new Date(drmStart); pickup.setHours(ph,0,0,0);
+  var drop=new Date(drmEnd); drop.setHours(dh,0,0,0);
+  if(drop<=pickup){ alert("Drop must be after pickup."); return; }
+  setDt("h-pickup",pickup);
+  setDt("h-drop",drop);
+  updateHeroSearchRange();
+  closeModal("date-range-modal");
+  var btn=document.querySelector(".hero-search .btn-y.btn-lg");
+  if(btn){
     btn.classList.add("pulse-cta");
     btn.scrollIntoView({behavior:"smooth",block:"nearest"});
     setTimeout(function(){ btn.classList.remove("pulse-cta"); },3000);
-  });
-  updateHeroSearchRange();
-})();
+  }
+}
 
 // ── FLEET ──
 function isAvail(car, pickup, drop){

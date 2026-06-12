@@ -546,8 +546,8 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
       <div>
         <div class="hero-search">
           <div class="hero-search-title">&#128337; Check Availability</div>
-          <button type="button" class="btn btn-g btn-md" onclick="startDateFlow()" style="width:100%;margin-bottom:14px;border-radius:12px">&#128197; Select Pickup &amp; Drop Date/Time</button>
-          <div id="search-sec" class="date-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <button type="button" class="btn btn-g btn-md" onclick="startDateFlow()" style="width:100%;margin-bottom:16px;border-radius:12px">&#128197; Select Pickup &amp; Drop Date/Time</button>
+          <div id="search-sec" class="date-grid" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
             <div class="dt-pair">
               <div class="dt-pair-label">📍 Pickup</div>
               <div class="dt-controls">
@@ -565,7 +565,10 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
               </div>
             </div>
           </div>
-          <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem">Show Available Cars</button>
+          <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem;display:flex;flex-direction:column;gap:3px;line-height:1.3">
+            <span>Show Available Cars</span>
+            <span id="hero-search-range" style="font-size:.72rem;font-weight:600;opacity:.85"></span>
+          </button>
           <!-- Doorstep delivery teaser -->
           <div style="margin-top:12px;background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
             <div>
@@ -1907,21 +1910,36 @@ function openPicker(el){
 function startDateFlow(){
   openPicker(document.getElementById("h-pickup-date"));
 }
+function updateHeroSearchRange(){
+  var span=document.getElementById("hero-search-range");
+  if(!span) return;
+  var pd=document.getElementById("h-pickup-date"), ph=document.getElementById("h-pickup-hour");
+  var dd=document.getElementById("h-drop-date"), dh=document.getElementById("h-drop-hour");
+  if(!pd||!ph||!dd||!dh||!pd.value||!dd.value){ span.textContent=""; return; }
+  function fmt(dateVal,hourVal){
+    var d=new Date(dateVal+"T00:00:00");
+    var dstr=pad2(d.getDate())+"-"+pad2(d.getMonth()+1)+"-"+d.getFullYear();
+    return dstr+", "+HOUR_LABELS[parseInt(hourVal)];
+  }
+  span.textContent=fmt(pd.value,ph.value)+"  →  "+fmt(dd.value,dh.value);
+}
 (function(){
   var pd=document.getElementById("h-pickup-date");
   var ph=document.getElementById("h-pickup-hour");
   var dd=document.getElementById("h-drop-date");
   var dh=document.getElementById("h-drop-hour");
-  if(pd) pd.addEventListener("change", function(){ openPicker(ph); });
-  if(ph) ph.addEventListener("change", function(){ openPicker(dd); });
-  if(dd) dd.addEventListener("change", function(){ openPicker(dh); });
+  if(pd) pd.addEventListener("change", function(){ openPicker(ph); updateHeroSearchRange(); });
+  if(ph) ph.addEventListener("change", function(){ openPicker(dd); updateHeroSearchRange(); });
+  if(dd) dd.addEventListener("change", function(){ openPicker(dh); updateHeroSearchRange(); });
   if(dh) dh.addEventListener("change", function(){
+    updateHeroSearchRange();
     var btn=document.querySelector(".hero-search .btn-y.btn-lg");
     if(!btn) return;
     btn.classList.add("pulse-cta");
     btn.scrollIntoView({behavior:"smooth",block:"nearest"});
     setTimeout(function(){ btn.classList.remove("pulse-cta"); },3000);
   });
+  updateHeroSearchRange();
 })();
 
 // ── FLEET ──

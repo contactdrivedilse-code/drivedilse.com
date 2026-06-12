@@ -509,9 +509,16 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 
 /* Delivery map */
 .delivery-map-wrap{border-radius:14px;overflow:hidden;border:2px solid var(--b);margin-bottom:12px;position:relative}
-#delivery-map{height:280px;width:100%;z-index:1}
+#delivery-map,#hero-delivery-map,#hero-drop-map,#drop-map{height:240px;width:100%;z-index:1}
 .delivery-map-hint{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);color:#fff;font-size:.72rem;font-weight:600;padding:5px 14px;border-radius:20px;z-index:10;pointer-events:none;white-space:nowrap}
 .leaflet-container{font-family:'Inter',sans-serif}
+
+/* Delivery mode selector */
+.delivery-mode-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.dmode{background:#fff;border:1.5px solid var(--b);border-radius:10px;padding:10px 4px;font-size:.7rem;font-weight:700;text-align:center;cursor:pointer;color:var(--t);line-height:1.6;transition:.2s}
+.dmode .dmode-ic{font-size:1.1rem;display:block}
+.dmode.on{border-color:var(--yd);background:#fffbe6;color:var(--yd)}
+@media(max-width:480px){.delivery-mode-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 </head>
@@ -594,6 +601,42 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
               <span id="hero-delivery-track" style="position:absolute;inset:0;background:#ccc;border-radius:22px;transition:.3s"></span>
               <span id="hero-delivery-thumb" style="position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2)"></span>
             </label>
+          </div>
+
+          <!-- Doorstep delivery picker (shown when toggle is ON) -->
+          <div id="hero-delivery-panel" style="display:none;margin-bottom:14px">
+            <div class="delivery-mode-grid">
+              <button type="button" class="dmode on" onclick="setDeliveryMode('same',this)"><span class="dmode-ic">🔁</span>Same Location</button>
+              <button type="button" class="dmode" onclick="setDeliveryMode('flexi',this)"><span class="dmode-ic">↔️</span>Flexi Drop</button>
+              <button type="button" class="dmode" onclick="setDeliveryMode('airport',this)"><span class="dmode-ic">✈️</span>Airport</button>
+              <button type="button" class="dmode" onclick="setDeliveryMode('railway',this)"><span class="dmode-ic">🚉</span>Railway Stn</button>
+            </div>
+
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ts);margin-bottom:6px" id="hero-pickup-map-label">📍 Delivery Location</div>
+            <div class="delivery-map-wrap">
+              <div class="delivery-map-hint" id="hero-delivery-map-hint">📍 Drag pin or tap to set location</div>
+              <div id="hero-delivery-map"></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <input class="inp" type="text" id="hero-delivery-address" placeholder="Search address…" style="flex:1;font-size:.82rem" oninput="clearDeliveryCalc()">
+              <button class="btn btn-y btn-sm" onclick="calcDeliveryCharge('pickup','hero-')" style="white-space:nowrap;padding:10px 14px">Search →</button>
+            </div>
+
+            <div id="hero-drop-location-section" style="display:none">
+              <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ts);margin-bottom:6px">🏁 Drop Location (end of booking)</div>
+              <div class="delivery-map-wrap">
+                <div class="delivery-map-hint" id="hero-drop-map-hint">📍 Drag pin to drop location</div>
+                <div id="hero-drop-map"></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:12px">
+                <input class="inp" type="text" id="hero-drop-address" placeholder="Search drop address…" style="flex:1;font-size:.82rem" oninput="clearDeliveryCalc()">
+                <button class="btn btn-y btn-sm" onclick="calcDeliveryCharge('drop','hero-')" style="white-space:nowrap;padding:10px 14px">Search →</button>
+              </div>
+            </div>
+
+            <div id="hero-fixed-drop-note" style="display:none;font-size:.78rem;color:var(--ts);background:#fff;border:1px solid var(--b);border-radius:10px;padding:8px 12px;margin-bottom:12px"></div>
+
+            <div id="hero-delivery-result" style="font-size:.8rem"></div>
           </div>
           <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem">SEARCH</button>
         </div>
@@ -2273,17 +2316,20 @@ function openCar(id){
   // Pre-fill details if already logged in
   document.getElementById("chk-ded").checked = false;
   document.getElementById("chk-tnc").checked = false;
-  // Reset delivery
-  deliveryCharge = 0; deliveryAddress = "";
+  // Reset delivery map instances (re-created per page)
   if(deliveryMap){ deliveryMap.remove(); deliveryMap=null; deliveryMarker=null; }
   if(dropMap){ dropMap.remove(); dropMap=null; dropMarker=null; }
-  pickupDist=0; dropDist=0; dropAddress="";
+  if(!heroDeliveryWanted){
+    deliveryCharge = 0; deliveryAddress = ""; pickupDist=0; dropDist=0; dropAddress="";
+  }
   var dtog = document.getElementById("delivery-toggle");
+  var sameLoc = document.getElementById("delivery-same-loc");
+  if(sameLoc) sameLoc.checked = (deliveryMode !== "flexi");
   if(dtog){ dtog.checked = !!heroDeliveryWanted; onDeliveryToggle(); }
-  var dres = document.getElementById("delivery-result");
-  if(dres) dres.innerHTML="";
   var dadd = document.getElementById("delivery-address");
-  if(dadd) dadd.value="";
+  if(dadd) dadd.value = heroDeliveryWanted ? deliveryAddress : "";
+  var dropAdd = document.getElementById("drop-address");
+  if(dropAdd) dropAdd.value = heroDeliveryWanted ? dropAddress : "";
 
   showPage("pg-detail");
 }
@@ -3808,17 +3854,55 @@ var HUB_LAT = 18.4605486, HUB_LON = 73.8423892;
 var deliveryCharge = 0, deliveryAddress = "";
 var heroDeliveryWanted = false;
 
+// Fixed drop destinations (Pune)
+var AIRPORT_LAT = 18.5822, AIRPORT_LON = 73.9197, AIRPORT_LABEL = "Pune Airport (PNQ)";
+var STATION_LAT = 18.5284, STATION_LON = 73.8744, STATION_LABEL = "Pune Railway Station";
+var deliveryMode = "same"; // same | flexi | airport | railway
+
 function onHeroDeliveryToggle(){
   heroDeliveryWanted = document.getElementById("hero-delivery-toggle").checked;
   var track = document.getElementById("hero-delivery-track");
   var thumb = document.getElementById("hero-delivery-thumb");
+  var panel = document.getElementById("hero-delivery-panel");
   if(heroDeliveryWanted){
     track.style.background = "var(--yd)";
     thumb.style.transform = "translateX(18px)";
+    panel.style.display = "block";
+    setTimeout(function(){ initHeroDeliveryMap(); }, 50);
   } else {
     track.style.background = "#ccc";
     thumb.style.transform = "translateX(0)";
+    panel.style.display = "none";
+    deliveryCharge=0; deliveryAddress=""; dropAddress=""; pickupDist=0; dropDist=0;
+    calcAndShowDeliveryTotal();
   }
+}
+
+function setDeliveryMode(mode, btn){
+  deliveryMode = mode;
+  btn.closest(".delivery-mode-grid").querySelectorAll(".dmode").forEach(function(b){ b.classList.remove("on"); });
+  btn.classList.add("on");
+  var dropSec   = document.getElementById("hero-drop-location-section");
+  var fixedNote = document.getElementById("hero-fixed-drop-note");
+  var label     = document.getElementById("hero-pickup-map-label");
+  if(mode === "same"){
+    dropSec.style.display = "none";
+    fixedNote.style.display = "none";
+    label.textContent = "📍 Delivery Location";
+    dropDist=0; dropAddress="";
+  } else if(mode === "flexi"){
+    dropSec.style.display = "block";
+    fixedNote.style.display = "none";
+    label.textContent = "📍 Pickup Location (start of booking)";
+    setTimeout(function(){ initHeroDropMap(); }, 50);
+  } else {
+    dropSec.style.display = "none";
+    label.textContent = "📍 Delivery Location";
+    var name = mode === "airport" ? AIRPORT_LABEL : STATION_LABEL;
+    fixedNote.style.display = "block";
+    fixedNote.textContent = "🏁 Drop location fixed to: " + name;
+  }
+  calcAndShowDeliveryTotal();
 }
 
 function haversineKm(lat1,lon1,lat2,lon2){
@@ -3842,6 +3926,7 @@ function onSameLocToggle(){
   var same = document.getElementById("delivery-same-loc").checked;
   document.getElementById("drop-location-section").style.display = same ? "none" : "block";
   document.getElementById("pickup-map-label").textContent = same ? "📍 Delivery Location" : "📍 Pickup Location (start of booking)";
+  deliveryMode = same ? "same" : "flexi";
   if(!same){
     setTimeout(function(){ initDropMap(); }, 50);
   } else {
@@ -3858,7 +3943,17 @@ function onDeliveryToggle(){
   thumb.style.transform  = checked ? "translateX(20px)" : "translateX(0)";
   document.getElementById("delivery-form").style.display = checked ? "block" : "none";
   if(!checked){ deliveryCharge=0; deliveryAddress=""; dropAddress=""; pickupDist=0; dropDist=0; updateDeliveryTotal(); return; }
-  setTimeout(function(){ initDeliveryMap(); }, 50);
+  var dropSec = document.getElementById("drop-location-section");
+  if(deliveryMode === "flexi"){
+    dropSec.style.display = "block";
+    document.getElementById("pickup-map-label").textContent = "📍 Pickup Location (start of booking)";
+    setTimeout(function(){ initDeliveryMap(); initDropMap(); if(dropDist>0 && dropMap){ document.getElementById("drop-map-hint").textContent="📍 "+(dropAddress?dropAddress.split(",")[0]:"Drag pin to update"); } }, 50);
+  } else {
+    dropSec.style.display = "none";
+    document.getElementById("pickup-map-label").textContent = "📍 Delivery Location";
+    setTimeout(function(){ initDeliveryMap(); }, 50);
+  }
+  calcAndShowDeliveryTotal();
 }
 
 function makeMapWithPin(mapId, hintId, onMove){
@@ -3886,6 +3981,12 @@ function initDeliveryMap(){
     reverseAndUpdateFee(pin.getLatLng(), "pickup", hintId);
   });
   deliveryMap = obj.map; deliveryMarker = obj.pin;
+  if(pickupDist>0){
+    // Location already chosen on the homepage — just show the saved total
+    document.getElementById("delivery-map-hint").textContent = "📍 "+(deliveryAddress ? deliveryAddress.split(",")[0] : "Drag pin or tap to update");
+    calcAndShowDeliveryTotal();
+    return;
+  }
   // Auto GPS
   if(navigator.geolocation){
     document.getElementById("delivery-map-hint").textContent = "📍 Locating you…";
@@ -3908,7 +4009,39 @@ function initDropMap(){
   dropMap = obj.map; dropMarker = obj.pin;
 }
 
-function reverseAndUpdateFee(ll, which, hintId){
+var heroDeliveryMap = null, heroDeliveryMarker = null;
+var heroDropMap = null, heroDropMarker = null;
+
+function initHeroDeliveryMap(){
+  if(heroDeliveryMap){ heroDeliveryMap.invalidateSize(); return; }
+  var obj = makeMapWithPin("hero-delivery-map", "hero-delivery-map-hint", function(pin, map, hintId){
+    reverseAndUpdateFee(pin.getLatLng(), "pickup", hintId, "hero-");
+  });
+  heroDeliveryMap = obj.map; heroDeliveryMarker = obj.pin;
+  // Auto GPS
+  if(navigator.geolocation){
+    document.getElementById("hero-delivery-map-hint").textContent = "📍 Locating you…";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      heroDeliveryMarker.setLatLng([pos.coords.latitude, pos.coords.longitude]);
+      heroDeliveryMap.setView([pos.coords.latitude, pos.coords.longitude], 15);
+      document.getElementById("hero-delivery-map-hint").textContent = "📍 Drag pin or tap to confirm";
+      reverseAndUpdateFee(heroDeliveryMarker.getLatLng(), "pickup", "hero-delivery-map-hint", "hero-");
+    }, function(err){
+      document.getElementById("hero-delivery-map-hint").textContent = err.code===1 ? "🔒 Location denied — drag pin to your address" : "📍 Drag pin to your delivery address";
+    }, {timeout:8000, enableHighAccuracy:false});
+  }
+}
+
+function initHeroDropMap(){
+  if(heroDropMap){ heroDropMap.invalidateSize(); return; }
+  var obj = makeMapWithPin("hero-drop-map", "hero-drop-map-hint", function(pin){
+    reverseAndUpdateFee(pin.getLatLng(), "drop", "hero-drop-map-hint", "hero-");
+  });
+  heroDropMap = obj.map; heroDropMarker = obj.pin;
+}
+
+function reverseAndUpdateFee(ll, which, hintId, ctx){
+  ctx = ctx || "";
   var dist = haversineKm(HUB_LAT, HUB_LON, ll.lat, ll.lng);
   if(which==="pickup"){ pickupDist=dist; } else { dropDist=dist; }
   fetch("https://nominatim.openstreetmap.org/reverse?lat="+ll.lat+"&lon="+ll.lng+"&format=json&zoom=17",
@@ -3916,8 +4049,9 @@ function reverseAndUpdateFee(ll, which, hintId){
     .then(function(r){ return r.json(); })
     .then(function(d){
       var label = d.display_name ? d.display_name.split(",").slice(0,4).join(",") : "Selected location";
-      if(which==="pickup"){ deliveryAddress=label; document.getElementById("delivery-address").value=label; }
-      else { dropAddress=label; document.getElementById("drop-address").value=label; }
+      var addrEl = document.getElementById(ctx + (which==="pickup" ? "delivery-address" : "drop-address"));
+      if(which==="pickup"){ deliveryAddress=label; } else { dropAddress=label; }
+      if(addrEl) addrEl.value = label;
       if(hintId) document.getElementById(hintId).textContent = "📍 "+label.split(",")[0];
       calcAndShowDeliveryTotal();
     })
@@ -3925,32 +4059,51 @@ function reverseAndUpdateFee(ll, which, hintId){
 }
 
 function calcAndShowDeliveryTotal(){
-  var same = document.getElementById("delivery-same-loc") ? document.getElementById("delivery-same-loc").checked : true;
-  var fee, breakdown;
-  if(same || dropDist===0){
-    // Round trip to same location: hub→location→hub
-    var roundTripKm = pickupDist * 2;
-    fee = calcDeliveryFee(roundTripKm);
-    breakdown = pickupDist>0
-      ? '~'+pickupDist.toFixed(1)+' km one-way &nbsp;·&nbsp; ~'+roundTripKm.toFixed(1)+' km round trip: ₹'+fee.toLocaleString("en-IN")
-      : '';
-  } else {
+  var fee = 0, breakdown = "";
+  if(deliveryMode === "flexi"){
     // Different pickup/drop: hub→pickup + drop→hub
     var totalKm = pickupDist + dropDist;
-    fee = calcDeliveryFee(totalKm);
-    breakdown = 'Pickup leg: ~'+pickupDist.toFixed(1)+' km &nbsp;+&nbsp; Drop leg: ~'+dropDist.toFixed(1)+' km'+
-                ' &nbsp;·&nbsp; ~'+totalKm.toFixed(1)+' km total: ₹'+fee.toLocaleString("en-IN");
+    if(pickupDist>0 && dropDist>0){
+      fee = calcDeliveryFee(totalKm);
+      breakdown = 'Pickup leg: ~'+pickupDist.toFixed(1)+' km &nbsp;+&nbsp; Drop leg: ~'+dropDist.toFixed(1)+' km'+
+                  ' &nbsp;·&nbsp; ~'+totalKm.toFixed(1)+' km total: ₹'+fee.toLocaleString("en-IN");
+    }
+  } else if(deliveryMode === "airport" || deliveryMode === "railway"){
+    // Delivery to customer + drop to a fixed hub destination
+    var dest = deliveryMode === "airport"
+      ? {lat:AIRPORT_LAT, lon:AIRPORT_LON, label:AIRPORT_LABEL}
+      : {lat:STATION_LAT, lon:STATION_LON, label:STATION_LABEL};
+    dropDist = haversineKm(HUB_LAT, HUB_LON, dest.lat, dest.lon);
+    dropAddress = dest.label;
+    var totalKm2 = pickupDist + dropDist;
+    if(pickupDist>0){
+      fee = calcDeliveryFee(totalKm2);
+      breakdown = 'Delivery: ~'+pickupDist.toFixed(1)+' km &nbsp;+&nbsp; Drop to '+dest.label+': ~'+dropDist.toFixed(1)+' km'+
+                  ' &nbsp;·&nbsp; ~'+totalKm2.toFixed(1)+' km total: ₹'+fee.toLocaleString("en-IN");
+    }
+  } else {
+    // Round trip to same location: hub→location→hub
+    var roundTripKm = pickupDist * 2;
+    if(pickupDist>0){
+      fee = calcDeliveryFee(roundTripKm);
+      breakdown = '~'+pickupDist.toFixed(1)+' km one-way &nbsp;·&nbsp; ~'+roundTripKm.toFixed(1)+' km round trip: ₹'+fee.toLocaleString("en-IN");
+    }
   }
   deliveryCharge = fee;
-  var res = document.getElementById("delivery-result");
-  if(fee>0 && res){
-    res.innerHTML =
-      '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px">' +
-        (deliveryAddress ? '📍 <strong>'+esc(deliveryAddress.split(",").slice(0,2).join(","))+'</strong><br>' : '') +
-        (breakdown ? '<span style="font-size:.74rem;color:var(--ts)">'+breakdown+'</span><br>' : '') +
-        '<span style="color:var(--yd);font-weight:700;font-size:.92rem">Total delivery charge: ₹'+fee.toLocaleString("en-IN")+'</span>' +
-      '</div>';
-  }
+  ["hero-delivery-result","delivery-result"].forEach(function(id){
+    var res = document.getElementById(id);
+    if(!res) return;
+    if(fee>0){
+      res.innerHTML =
+        '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px">' +
+          (deliveryAddress ? '📍 <strong>'+esc(deliveryAddress.split(",").slice(0,2).join(","))+'</strong><br>' : '') +
+          (breakdown ? '<span style="font-size:.74rem;color:var(--ts)">'+breakdown+'</span><br>' : '') +
+          '<span style="color:var(--yd);font-weight:700;font-size:.92rem">Total delivery charge: ₹'+fee.toLocaleString("en-IN")+'</span>' +
+        '</div>';
+    } else {
+      res.innerHTML = "";
+    }
+  });
   updateDeliveryTotal();
 }
 
@@ -3958,19 +4111,23 @@ function showDeliveryResult(){ calcAndShowDeliveryTotal(); }
 
 function clearDeliveryCalc(){
   deliveryCharge=0; deliveryAddress=""; dropAddress=""; pickupDist=0; dropDist=0;
-  document.getElementById("delivery-result").innerHTML="";
+  ["hero-delivery-result","delivery-result"].forEach(function(id){
+    var res = document.getElementById(id);
+    if(res) res.innerHTML="";
+  });
   updateDeliveryTotal();
 }
 
-async function calcDeliveryCharge(which){
+async function calcDeliveryCharge(which, ctx){
   which = which || "pickup";
-  var addrEl = document.getElementById(which==="drop" ? "drop-address" : "delivery-address");
+  ctx = ctx || "";
+  var addrEl = document.getElementById(ctx + (which==="drop" ? "drop-address" : "delivery-address"));
   var addr   = addrEl ? addrEl.value.trim() : "";
   if(!addr){ alert("Enter the address to search."); return; }
-  var btn = document.getElementById("delivery-calc-btn");
+  var btn = document.getElementById(ctx + "delivery-calc-btn");
   if(btn){ btn.textContent="Searching…"; btn.disabled=true; }
-  var res = document.getElementById("delivery-result");
-  res.innerHTML='<span style="color:var(--ts)">📍 Locating address…</span>';
+  var res = document.getElementById(ctx + "delivery-result");
+  if(res) res.innerHTML='<span style="color:var(--ts)">📍 Locating address…</span>';
   try {
     var q    = encodeURIComponent(addr+", Pune");
     var r    = await fetch("https://nominatim.openstreetmap.org/search?q="+q+"&format=json&limit=1",
@@ -3979,16 +4136,21 @@ async function calcDeliveryCharge(which){
     if(!data.length) throw new Error("Address not found. Try a more specific address in Pune.");
     var lat  = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
     var dist = haversineKm(HUB_LAT, HUB_LON, lat, lon);
+    var isHero = ctx === "hero-";
     if(which==="drop"){
       dropDist=dist; dropAddress=addr;
-      if(dropMarker&&dropMap){ dropMarker.setLatLng([lat,lon]); dropMap.setView([lat,lon],15); }
+      var dMarker = isHero ? heroDropMarker : dropMarker;
+      var dMap     = isHero ? heroDropMap : dropMap;
+      if(dMarker&&dMap){ dMarker.setLatLng([lat,lon]); dMap.setView([lat,lon],15); }
     } else {
       pickupDist=dist; deliveryAddress=addr;
-      if(deliveryMarker&&deliveryMap){ deliveryMarker.setLatLng([lat,lon]); deliveryMap.setView([lat,lon],15); }
+      var pMarker = isHero ? heroDeliveryMarker : deliveryMarker;
+      var pMap     = isHero ? heroDeliveryMap : deliveryMap;
+      if(pMarker&&pMap){ pMarker.setLatLng([lat,lon]); pMap.setView([lat,lon],15); }
     }
     calcAndShowDeliveryTotal();
   } catch(e){
-    res.innerHTML='<span style="color:#c0392b">'+esc(e.message)+'</span>';
+    if(res) res.innerHTML='<span style="color:#c0392b">'+esc(e.message)+'</span>';
   }
   if(btn){ btn.textContent="Search →"; btn.disabled=false; }
 }

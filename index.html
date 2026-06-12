@@ -612,14 +612,16 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
               <button type="button" class="dmode" onclick="setDeliveryMode('railway',this)"><span class="dmode-ic">🚉</span>Railway Stn</button>
             </div>
 
-            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ts);margin-bottom:6px" id="hero-pickup-map-label">📍 Delivery Location</div>
-            <div class="delivery-map-wrap">
-              <div class="delivery-map-hint" id="hero-delivery-map-hint">📍 Drag pin or tap to set location</div>
-              <div id="hero-delivery-map"></div>
-            </div>
-            <div style="display:flex;gap:8px;margin-bottom:12px">
-              <input class="inp" type="text" id="hero-delivery-address" placeholder="Search address…" style="flex:1;font-size:.82rem" oninput="clearDeliveryCalc()">
-              <button class="btn btn-y btn-sm" onclick="calcDeliveryCharge('pickup','hero-')" style="white-space:nowrap;padding:10px 14px">Search →</button>
+            <div id="hero-pickup-location-section">
+              <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ts);margin-bottom:6px" id="hero-pickup-map-label">📍 Delivery Location</div>
+              <div class="delivery-map-wrap">
+                <div class="delivery-map-hint" id="hero-delivery-map-hint">📍 Drag pin or tap to set location</div>
+                <div id="hero-delivery-map"></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:12px">
+                <input class="inp" type="text" id="hero-delivery-address" placeholder="Search address…" style="flex:1;font-size:.82rem" oninput="clearDeliveryCalc()">
+                <button class="btn btn-y btn-sm" onclick="calcDeliveryCharge('pickup','hero-')" style="white-space:nowrap;padding:10px 14px">Search →</button>
+              </div>
             </div>
 
             <div id="hero-drop-location-section" style="display:none">
@@ -3823,28 +3825,36 @@ function onHeroDeliveryToggle(){
 }
 
 function setDeliveryMode(mode, btn){
+  var prevMode = deliveryMode;
   deliveryMode = mode;
   btn.closest(".delivery-mode-grid").querySelectorAll(".dmode").forEach(function(b){ b.classList.remove("on"); });
   btn.classList.add("on");
+  var pickupSec = document.getElementById("hero-pickup-location-section");
   var dropSec   = document.getElementById("hero-drop-location-section");
   var fixedNote = document.getElementById("hero-fixed-drop-note");
   var label     = document.getElementById("hero-pickup-map-label");
+  var cameFromFixed = (prevMode === "airport" || prevMode === "railway");
   if(mode === "same"){
+    pickupSec.style.display = "block";
     dropSec.style.display = "none";
     fixedNote.style.display = "none";
     label.textContent = "📍 Delivery Location";
     dropDist=0; dropAddress="";
+    if(cameFromFixed){ pickupDist=0; deliveryAddress=""; document.getElementById("hero-delivery-address").value=""; }
   } else if(mode === "flexi"){
+    pickupSec.style.display = "block";
     dropSec.style.display = "block";
     fixedNote.style.display = "none";
     label.textContent = "📍 Pickup Location (start of booking)";
+    if(cameFromFixed){ pickupDist=0; deliveryAddress=""; document.getElementById("hero-delivery-address").value=""; }
     setTimeout(function(){ initHeroDropMap(); }, 50);
   } else {
+    // Airport / Railway: no map — fixed round trip from hub to the station/airport
+    pickupSec.style.display = "none";
     dropSec.style.display = "none";
-    label.textContent = "📍 Delivery Location";
     var name = mode === "airport" ? AIRPORT_LABEL : STATION_LABEL;
     fixedNote.style.display = "block";
-    fixedNote.textContent = "🏁 Drop location fixed to: " + name;
+    fixedNote.textContent = "🚐 Round trip: Hub ⇄ " + name;
   }
   calcAndShowDeliveryTotal();
 }
@@ -3942,18 +3952,16 @@ function calcAndShowDeliveryTotal(){
                   ' &nbsp;·&nbsp; ~'+totalKm.toFixed(1)+' km total: ₹'+fee.toLocaleString("en-IN");
     }
   } else if(deliveryMode === "airport" || deliveryMode === "railway"){
-    // Delivery to customer + drop to a fixed hub destination
+    // Fixed round trip: Hub ⇄ Airport/Railway Station (no customer location needed)
     var dest = deliveryMode === "airport"
       ? {lat:AIRPORT_LAT, lon:AIRPORT_LON, label:AIRPORT_LABEL}
       : {lat:STATION_LAT, lon:STATION_LON, label:STATION_LABEL};
-    dropDist = haversineKm(HUB_LAT, HUB_LON, dest.lat, dest.lon);
-    dropAddress = dest.label;
-    var totalKm2 = pickupDist + dropDist;
-    if(pickupDist>0){
-      fee = calcDeliveryFee(totalKm2);
-      breakdown = 'Delivery: ~'+pickupDist.toFixed(1)+' km &nbsp;+&nbsp; Drop to '+dest.label+': ~'+dropDist.toFixed(1)+' km'+
-                  ' &nbsp;·&nbsp; ~'+totalKm2.toFixed(1)+' km total: ₹'+fee.toLocaleString("en-IN");
-    }
+    var oneWayKm = haversineKm(HUB_LAT, HUB_LON, dest.lat, dest.lon);
+    var roundTripKm3 = oneWayKm * 2;
+    deliveryAddress = dest.label;
+    pickupDist = oneWayKm; dropDist = 0; dropAddress = "";
+    fee = calcDeliveryFee(roundTripKm3);
+    breakdown = 'Hub ⇄ '+dest.label+': ~'+oneWayKm.toFixed(1)+' km one-way &nbsp;·&nbsp; ~'+roundTripKm3.toFixed(1)+' km round trip: ₹'+fee.toLocaleString("en-IN");
   } else {
     // Round trip to same location: hub→location→hub
     var roundTripKm = pickupDist * 2;

@@ -655,14 +655,14 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <!-- FLEET -->
   <section id="fleet-sec" class="section" style="padding:80px 48px;background:var(--ow)">
     <div style="max-width:1100px;margin:0 auto">
-      <div class="tag" id="fleet-label">Our Fleet</div>
-      <div class="sec-title fade-up" style="font-size:2rem" id="fleet-heading">Choose Your Car</div>
-      <p style="color:var(--ts);font-size:.9rem;margin-bottom:24px" id="fleet-sub">Enter your dates above to check real-time availability.</p>
+      <div class="tag">Our Fleet</div>
+      <div class="sec-title fade-up" style="font-size:2rem">Top Cars in Pune</div>
+      <p style="color:var(--ts);font-size:.9rem;margin-bottom:24px">Hand-picked, well-maintained rides ready for your next trip.</p>
       <div class="fleet-filter">
-        <button class="fcat on" onclick="filterFleet('all',this)">All</button>
-        <button class="fcat" onclick="filterFleet('Hatchback',this)">Hatchback</button>
-        <button class="fcat" onclick="filterFleet('SUV',this)">SUV</button>
-        <button class="fcat" onclick="filterFleet('MPV',this)">MPV</button>
+        <button class="fcat on" onclick="filterFleet('all',this,'fleet-grid')">All</button>
+        <button class="fcat" onclick="filterFleet('Hatchback',this,'fleet-grid')">Hatchback</button>
+        <button class="fcat" onclick="filterFleet('SUV',this,'fleet-grid')">SUV</button>
+        <button class="fcat" onclick="filterFleet('MPV',this,'fleet-grid')">MPV</button>
       </div>
       <div class="fleet-carousel-wrap">
         <div class="carousel-arrow left" onclick="carouselScroll(-1)">&#8249;</div>
@@ -777,6 +777,33 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 
 </div>
 
+<!-- ======== SEARCH RESULTS ======== -->
+<div id="pg-results" class="page">
+  <header class="hdr">
+    <div class="logo-wrap" onclick="goHome()">
+      <img src="assets/logo-icon.png" class="logo-img" alt="DriveDilSe">
+      <span class="logo-brand">Drive<span class="gold">DilSe</span></span>
+    </div>
+    <nav style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-g btn-sm" onclick="goHome()">&#8592; Back to Search</button>
+    </nav>
+  </header>
+  <section class="section" style="padding:40px 48px;background:var(--ow);min-height:100vh">
+    <div style="max-width:1100px;margin:0 auto">
+      <div class="tag" id="results-label">Step 2 — Available Cars</div>
+      <div class="sec-title" style="font-size:2rem" id="results-heading">Checking availability...</div>
+      <p style="color:var(--ts);font-size:.9rem;margin-bottom:24px" id="results-sub"></p>
+      <div class="fleet-filter">
+        <button class="fcat on" onclick="filterFleet('all',this,'results-grid')">All</button>
+        <button class="fcat" onclick="filterFleet('Hatchback',this,'results-grid')">Hatchback</button>
+        <button class="fcat" onclick="filterFleet('SUV',this,'results-grid')">SUV</button>
+        <button class="fcat" onclick="filterFleet('MPV',this,'results-grid')">MPV</button>
+      </div>
+      <div class="fleet-grid" id="results-grid"></div>
+    </div>
+  </section>
+</div>
+
 <a class="wa-float" href="https://wa.me/919999999999" target="_blank" title="Chat on WhatsApp">💬</a>
 
 <div class="mob-cta" id="mob-cta">
@@ -784,10 +811,11 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 </div>
 
 <script>
-function filterFleet(cat,btn){
-  document.querySelectorAll('.fcat').forEach(function(b){b.classList.remove('on');});
+function filterFleet(cat,btn,gridId){
+  gridId = gridId || 'fleet-grid';
+  btn.closest('.fleet-filter').querySelectorAll('.fcat').forEach(function(b){b.classList.remove('on');});
   btn.classList.add('on');
-  document.querySelectorAll('#fleet-grid .car-card').forEach(function(card){
+  document.querySelectorAll('#'+gridId+' .car-card').forEach(function(card){
     var catEl=card.querySelector('.car-cat');
     card.style.display=(cat==='all'||(catEl&&catEl.textContent.trim()===cat))?'':'none';
   });
@@ -2130,8 +2158,8 @@ function carouselScroll(dir){
   var g=document.getElementById("fleet-grid");
   if(g) g.scrollBy({left:dir*320,behavior:"smooth"});
 }
-function renderFleet(pickup, drop, searched){
-  var g = document.getElementById("fleet-grid");
+function renderFleet(pickup, drop, searched, gridId){
+  var g = document.getElementById(gridId || "fleet-grid");
   g.innerHTML = "";
   FLEET.forEach(function(car){
     var avail = searched ? isAvail(car, pickup, drop) : true;
@@ -2171,20 +2199,20 @@ async function doSearch(){
   if(!p || !d){ alert("Please select pickup and drop dates."); return; }
   if(new Date(d) <= new Date(p)){ alert("Drop must be after pickup."); return; }
   if((new Date(d) - new Date(p)) / 3600000 < 6){ alert("Minimum booking is 6 hours."); return; }
-  document.getElementById("fleet-label").textContent   = "Step 2 — Available Cars";
-  document.getElementById("fleet-heading").textContent = "Checking availability...";
-  document.getElementById("fleet-sub").textContent     = "";
-  goTo("fleet-sec");
+  document.getElementById("results-label").textContent   = "Step 2 — Available Cars";
+  document.getElementById("results-heading").textContent = "Checking availability...";
+  document.getElementById("results-sub").textContent     = "";
+  showPage("pg-results");
   try {
     var cars = await apiFetch("/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d));
     FLEET = cars.map(mapApiCar);
-    document.getElementById("fleet-heading").textContent = FLEET.length + " cars available for your dates";
-    document.getElementById("fleet-sub").textContent = "Click a car to view details and book.";
-    renderFleet(p, d, true);
+    document.getElementById("results-heading").textContent = FLEET.length + " cars available for your dates";
+    document.getElementById("results-sub").textContent = "Click a car to view details and book.";
+    renderFleet(p, d, true, "results-grid");
   } catch(e){
-    document.getElementById("fleet-heading").textContent = FLEET.length + " cars (offline mode)";
-    document.getElementById("fleet-sub").textContent = "Live availability check failed. Shown cars may not reflect real-time status.";
-    renderFleet(p, d, true);
+    document.getElementById("results-heading").textContent = FLEET.length + " cars (offline mode)";
+    document.getElementById("results-sub").textContent = "Live availability check failed. Shown cars may not reflect real-time status.";
+    renderFleet(p, d, true, "results-grid");
   }
 }
 

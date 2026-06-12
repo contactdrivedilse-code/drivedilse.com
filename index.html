@@ -546,6 +546,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
       <div>
         <div class="hero-search">
           <div class="hero-search-title">&#128337; Check Availability</div>
+          <button type="button" class="btn btn-g btn-md" onclick="startDateFlow()" style="width:100%;margin-bottom:14px;border-radius:12px">&#128197; Select Pickup &amp; Drop Date/Time</button>
           <div id="search-sec" class="date-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
             <div class="dt-pair">
               <div class="dt-pair-label">📍 Pickup</div>
@@ -1896,14 +1897,17 @@ function setDt(base, d){
   buildHourOpts(document.getElementById("d-drop-hour"),drop.getHours());
 })();
 // ── AUTO-ADVANCE: pickup date → pickup hour → drop date → drop hour → highlight search ──
-(function(){
-  function openPicker(el){
-    if(!el) return;
-    if(el.tagName==="INPUT" && typeof el.showPicker==="function"){
-      try{ el.showPicker(); return; }catch(e){}
-    }
-    el.focus();
+function openPicker(el){
+  if(!el) return;
+  if(el.tagName==="INPUT" && typeof el.showPicker==="function"){
+    try{ el.showPicker(); return; }catch(e){}
   }
+  el.focus();
+}
+function startDateFlow(){
+  openPicker(document.getElementById("h-pickup-date"));
+}
+(function(){
   var pd=document.getElementById("h-pickup-date");
   var ph=document.getElementById("h-pickup-hour");
   var dd=document.getElementById("h-drop-date");

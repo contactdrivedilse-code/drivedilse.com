@@ -16,6 +16,8 @@
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
 @keyframes goldGlow{0%,100%{box-shadow:0 0 20px rgba(245,197,24,.25)}50%{box-shadow:0 0 40px rgba(245,197,24,.55)}}
 @keyframes heroFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes ctaPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,197,24,.55)}50%{box-shadow:0 0 0 10px rgba(245,197,24,0)}}
+.pulse-cta{animation:ctaPulse 1s ease-out 3}
 @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 @keyframes pulseRing{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.8);opacity:0}}
 @keyframes statPop{0%{opacity:0;transform:translateY(10px) scale(.92)}100%{opacity:1;transform:none scale(1)}}
@@ -1892,6 +1894,30 @@ function setDt(base, d){
   buildHourOpts(document.getElementById("h-drop-hour"),drop.getHours());
   buildHourOpts(document.getElementById("d-pickup-hour"),now.getHours());
   buildHourOpts(document.getElementById("d-drop-hour"),drop.getHours());
+})();
+// ── AUTO-ADVANCE: pickup date → pickup hour → drop date → drop hour → highlight search ──
+(function(){
+  function openPicker(el){
+    if(!el) return;
+    if(el.tagName==="INPUT" && typeof el.showPicker==="function"){
+      try{ el.showPicker(); return; }catch(e){}
+    }
+    el.focus();
+  }
+  var pd=document.getElementById("h-pickup-date");
+  var ph=document.getElementById("h-pickup-hour");
+  var dd=document.getElementById("h-drop-date");
+  var dh=document.getElementById("h-drop-hour");
+  if(pd) pd.addEventListener("change", function(){ openPicker(ph); });
+  if(ph) ph.addEventListener("change", function(){ openPicker(dd); });
+  if(dd) dd.addEventListener("change", function(){ openPicker(dh); });
+  if(dh) dh.addEventListener("change", function(){
+    var btn=document.querySelector(".hero-search .btn-y.btn-lg");
+    if(!btn) return;
+    btn.classList.add("pulse-cta");
+    btn.scrollIntoView({behavior:"smooth",block:"nearest"});
+    setTimeout(function(){ btn.classList.remove("pulse-cta"); },3000);
+  });
 })();
 
 // ── FLEET ──

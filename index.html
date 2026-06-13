@@ -290,6 +290,10 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;border-top:1px solid rgba(201,160,16,.2);padding-top:14px;margin-top:14px}
 .success-box{background:#f0fdf4;border:1.5px solid #16a34a;border-radius:18px;padding:36px;text-align:center}
 .clause-box{background:#fffbe6;border:1.5px solid var(--y);border-radius:12px;padding:16px 18px;margin:14px 0}
+.trip-protect-box{border:1.5px solid var(--b);border-radius:14px;padding:16px;margin-top:14px}
+.tp-option{border:1.5px solid var(--b);border-radius:12px;padding:12px 14px;margin-top:8px;cursor:pointer;transition:border-color .15s,background .15s}
+.tp-option:hover{border-color:var(--yd)}
+.tp-option.on{border-color:var(--yd);background:#fffbe6}
 
 /* ---- DETAIL PAGE: rating, tabs, reviews, FAQs ---- */
 .car-rating-pill{display:inline-flex;align-items:center;gap:5px;background:#fffbe6;color:var(--yd);font-weight:800;font-size:.78rem;padding:6px 13px;border-radius:20px;margin-left:10px;vertical-align:middle;border:1px solid rgba(201,160,16,.3)}
@@ -1148,6 +1152,7 @@ window.addEventListener('scroll',function(){
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">Duration</span><span style="font-size:.8rem;font-weight:700" id="r-dlbl"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">GST 18%</span><span style="font-size:.8rem;font-weight:700" id="r-gst"></span></div>
               <div id="r-delivery-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🚗 Delivery Charge</span><span style="font-size:.8rem;font-weight:700" id="r-delivery-amt"></span></div>
+              <div id="r-tripprotect-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🛡️ Trip Protection</span><span style="font-size:.8rem;font-weight:700" id="r-tripprotect-amt"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;font-weight:700">Total Payable</span><span style="font-size:.85rem;font-weight:800;color:var(--yd)" id="r-fin"></span></div>
             </div>
             <div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:10px">GST inclusive · No hidden charges</div>
@@ -1157,12 +1162,34 @@ window.addEventListener('scroll',function(){
               <div id="delivery-summary-text" style="font-size:.78rem;color:var(--ts)"></div>
             </div>
           </div>
+          <div class="trip-protect-box">
+            <div style="font-weight:800;font-size:.9rem;margin-bottom:2px">🛡️ Trip Protection</div>
+            <div style="font-size:.74rem;color:var(--ts);margin-bottom:4px">Travel with confidence — choose how you're covered against accidental damage on this trip.</div>
+            <div class="tp-option" id="tp-opt-yes" onclick="selectTripProtection('yes')">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                <div>
+                  <div style="font-weight:700;font-size:.84rem">Add Trip Protection</div>
+                  <div style="font-size:.72rem;color:var(--ts);margin-top:3px;line-height:1.5">Pay only <strong>₹1,999</strong> towards repair costs if your car is damaged during the trip.</div>
+                </div>
+                <div style="font-weight:800;color:var(--yd);font-size:.84rem;white-space:nowrap">+₹99</div>
+              </div>
+            </div>
+            <div class="tp-option" id="tp-opt-no" onclick="selectTripProtection('no')">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                <div>
+                  <div style="font-weight:700;font-size:.84rem">None of the above</div>
+                  <div style="font-size:.72rem;color:var(--ts);margin-top:3px;line-height:1.5">I'll pay <strong>₹3,499</strong> towards repair costs if my car is damaged during the trip.</div>
+                </div>
+                <div style="font-weight:800;color:#666;font-size:.84rem;white-space:nowrap">₹0</div>
+              </div>
+            </div>
+          </div>
           <div class="clause-box">
-            <div style="font-size:.78rem;font-weight:700;color:var(--yd);margin-bottom:8px">⚠️ Damage Deductible — ₹2,000</div>
-            <p style="font-size:.76rem;color:#555;line-height:1.65;margin-bottom:12px">In case of any new damage during your rental, you are liable to pay a compulsory deductible of <strong>₹2,000</strong>. Any damage exceeding this will be assessed separately.</p>
+            <div style="font-size:.78rem;font-weight:700;color:var(--yd);margin-bottom:8px">⚠️ Damage Liability — <span id="clause-ded-amt">₹3,499</span></div>
+            <p id="clause-ded-txt" style="font-size:.76rem;color:#555;line-height:1.65;margin-bottom:12px">Please choose a Trip Protection option above. In case of any new damage during your rental, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair, unless you've added Trip Protection (₹1,999). Any damage exceeding this will be assessed separately.</p>
             <label style="display:flex;gap:10px;cursor:pointer;align-items:flex-start;margin-bottom:8px">
               <input type="checkbox" id="chk-ded" style="margin-top:2px;accent-color:var(--y);width:16px;height:16px">
-              <span style="font-size:.76rem;font-weight:600;color:#333">I acknowledge the ₹2,000 compulsory damage deductible.</span>
+              <span id="chk-ded-lbl" style="font-size:.76rem;font-weight:600;color:#333">I acknowledge the damage liability shown above.</span>
             </label>
             <label style="display:flex;gap:10px;cursor:pointer;align-items:flex-start">
               <input type="checkbox" id="chk-tnc" style="margin-top:2px;accent-color:var(--y);width:16px;height:16px">
@@ -2492,6 +2519,15 @@ function calcPrice(){
   if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
   else { db.style.display = "none"; }
   document.getElementById("price-section").style.display = "block";
+  // Reset Trip Protection choice for this calculation
+  tripProtectionChoice = null; tripProtectionFee = 0;
+  var tpYes = document.getElementById("tp-opt-yes"), tpNo = document.getElementById("tp-opt-no");
+  if(tpYes) tpYes.classList.remove("on");
+  if(tpNo)  tpNo.classList.remove("on");
+  var amtEl = document.getElementById("clause-ded-amt"), txtEl = document.getElementById("clause-ded-txt"), lblEl = document.getElementById("chk-ded-lbl");
+  if(amtEl) amtEl.textContent = "₹3,499";
+  if(txtEl) txtEl.innerHTML = "Please choose a Trip Protection option above. In case of any new damage during your rental, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair, unless you've added Trip Protection (₹1,999). Any damage exceeding this will be assessed separately.";
+  if(lblEl) lblEl.textContent = "I acknowledge the damage liability shown above.";
   updateDeliveryTotal();
 }
 
@@ -2524,7 +2560,8 @@ function getCachedBookings(){
 // ── PAY ──
 async function payNow(){
   if(!priceResult){ alert("Please calculate price first."); return; }
-  if(!document.getElementById("chk-ded").checked){ alert("Please acknowledge the damage deductible clause."); return; }
+  if(!tripProtectionChoice){ alert("Please choose a Trip Protection option."); return; }
+  if(!document.getElementById("chk-ded").checked){ alert("Please acknowledge the damage liability clause."); return; }
   if(!document.getElementById("chk-tnc").checked){ alert("Please accept the Terms & Conditions."); return; }
 
   if(!authToken){ openQuickLogin(payNow); return; }
@@ -2540,7 +2577,8 @@ async function payNow(){
   // Convert local datetime string to UTC ISO — fixes IST +5:30 offset
   var pickupISO = new Date(priceResult.pickup).toISOString();
   var dropISO   = new Date(priceResult.drop).toISOString();
-  var totalWithDelivery = priceResult.total + deliveryCharge;
+  var totalWithDelivery = priceResult.total + deliveryCharge + tripProtectionFee;
+  var chargeDeliveryFee = deliveryCharge + tripProtectionFee;
   var pickupLoc = deliveryCharge > 0 && deliveryAddress ? deliveryAddress + " (Doorstep)" : "Hub, Pune";
   var isSame    = deliveryMode === "same";
   var dropLoc   = (deliveryCharge > 0 && !isSame && dropAddress) ? dropAddress + " (Doorstep)" : pickupLoc;
@@ -2551,16 +2589,16 @@ async function payNow(){
     if(isDemo){
       var demoPhone = authToken.split("_")[1] || userProfile.phone || "";
       endpoint = "/payment/guest-direct";
-      body = { phone: demoPhone, name: userProfile.name||"", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: deliveryCharge };
+      body = { phone: demoPhone, name: userProfile.name||"", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee };
     } else {
       endpoint = "/payment/direct";
-      body = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: deliveryCharge };
+      body = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee };
     }
     var result = await apiFetch(endpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
     if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
     myBookingIds.push(result.bookingId);
     cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup:{date:priceResult.pickup}, drop:{date:priceResult.drop}, total:priceResult.total, status:"pending_kyc" });
-    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
   }
@@ -2575,7 +2613,7 @@ async function payNow(){
   try {
     var order = await apiFetch("/payment/order", {
       method: "POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: deliveryCharge })
+      body: JSON.stringify({ carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee })
     });
     if(payBtn){ payBtn.textContent = "Pay & Confirm Booking"; payBtn.disabled = false; }
     var rzp = new Razorpay({
@@ -2593,7 +2631,7 @@ async function payNow(){
           if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
           myBookingIds.push(result.bookingId);
           cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup:{date:priceResult.pickup}, drop:{date:priceResult.drop}, total:priceResult.total, status:"pending_kyc" });
-          window._lastBookingMsg = "New Booking\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nTotal Paid: "+inr(priceResult.total)+"\n\n✅ Payment confirmed.";
+          window._lastBookingMsg = "New Booking\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nTotal Paid: "+inr(totalWithDelivery)+"\n\n✅ Payment confirmed.";
           document.getElementById("booking-form").style.display    = "none";
           document.getElementById("success-section").style.display = "block";
         } catch(e){ alert("Payment received but booking failed. Contact support.\n" + e.message); }
@@ -3976,6 +4014,7 @@ function onExtSlider(){
 // Hub: Shop no.3, Abhang Society, Pandurang Nagar, Ambegaon Pathar, Pune 411046
 var HUB_LAT = 18.4605486, HUB_LON = 73.8423892;
 var deliveryCharge = 0, deliveryAddress = "";
+var tripProtectionChoice = null, tripProtectionFee = 0;
 var heroDeliveryWanted = false;
 
 // Fixed drop destinations (Pune)
@@ -4222,9 +4261,11 @@ function showDeliverySummary(){
 
 function updateDeliveryTotal(){
   if(!priceResult) return;
-  var newTotal = priceResult.total + deliveryCharge;
+  var newTotal = priceResult.total + deliveryCharge + tripProtectionFee;
   var row = document.getElementById("r-delivery-row");
   var amt = document.getElementById("r-delivery-amt");
+  var tpRow = document.getElementById("r-tripprotect-row");
+  var tpAmt = document.getElementById("r-tripprotect-amt");
   var fin = document.getElementById("r-fin");
   var top = document.getElementById("r-total");
   if(deliveryCharge>0){
@@ -4233,8 +4274,34 @@ function updateDeliveryTotal(){
   } else {
     row.style.display = "none";
   }
+  if(tripProtectionFee>0){
+    tpAmt.textContent = "₹"+tripProtectionFee.toLocaleString("en-IN");
+    tpRow.style.display = "flex";
+  } else {
+    tpRow.style.display = "none";
+  }
   if(fin) fin.textContent = "₹"+newTotal.toLocaleString("en-IN");
   if(top) top.textContent = "₹"+newTotal.toLocaleString("en-IN");
+}
+
+// ── TRIP PROTECTION ──
+function selectTripProtection(choice){
+  tripProtectionChoice = choice;
+  tripProtectionFee = choice === "yes" ? 99 : 0;
+  var yesEl = document.getElementById("tp-opt-yes"), noEl = document.getElementById("tp-opt-no");
+  if(yesEl) yesEl.classList.toggle("on", choice === "yes");
+  if(noEl)  noEl.classList.toggle("on", choice === "no");
+  var amtEl = document.getElementById("clause-ded-amt"), txtEl = document.getElementById("clause-ded-txt"), lblEl = document.getElementById("chk-ded-lbl");
+  if(choice === "yes"){
+    if(amtEl) amtEl.textContent = "₹1,999";
+    if(txtEl) txtEl.innerHTML = "With Trip Protection, in case of any new damage during your rental, you are liable to pay only <strong>₹1,999</strong> towards the cost of repair. Any damage exceeding this will be assessed separately.";
+    if(lblEl) lblEl.textContent = "I acknowledge the ₹1,999 damage liability with Trip Protection.";
+  } else if(choice === "no"){
+    if(amtEl) amtEl.textContent = "₹3,499";
+    if(txtEl) txtEl.innerHTML = "In case of any new damage during your rental, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair. Any damage exceeding this will be assessed separately.";
+    if(lblEl) lblEl.textContent = "I acknowledge the ₹3,499 damage liability.";
+  }
+  updateDeliveryTotal();
 }
 
 // ── RESCHEDULE ──

@@ -128,7 +128,7 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .nav-dropdown-btn:hover{color:var(--yd);background:rgba(245,197,24,.08)}
 .nav-dropdown-btn::after{content:'▾';font-size:.65rem;opacity:.6}
 .nav-dropdown-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--b);border-radius:12px;box-shadow:0 8px 32px rgba(200,160,0,.15);min-width:190px;z-index:200;overflow:hidden}
-.nav-dropdown:hover .nav-dropdown-menu{display:block}
+.nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:block}
 .nav-dropdown-item{display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:.82rem;font-weight:600;color:var(--t);text-decoration:none;transition:background .15s}
 .nav-dropdown-item:hover{background:rgba(245,197,24,.1);color:var(--yd)}
 .nav-dropdown-item span{font-size:1rem}
@@ -567,7 +567,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
       <span class="nav-link" onclick="goTo('faq-sec')">FAQ</span>
       <a class="nav-link" href="policy.html" style="text-decoration:none">Policies</a>
       <div class="nav-dropdown">
-        <button class="nav-dropdown-btn">Admin</button>
+        <button class="nav-dropdown-btn" onclick="toggleNavDropdown(event,this)">Admin</button>
         <div class="nav-dropdown-menu">
           <a class="nav-dropdown-item" href="admin.html?role=admin" target="_blank"><span>🔑</span>Admin Login</a>
           <hr class="nav-dropdown-divider">
@@ -1712,6 +1712,17 @@ document.addEventListener("keydown", function(e){
   var el = e.target;
   var editable = el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable;
   if(!editable) e.preventDefault();
+});
+
+// Toggle nav "Admin" dropdown on click (for touch devices where :hover doesn't apply)
+function toggleNavDropdown(e, btn){
+  e.stopPropagation();
+  btn.closest(".nav-dropdown").classList.toggle("open");
+}
+document.addEventListener("click", function(e){
+  document.querySelectorAll(".nav-dropdown.open").forEach(function(d){
+    if(!d.contains(e.target)) d.classList.remove("open");
+  });
 });
 // Auto-clear if ?reset=1 in URL
 (function(){ if(new URLSearchParams(location.search).get("reset")==="1"){ ["dds_token","dds_bk_cache","dds_profile_photo","dds_pending_selfie","dds_my_bk_ids"].forEach(function(k){ localStorage.removeItem(k); }); location.replace(location.pathname); } })();

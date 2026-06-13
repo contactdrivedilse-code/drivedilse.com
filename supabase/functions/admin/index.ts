@@ -21,6 +21,14 @@ function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = 
   };
 }
 
+function mapCoupon(c: Record<string, unknown>) {
+  return {
+    _id: c.id, id: c.id, code: c.code, title: c.title,
+    description: c.description ?? "", type: c.type, value: c.value,
+    minAmount: c.min_amount ?? 0, active: c.active, createdAt: c.created_at,
+  };
+}
+
 function mapBooking(b: Record<string, unknown>) {
   return {
     _id: b.id, id: b.id, bookingId: b.booking_id,
@@ -30,6 +38,7 @@ function mapBooking(b: Record<string, unknown>) {
     drop:   { date: b.drop_date,   location: b.drop_location },
     days: b.days, pricePerDay: b.price_per_day, total: b.total,
     deposit: b.deposit, discount: b.discount,
+    couponCode: b.coupon_code ?? null, couponDiscount: b.coupon_discount ?? 0,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
       photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },
@@ -322,6 +331,55 @@ Deno.serve(async (req) => {
     const deletePauseMatch = path.match(/^\/fleet\/([^/]+)\/pause\/([^/]+)$/);
     if (req.method === "DELETE" && deletePauseMatch) {
       const { error } = await sb.from("car_pauses").delete().eq("id", deletePauseMatch[2]).eq("car_id", deletePauseMatch[1]);
+      if (error) throw error;
+      return json({ success: true });
+    }
+
+    // GET /coupons — list all coupons (admin only)
+    if (req.method === "GET" && path === "/coupons") {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { data, error } = await sb.from("coupons").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return json((data ?? []).map((c: Record<string, unknown>) => mapCoupon(c)));
+    }
+
+    // POST /coupons — create coupon (admin only)
+    if (req.method === "POST" && path === "/coupons") {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { code, title, description, type, value, minAmount, active } = await req.json();
+      if (!code || !title || !value) return json({ error: "code, title and value required" }, 400);
+      const { data, error } = await sb.from("coupons").insert({
+        id: crypto.randomUUID(), code: String(code).toUpperCase().trim(), title,
+        description: description ?? "", type: type === "flat" ? "flat" : "percent",
+        value, min_amount: minAmount ?? 0, active: active !== false,
+      }).select("*").maybeSingle();
+      if (error) throw error;
+      return json(mapCoupon(data as Record<string, unknown>), 201);
+    }
+
+    // PUT /coupons/:id — update coupon (admin only)
+    const couponEditMatch = path.match(/^\/coupons\/([^/]+)$/);
+    if (req.method === "PUT" && couponEditMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const body = await req.json();
+      const updates: Record<string, unknown> = {};
+      if (body.code        !== undefined) updates.code        = String(body.code).toUpperCase().trim();
+      if (body.title       !== undefined) updates.title       = body.title;
+      if (body.description !== undefined) updates.description = body.description;
+      if (body.type        !== undefined) updates.type        = body.type === "flat" ? "flat" : "percent";
+      if (body.value       !== undefined) updates.value       = body.value;
+      if (body.minAmount   !== undefined) updates.min_amount  = body.minAmount;
+      if (body.active      !== undefined) updates.active      = body.active;
+      const { data, error } = await sb.from("coupons").update(updates).eq("id", couponEditMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Coupon not found" }, 404);
+      return json(mapCoupon(data as Record<string, unknown>));
+    }
+
+    // DELETE /coupons/:id — remove coupon (admin only)
+    if (req.method === "DELETE" && couponEditMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { error } = await sb.from("coupons").delete().eq("id", couponEditMatch[1]);
       if (error) throw error;
       return json({ success: true });
     }

@@ -250,6 +250,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="nav-item" data-tab="revenue"   onclick="navTo('revenue',this)">  <span class="nav-icon">💰</span>Revenue</div>
       <div class="sidebar-section">Manage</div>
       <div class="nav-item" data-tab="fleet"     onclick="navTo('fleet',this)">    <span class="nav-icon">🚗</span>Fleet</div>
+      <div class="nav-item" data-tab="coupons"   onclick="navTo('coupons',this)">  <span class="nav-icon">🎁</span>Coupons</div>
       <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
     </div>
 
@@ -352,6 +353,53 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<!-- Add / Edit Coupon Modal -->
+<div class="modal-overlay" id="coupon-modal">
+  <div class="modal-box" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="coupon-modal-title">Add Coupon</div>
+    <input type="hidden" id="cpm-id">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+      <div style="grid-column:1/-1">
+        <label class="lbl">Coupon Code *</label>
+        <input class="inp" type="text" id="cpm-code" placeholder="e.g. WELCOME10" style="text-transform:uppercase">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="lbl">Title *</label>
+        <input class="inp" type="text" id="cpm-title" placeholder="e.g. Welcome Offer">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="lbl">Description</label>
+        <textarea class="inp" id="cpm-desc" rows="2" placeholder="e.g. Get 10% off on your first booking"></textarea>
+      </div>
+      <div>
+        <label class="lbl">Discount Type</label>
+        <select class="inp" id="cpm-type">
+          <option value="percent">Percent (%)</option>
+          <option value="flat">Flat (₹)</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Discount Value *</label>
+        <input class="inp" type="number" id="cpm-value" min="0" placeholder="e.g. 10">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="lbl">Minimum Order Amount (₹)</label>
+        <input class="inp" type="number" id="cpm-min" min="0" placeholder="e.g. 500">
+      </div>
+      <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:4px">
+        <input type="checkbox" id="cpm-active" style="width:18px;height:18px" checked>
+        <label class="lbl" style="margin:0" for="cpm-active">Active (visible to customers)</label>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="closeCouponModal()">Cancel</button>
+      <button class="btn btn-y btn-sm" style="flex:1" id="cpm-submit-btn" onclick="submitCouponForm()">Save Coupon</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var API         = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
 var ANON_KEY    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
@@ -424,6 +472,7 @@ var DEMO_CUSTOMERS = [
 ];
 
 function inr(n){ return "₹" + Number(n).toLocaleString("en-IN"); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); }
 
 function toast(msg, type){
   var t = document.getElementById("toast");
@@ -538,6 +587,9 @@ function applyRoleUI(){
       el.style.display = isFleet ? "none" : "";
     }
   });
+  // Hide Coupons tab for fleet manager
+  var couponsNav = document.querySelector(".nav-item[data-tab='coupons']");
+  if(couponsNav) couponsNav.style.display = isFleet ? "none" : "";
 }
 
 function enterAdmin(){
@@ -552,6 +604,10 @@ function navTo(tab, el){
   // Block finance tab for fleet manager
   if(tab === "revenue" && currentRole === "fleet"){
     toast("Finance access is restricted for Fleet Manager.", "error");
+    return;
+  }
+  if(tab === "coupons" && currentRole === "fleet"){
+    toast("Coupon management is restricted for Fleet Manager.", "error");
     return;
   }
   document.querySelectorAll(".nav-item").forEach(function(n){ n.classList.remove("on"); });
@@ -599,6 +655,8 @@ async function renderTab(tab){
     await renderRevenue(isLocal, c);
   } else if(tab === "fleet"){
     await renderFleet(isLocal, c);
+  } else if(tab === "coupons"){
+    await renderCoupons(isLocal, c);
   } else if(tab === "customers"){
     await renderCustomers(isLocal, c);
   }
@@ -1323,6 +1381,130 @@ function openEditCarModal(car){
 }
 
 function closeCarModal(){ document.getElementById("car-modal").classList.remove("open"); }
+
+// ── COUPONS ──
+async function renderCoupons(isLocal, c){
+  var coupons = [];
+  if(!isLocal){
+    try {
+      coupons = await adminFetch("/admin/coupons");
+    } catch(e){ isLocal = true; }
+  }
+
+  if(isLocal){
+    c.innerHTML = '<div class="page-title">Coupons</div><div class="page-sub">Could not load coupons — please log in again.</div>';
+    return;
+  }
+
+  var cards = coupons.map(function(cp){
+    var valueLbl = cp.type === "percent" ? cp.value + "% OFF" : "₹" + cp.value + " OFF";
+    return '<div class="v-card">' +
+      '<div class="v-body">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
+          '<div style="font-weight:800;font-size:.95rem;color:var(--yd);letter-spacing:1px">'+esc(cp.code)+'</div>' +
+          '<span class="sbadge '+(cp.active?"sb-act":"sb-pend")+'">'+(cp.active?"Active":"Inactive")+'</span>' +
+        '</div>' +
+        '<div style="font-size:.88rem;font-weight:700;margin-bottom:4px">'+esc(cp.title)+'</div>' +
+        '<div style="font-size:.78rem;color:var(--ts);margin-bottom:10px;line-height:1.5">'+esc(cp.description||"")+'</div>' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
+          '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">🏷️ '+valueLbl+'</span>' +
+          (cp.minAmount ? '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">Min ₹'+cp.minAmount+'</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+          '<button class="btn '+(cp.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCouponActive(\''+cp._id+'\','+(!cp.active)+')">'+(cp.active?"Deactivate":"Activate")+'</button>' +
+          '<button class="btn btn-g btn-sm" style="flex:1" onclick="deleteCoupon(\''+cp._id+'\')">🗑️ Delete</button>' +
+        '</div>' +
+        '<button class="btn btn-y btn-sm" style="width:100%" onclick=\'openEditCouponModal('+JSON.stringify(cp)+')\'>✏️ Edit</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  c.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
+      '<div><div class="page-title" style="margin-bottom:0">Coupons</div>' +
+      '<div class="page-sub" style="margin-top:2px">'+coupons.length+' coupon'+(coupons.length!==1?'s':'')+' total</div></div>' +
+      '<button class="btn btn-y btn-sm" onclick="openAddCouponModal()" style="white-space:nowrap">+ Add Coupon</button>' +
+    '</div>' +
+    '<div class="v-grid" style="margin-top:16px">'+(cards || '<div class="page-sub">No coupons yet. Click "+ Add Coupon" to create one.</div>')+'</div>';
+}
+
+function openAddCouponModal(){
+  document.getElementById("coupon-modal-title").textContent = "Add Coupon";
+  document.getElementById("cpm-id").value     = "";
+  document.getElementById("cpm-code").value   = "";
+  document.getElementById("cpm-title").value  = "";
+  document.getElementById("cpm-desc").value   = "";
+  document.getElementById("cpm-type").value   = "percent";
+  document.getElementById("cpm-value").value  = "";
+  document.getElementById("cpm-min").value    = "";
+  document.getElementById("cpm-active").checked = true;
+  document.getElementById("coupon-modal").classList.add("open");
+}
+
+function openEditCouponModal(cp){
+  document.getElementById("coupon-modal-title").textContent = "Edit Coupon — " + cp.code;
+  document.getElementById("cpm-id").value     = cp._id || cp.id || "";
+  document.getElementById("cpm-code").value   = cp.code || "";
+  document.getElementById("cpm-title").value  = cp.title || "";
+  document.getElementById("cpm-desc").value   = cp.description || "";
+  document.getElementById("cpm-type").value   = cp.type || "percent";
+  document.getElementById("cpm-value").value  = cp.value || "";
+  document.getElementById("cpm-min").value    = cp.minAmount || "";
+  document.getElementById("cpm-active").checked = !!cp.active;
+  document.getElementById("coupon-modal").classList.add("open");
+}
+
+function closeCouponModal(){ document.getElementById("coupon-modal").classList.remove("open"); }
+
+async function submitCouponForm(){
+  var id     = document.getElementById("cpm-id").value.trim();
+  var code   = document.getElementById("cpm-code").value.trim().toUpperCase();
+  var title  = document.getElementById("cpm-title").value.trim();
+  var desc   = document.getElementById("cpm-desc").value.trim();
+  var type   = document.getElementById("cpm-type").value;
+  var value  = parseFloat(document.getElementById("cpm-value").value);
+  var min    = parseFloat(document.getElementById("cpm-min").value) || 0;
+  var active = document.getElementById("cpm-active").checked;
+
+  if(!code)  { toast("Coupon code is required.", "error"); return; }
+  if(!title) { toast("Title is required.", "error"); return; }
+  if(!value || value <= 0) { toast("Discount value is required.", "error"); return; }
+
+  var btn = document.getElementById("cpm-submit-btn");
+  btn.textContent = "Saving..."; btn.disabled = true;
+  try {
+    var body = JSON.stringify({ code, title, description: desc, type, value, minAmount: min, active });
+    if(id){
+      await adminFetch("/admin/coupons/"+id, { method:"PUT", headers:{"Content-Type":"application/json"}, body });
+    } else {
+      await adminFetch("/admin/coupons", { method:"POST", headers:{"Content-Type":"application/json"}, body });
+    }
+    toast(id ? "Coupon updated." : "Coupon added.", "success");
+    closeCouponModal();
+    navTo("coupons", document.querySelector('[data-tab="coupons"]'));
+  } catch(e){
+    toast("Failed: "+e.message, "error");
+  } finally {
+    btn.textContent = "Save Coupon"; btn.disabled = false;
+  }
+}
+
+async function toggleCouponActive(id, active){
+  try {
+    await adminFetch("/admin/coupons/"+id, { method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ active }) });
+    toast(active ? "Coupon activated." : "Coupon deactivated.", "success");
+    navTo("coupons", document.querySelector('[data-tab="coupons"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function deleteCoupon(id){
+  if(!confirm("Delete this coupon? This cannot be undone.")) return;
+  try {
+    await adminFetch("/admin/coupons/"+id, { method:"DELETE" });
+    toast("Coupon deleted.", "success");
+    navTo("coupons", document.querySelector('[data-tab="coupons"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
 
 function updatePricingPreview(){
   var price = parseInt(document.getElementById("cm-price").value) || 0;

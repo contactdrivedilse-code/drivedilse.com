@@ -300,6 +300,13 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .dep-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--b);flex-shrink:0;margin-top:1px;position:relative;transition:border-color .15s}
 .dep-radio.on{border-color:var(--yd)}
 .dep-radio.on::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--yd)}
+.offers-card{display:flex;align-items:center;gap:12px;border:1.5px solid var(--b);border-radius:14px;padding:14px 16px;margin-top:14px;cursor:pointer;transition:border-color .15s}
+.offers-card:hover{border-color:var(--yd)}
+.offers-badge{width:38px;height:38px;border-radius:50%;background:#1a56db;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;flex-shrink:0}
+.coupon-item{border:1.5px solid var(--b);border-radius:12px;padding:14px;margin-bottom:12px}
+.coupon-item .coupon-code{font-weight:800;font-size:.82rem;color:var(--yd);letter-spacing:1px}
+.coupon-item .coupon-title{font-weight:700;font-size:.86rem;margin-top:4px}
+.coupon-item .coupon-desc{font-size:.74rem;color:var(--ts);margin-top:3px;line-height:1.5}
 
 /* ---- DETAIL PAGE: rating, tabs, reviews, FAQs ---- */
 .car-rating-pill{display:inline-flex;align-items:center;gap:5px;background:#fffbe6;color:var(--yd);font-weight:800;font-size:.78rem;padding:6px 13px;border-radius:20px;margin-left:10px;vertical-align:middle;border:1px solid rgba(201,160,16,.3)}
@@ -1160,9 +1167,19 @@ window.addEventListener('scroll',function(){
               <div id="r-delivery-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🚗 Delivery Charge</span><span style="font-size:.8rem;font-weight:700" id="r-delivery-amt"></span></div>
               <div id="r-tripprotect-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🛡️ Trip Protection</span><span style="font-size:.8rem;font-weight:700" id="r-tripprotect-amt"></span></div>
               <div id="r-deposit-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🔒 Refundable Deposit</span><span style="font-size:.8rem;font-weight:700" id="r-deposit-amt"></span></div>
+              <div id="r-coupon-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:#15803d">🎁 Coupon (<span id="r-coupon-code"></span>)</span><span style="font-size:.8rem;font-weight:700;color:#15803d" id="r-coupon-amt"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;font-weight:700">Total Payable</span><span style="font-size:.85rem;font-weight:800;color:var(--yd)" id="r-fin"></span></div>
             </div>
             <div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:10px">GST inclusive · No hidden charges</div>
+
+            <div class="offers-card" id="explore-offers-card" onclick="openOffersModal()">
+              <div class="offers-badge">%</div>
+              <div style="flex:1">
+                <div style="font-weight:800;font-size:.86rem">Explore Offers</div>
+                <div style="font-size:.74rem;color:var(--ts)" id="offers-card-sub">Apply a coupon code for extra savings</div>
+              </div>
+              <div style="font-size:1.1rem;color:var(--ts)">›</div>
+            </div>
 
             <div id="delivery-summary" style="display:none;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:14px;padding:14px 16px;margin-top:14px">
               <div style="font-weight:700;font-size:.9rem;margin-bottom:4px">🚗 Doorstep Delivery</div>
@@ -1276,6 +1293,23 @@ window.addEventListener('scroll',function(){
       </div>
     </div>
     <button type="button" class="btn btn-y btn-lg" style="width:100%;margin-top:22px;border-radius:12px" onclick="drmContinue()">CONTINUE</button>
+  </div>
+</div>
+
+<!-- ══════════ OFFERS / COUPONS MODAL ══════════ -->
+<div class="modal-bg" id="offers-modal" onclick="if(event.target===this)closeModal('offers-modal')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('offers-modal')">✕</button>
+    <div style="font-family:Georgia,serif;font-size:1.2rem;font-weight:900;margin-bottom:14px">Offers</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input id="offer-coupon-input" class="inp" placeholder="Enter Coupon Code" style="flex:1;text-transform:uppercase">
+      <button class="btn btn-y btn-sm" onclick="applyCouponCode(document.getElementById('offer-coupon-input').value)">Apply</button>
+    </div>
+    <div id="offer-applied-msg" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.8rem;color:#15803d;display:flex;justify-content:space-between;align-items:center">
+      <span id="offer-applied-text"></span>
+      <span style="cursor:pointer;font-weight:800" onclick="removeCoupon()">Remove ✕</span>
+    </div>
+    <div id="offers-list"></div>
   </div>
 </div>
 
@@ -2548,6 +2582,9 @@ function calcPrice(){
   if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
   else { db.style.display = "none"; }
   document.getElementById("price-section").style.display = "block";
+  // Reset applied coupon for this calculation
+  appliedCoupon = null; couponDiscount = 0;
+  updateOfferAppliedMsg();
   // Reset Refundable Deposit choice to default (Pay Later)
   selectDeposit("later");
   // Reset Trip Protection choice for this calculation
@@ -2608,8 +2645,9 @@ async function payNow(){
   // Convert local datetime string to UTC ISO — fixes IST +5:30 offset
   var pickupISO = new Date(priceResult.pickup).toISOString();
   var dropISO   = new Date(priceResult.drop).toISOString();
-  var totalWithDelivery = priceResult.total + deliveryCharge + tripProtectionFee + depositFee;
+  var totalWithDelivery = priceResult.total + deliveryCharge + tripProtectionFee + depositFee - couponDiscount;
   var chargeDeliveryFee = deliveryCharge + tripProtectionFee + depositFee;
+  var couponCode = appliedCoupon ? appliedCoupon.code : undefined;
   var pickupLoc = deliveryCharge > 0 && deliveryAddress ? deliveryAddress + " (Doorstep)" : "Hub, Pune";
   var isSame    = deliveryMode === "same";
   var dropLoc   = (deliveryCharge > 0 && !isSame && dropAddress) ? dropAddress + " (Doorstep)" : pickupLoc;
@@ -2620,16 +2658,16 @@ async function payNow(){
     if(isDemo){
       var demoPhone = authToken.split("_")[1] || userProfile.phone || "";
       endpoint = "/payment/guest-direct";
-      body = { phone: demoPhone, name: userProfile.name||"", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee };
+      body = { phone: demoPhone, name: userProfile.name||"", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
     } else {
       endpoint = "/payment/direct";
-      body = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee };
+      body = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
     }
     var result = await apiFetch(endpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
     if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
     myBookingIds.push(result.bookingId);
     cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup:{date:priceResult.pickup}, drop:{date:priceResult.drop}, total:priceResult.total, status:"pending_kyc" });
-    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+(depositFee?"\nRefundable Deposit (Paid Now): ₹"+depositFee : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+(depositFee?"\nRefundable Deposit (Paid Now): ₹"+depositFee : "")+(couponDiscount?"\nCoupon ("+appliedCoupon.code+"): -₹"+couponDiscount : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
   }
@@ -2644,7 +2682,7 @@ async function payNow(){
   try {
     var order = await apiFetch("/payment/order", {
       method: "POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee })
+      body: JSON.stringify({ carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode })
     });
     if(payBtn){ payBtn.textContent = "Pay & Confirm Booking"; payBtn.disabled = false; }
     var rzp = new Razorpay({
@@ -2657,7 +2695,7 @@ async function payNow(){
         try {
           var result = await apiFetch("/payment/verify", {
             method:"POST", headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, carId:selCar.id, pickupDate:pickupISO, dropDate:dropISO })
+            body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, carId:selCar.id, pickupDate:pickupISO, dropDate:dropISO, deliveryCharge: chargeDeliveryFee, couponCode: couponCode })
           });
           if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
           myBookingIds.push(result.bookingId);
@@ -4047,6 +4085,7 @@ var HUB_LAT = 18.4605486, HUB_LON = 73.8423892;
 var deliveryCharge = 0, deliveryAddress = "";
 var tripProtectionChoice = null, tripProtectionFee = 0;
 var depositChoice = "later", depositFee = 0;
+var appliedCoupon = null, couponDiscount = 0, availableCoupons = null;
 var heroDeliveryWanted = false;
 
 // Fixed drop destinations (Pune)
@@ -4293,13 +4332,16 @@ function showDeliverySummary(){
 
 function updateDeliveryTotal(){
   if(!priceResult) return;
-  var newTotal = priceResult.total + deliveryCharge + tripProtectionFee + depositFee;
+  var newTotal = priceResult.total + deliveryCharge + tripProtectionFee + depositFee - couponDiscount;
   var row = document.getElementById("r-delivery-row");
   var amt = document.getElementById("r-delivery-amt");
   var tpRow = document.getElementById("r-tripprotect-row");
   var tpAmt = document.getElementById("r-tripprotect-amt");
   var depRow = document.getElementById("r-deposit-row");
   var depAmt = document.getElementById("r-deposit-amt");
+  var cpRow = document.getElementById("r-coupon-row");
+  var cpAmt = document.getElementById("r-coupon-amt");
+  var cpCode = document.getElementById("r-coupon-code");
   var fin = document.getElementById("r-fin");
   var top = document.getElementById("r-total");
   if(deliveryCharge>0){
@@ -4320,8 +4362,91 @@ function updateDeliveryTotal(){
   } else {
     depRow.style.display = "none";
   }
+  if(couponDiscount>0 && appliedCoupon){
+    cpCode.textContent = appliedCoupon.code;
+    cpAmt.textContent = "-₹"+couponDiscount.toLocaleString("en-IN");
+    cpRow.style.display = "flex";
+  } else {
+    cpRow.style.display = "none";
+  }
   if(fin) fin.textContent = "₹"+newTotal.toLocaleString("en-IN");
   if(top) top.textContent = "₹"+newTotal.toLocaleString("en-IN");
+}
+
+// ── OFFERS / COUPONS ──
+function openOffersModal(){
+  openModal("offers-modal");
+  if(availableCoupons === null){
+    document.getElementById("offers-list").innerHTML = '<div style="text-align:center;color:var(--ts);font-size:.8rem;padding:20px 0">Loading offers…</div>';
+    apiFetch("/fleet/coupons").then(function(list){
+      availableCoupons = list || [];
+      renderOffersList();
+    }).catch(function(){
+      availableCoupons = [];
+      renderOffersList();
+    });
+  } else {
+    renderOffersList();
+  }
+  updateOfferAppliedMsg();
+}
+function renderOffersList(){
+  var list = availableCoupons || [];
+  if(!list.length){
+    document.getElementById("offers-list").innerHTML = '<div style="text-align:center;color:var(--ts);font-size:.8rem;padding:20px 0">No offers available right now.</div>';
+    return;
+  }
+  document.getElementById("offers-list").innerHTML = list.map(function(o){
+    var off = o.type === "flat" ? ("₹"+o.value+" OFF") : (o.value+"% OFF");
+    var minTxt = o.minAmount > 0 ? ("Min. booking value ₹"+o.minAmount.toLocaleString("en-IN")) : "";
+    return '<div class="coupon-item">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">' +
+        '<div>' +
+          '<div class="coupon-code">'+esc(o.code)+'</div>' +
+          '<div class="coupon-title">'+esc(o.title)+'</div>' +
+          (o.description ? '<div class="coupon-desc">'+esc(o.description)+'</div>' : '') +
+          (minTxt ? '<div class="coupon-desc">'+minTxt+'</div>' : '') +
+        '</div>' +
+        '<div style="font-weight:800;color:var(--yd);font-size:.78rem;white-space:nowrap">'+off+'</div>' +
+      '</div>' +
+      '<button class="btn btn-y btn-sm" style="width:100%;margin-top:10px" onclick="applyCouponCode(\''+o.code.replace(/'/g,"\\'")+'\')">Apply</button>' +
+    '</div>';
+  }).join("");
+}
+function applyCouponCode(code){
+  code = (code||"").trim().toUpperCase();
+  if(!code){ alert("Enter a coupon code."); return; }
+  if(!priceResult){ alert("Please calculate price first."); return; }
+  var list = availableCoupons || [];
+  var found = list.find(function(o){ return o.code.toUpperCase() === code; });
+  if(!found){ alert("Invalid or expired coupon code."); return; }
+  if(found.minAmount && priceResult.total < found.minAmount){
+    alert("This coupon requires a minimum booking value of ₹"+found.minAmount.toLocaleString("en-IN")+".");
+    return;
+  }
+  var raw = found.type === "flat" ? found.value : Math.round(priceResult.total * found.value / 100);
+  couponDiscount = Math.max(0, Math.min(raw, priceResult.total));
+  appliedCoupon = found;
+  updateDeliveryTotal();
+  updateOfferAppliedMsg();
+  closeModal("offers-modal");
+}
+function removeCoupon(){
+  appliedCoupon = null; couponDiscount = 0;
+  updateDeliveryTotal();
+  updateOfferAppliedMsg();
+}
+function updateOfferAppliedMsg(){
+  var msg = document.getElementById("offer-applied-msg");
+  var sub = document.getElementById("offers-card-sub");
+  if(appliedCoupon && couponDiscount > 0){
+    document.getElementById("offer-applied-text").textContent = "🎉 \""+appliedCoupon.code+"\" applied — you saved ₹"+couponDiscount.toLocaleString("en-IN")+"!";
+    msg.style.display = "flex";
+    if(sub) sub.textContent = "\""+appliedCoupon.code+"\" applied — you saved ₹"+couponDiscount.toLocaleString("en-IN");
+  } else {
+    msg.style.display = "none";
+    if(sub) sub.textContent = "Apply a coupon code for extra savings";
+  }
 }
 
 // ── REFUNDABLE DEPOSIT ──

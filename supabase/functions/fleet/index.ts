@@ -47,6 +47,16 @@ Deno.serve(async (req) => {
       return json((cars ?? []).filter((c: Record<string, unknown>) => !blocked.has(c.id as string)).map(mapCar));
     }
 
+    // GET /coupons — active offers for guests
+    if (req.method === "GET" && path === "/coupons") {
+      const { data, error } = await sb.from("coupons").select("*").eq("active", true).order("created_at", { ascending: false });
+      if (error) throw error;
+      return json((data ?? []).map((c: Record<string, unknown>) => ({
+        code: c.code, title: c.title, description: c.description ?? "",
+        type: c.type, value: c.value, minAmount: c.min_amount ?? 0,
+      })));
+    }
+
     // GET / — all active cars
     if (req.method === "GET" && (path === "/" || path === "")) {
       const { data, error } = await sb.from("cars").select("*").eq("active", true);

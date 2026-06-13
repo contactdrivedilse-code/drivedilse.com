@@ -300,6 +300,7 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .success-box{background:#f0fdf4;border:1.5px solid #16a34a;border-radius:18px;padding:36px;text-align:center}
 .clause-box{background:#fffbe6;border:1.5px solid var(--y);border-radius:12px;padding:16px 18px;margin:14px 0}
 .trip-protect-box{border:1.5px solid var(--b);border-radius:14px;padding:16px;margin-top:14px}
+.total-price-card{display:flex;justify-content:space-between;align-items:flex-start;border:1.5px solid var(--b);border-radius:14px;padding:16px;margin-top:14px;background:#fafafa}
 .tp-option{border:1.5px solid var(--b);border-radius:12px;padding:12px 14px;margin-top:8px;cursor:pointer;transition:border-color .15s,background .15s}
 .tp-option:hover{border-color:var(--yd)}
 .tp-option.on{border-color:var(--yd);background:#fffbe6}
@@ -1237,6 +1238,16 @@ window.addEventListener('scroll',function(){
                 </div>
                 <div style="font-weight:800;color:#666;font-size:.84rem;white-space:nowrap">₹0</div>
               </div>
+            </div>
+          </div>
+          <div class="total-price-card">
+            <div>
+              <div style="font-weight:800;font-size:.92rem">Total Price</div>
+              <div style="font-size:.74rem;color:var(--ts);margin-top:2px">Incl. GST &amp; Unlimited Kms</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-weight:800;font-size:1.05rem;color:var(--yd)" id="tpc-total"></div>
+              <div style="font-size:.74rem;margin-top:2px"><a onclick="scrollToPriceDetails()" style="color:#15803d;font-weight:700;text-decoration:none;cursor:pointer">View Details</a></div>
             </div>
           </div>
           <div class="clause-box">
@@ -2599,6 +2610,7 @@ function calcPrice(){
   document.getElementById("r-dlbl").textContent  = dlbl;
   document.getElementById("r-fin").textContent   = inr(total);
   document.getElementById("stb-total").textContent = inr(total);
+  document.getElementById("tpc-total").textContent = inr(total);
   var db = document.getElementById("r-disc");
   if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
   else { db.style.display = "none"; }
@@ -4397,6 +4409,8 @@ function updateDeliveryTotal(){
   if(top) top.textContent = "₹"+newTotal.toLocaleString("en-IN");
   var stb = document.getElementById("stb-total");
   if(stb) stb.textContent = "₹"+newTotal.toLocaleString("en-IN");
+  var tpc = document.getElementById("tpc-total");
+  if(tpc) tpc.textContent = "₹"+newTotal.toLocaleString("en-IN");
 }
 
 function scrollToPriceDetails(){

@@ -294,6 +294,12 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .tp-option{border:1.5px solid var(--b);border-radius:12px;padding:12px 14px;margin-top:8px;cursor:pointer;transition:border-color .15s,background .15s}
 .tp-option:hover{border-color:var(--yd)}
 .tp-option.on{border-color:var(--yd);background:#fffbe6}
+.dep-option{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--b);border-radius:12px;padding:12px 14px;margin-top:8px;cursor:pointer;transition:border-color .15s,background .15s}
+.dep-option:hover{border-color:var(--yd)}
+.dep-option.on{border-color:var(--yd);background:#fffbe6}
+.dep-radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--b);flex-shrink:0;margin-top:1px;position:relative;transition:border-color .15s}
+.dep-radio.on{border-color:var(--yd)}
+.dep-radio.on::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--yd)}
 
 /* ---- DETAIL PAGE: rating, tabs, reviews, FAQs ---- */
 .car-rating-pill{display:inline-flex;align-items:center;gap:5px;background:#fffbe6;color:var(--yd);font-weight:800;font-size:.78rem;padding:6px 13px;border-radius:20px;margin-left:10px;vertical-align:middle;border:1px solid rgba(201,160,16,.3)}
@@ -1153,6 +1159,7 @@ window.addEventListener('scroll',function(){
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">GST 18%</span><span style="font-size:.8rem;font-weight:700" id="r-gst"></span></div>
               <div id="r-delivery-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🚗 Delivery Charge</span><span style="font-size:.8rem;font-weight:700" id="r-delivery-amt"></span></div>
               <div id="r-tripprotect-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🛡️ Trip Protection</span><span style="font-size:.8rem;font-weight:700" id="r-tripprotect-amt"></span></div>
+              <div id="r-deposit-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">🔒 Refundable Deposit</span><span style="font-size:.8rem;font-weight:700" id="r-deposit-amt"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;font-weight:700">Total Payable</span><span style="font-size:.85rem;font-weight:800;color:var(--yd)" id="r-fin"></span></div>
             </div>
             <div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:10px">GST inclusive · No hidden charges</div>
@@ -1161,6 +1168,28 @@ window.addEventListener('scroll',function(){
               <div style="font-weight:700;font-size:.9rem;margin-bottom:4px">🚗 Doorstep Delivery</div>
               <div id="delivery-summary-text" style="font-size:.78rem;color:var(--ts)"></div>
             </div>
+          </div>
+          <div class="trip-protect-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+              <div style="font-weight:800;font-size:.9rem">🔒 Refundable Deposit</div>
+              <div style="font-weight:800;color:var(--yd);font-size:.9rem">₹1,000</div>
+            </div>
+            <div style="font-size:.74rem;color:var(--ts);margin-bottom:4px">Fully refundable security deposit — choose when you'd like to pay it.</div>
+            <div class="dep-option" id="dep-opt-now" onclick="selectDeposit('now')">
+              <span class="dep-radio" id="dep-radio-now"></span>
+              <div>
+                <div style="font-weight:700;font-size:.84rem">Pay Now</div>
+                <div style="font-size:.72rem;color:var(--ts);margin-top:2px">Complete the payment along with your booking fee</div>
+              </div>
+            </div>
+            <div class="dep-option on" id="dep-opt-later" onclick="selectDeposit('later')">
+              <span class="dep-radio on" id="dep-radio-later"></span>
+              <div>
+                <div style="font-weight:700;font-size:.84rem">Pay Later</div>
+                <div style="font-size:.72rem;color:var(--ts);margin-top:2px">Pay anytime before your trip starts</div>
+              </div>
+            </div>
+            <div style="font-size:.7rem;color:var(--yd);margin-top:10px;line-height:1.5">You'll get a full refund within 2–3 days after booking completion, unless there's a damage or late return.</div>
           </div>
           <div class="trip-protect-box">
             <div style="font-weight:800;font-size:.9rem;margin-bottom:2px">🛡️ Trip Protection</div>
@@ -2519,6 +2548,8 @@ function calcPrice(){
   if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
   else { db.style.display = "none"; }
   document.getElementById("price-section").style.display = "block";
+  // Reset Refundable Deposit choice to default (Pay Later)
+  selectDeposit("later");
   // Reset Trip Protection choice for this calculation
   tripProtectionChoice = null; tripProtectionFee = 0;
   var tpYes = document.getElementById("tp-opt-yes"), tpNo = document.getElementById("tp-opt-no");
@@ -2577,8 +2608,8 @@ async function payNow(){
   // Convert local datetime string to UTC ISO — fixes IST +5:30 offset
   var pickupISO = new Date(priceResult.pickup).toISOString();
   var dropISO   = new Date(priceResult.drop).toISOString();
-  var totalWithDelivery = priceResult.total + deliveryCharge + tripProtectionFee;
-  var chargeDeliveryFee = deliveryCharge + tripProtectionFee;
+  var totalWithDelivery = priceResult.total + deliveryCharge + tripProtectionFee + depositFee;
+  var chargeDeliveryFee = deliveryCharge + tripProtectionFee + depositFee;
   var pickupLoc = deliveryCharge > 0 && deliveryAddress ? deliveryAddress + " (Doorstep)" : "Hub, Pune";
   var isSame    = deliveryMode === "same";
   var dropLoc   = (deliveryCharge > 0 && !isSame && dropAddress) ? dropAddress + " (Doorstep)" : pickupLoc;
@@ -2598,7 +2629,7 @@ async function payNow(){
     if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
     myBookingIds.push(result.bookingId);
     cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup:{date:priceResult.pickup}, drop:{date:priceResult.drop}, total:priceResult.total, status:"pending_kyc" });
-    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+(depositFee?"\nRefundable Deposit (Paid Now): ₹"+depositFee : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
   }
@@ -4015,6 +4046,7 @@ function onExtSlider(){
 var HUB_LAT = 18.4605486, HUB_LON = 73.8423892;
 var deliveryCharge = 0, deliveryAddress = "";
 var tripProtectionChoice = null, tripProtectionFee = 0;
+var depositChoice = "later", depositFee = 0;
 var heroDeliveryWanted = false;
 
 // Fixed drop destinations (Pune)
@@ -4261,11 +4293,13 @@ function showDeliverySummary(){
 
 function updateDeliveryTotal(){
   if(!priceResult) return;
-  var newTotal = priceResult.total + deliveryCharge + tripProtectionFee;
+  var newTotal = priceResult.total + deliveryCharge + tripProtectionFee + depositFee;
   var row = document.getElementById("r-delivery-row");
   var amt = document.getElementById("r-delivery-amt");
   var tpRow = document.getElementById("r-tripprotect-row");
   var tpAmt = document.getElementById("r-tripprotect-amt");
+  var depRow = document.getElementById("r-deposit-row");
+  var depAmt = document.getElementById("r-deposit-amt");
   var fin = document.getElementById("r-fin");
   var top = document.getElementById("r-total");
   if(deliveryCharge>0){
@@ -4280,8 +4314,27 @@ function updateDeliveryTotal(){
   } else {
     tpRow.style.display = "none";
   }
+  if(depositFee>0){
+    depAmt.textContent = "₹"+depositFee.toLocaleString("en-IN");
+    depRow.style.display = "flex";
+  } else {
+    depRow.style.display = "none";
+  }
   if(fin) fin.textContent = "₹"+newTotal.toLocaleString("en-IN");
   if(top) top.textContent = "₹"+newTotal.toLocaleString("en-IN");
+}
+
+// ── REFUNDABLE DEPOSIT ──
+function selectDeposit(choice){
+  depositChoice = choice;
+  depositFee = choice === "now" ? 1000 : 0;
+  var nowOpt = document.getElementById("dep-opt-now"), laterOpt = document.getElementById("dep-opt-later");
+  var nowR = document.getElementById("dep-radio-now"), laterR = document.getElementById("dep-radio-later");
+  nowOpt.classList.toggle("on", choice === "now");
+  laterOpt.classList.toggle("on", choice === "later");
+  nowR.classList.toggle("on", choice === "now");
+  laterR.classList.toggle("on", choice === "later");
+  updateDeliveryTotal();
 }
 
 // ── TRIP PROTECTION ──

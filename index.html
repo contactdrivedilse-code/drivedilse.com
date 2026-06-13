@@ -267,6 +267,15 @@ footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40
 .mob-cta{display:none;position:fixed;bottom:0;left:0;right:0;padding:12px 16px 20px;background:#fff;border-top:1px solid #ede9db;box-shadow:0 -4px 24px rgba(200,160,0,.12);z-index:200}
 .mob-cta .btn-y::after{display:none}
 
+/* ---- STICKY TOTAL PRICE BAR ---- */
+.sticky-total-bar{display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #ede9db;box-shadow:0 -6px 24px rgba(200,160,0,.12);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));z-index:250}
+.sticky-total-bar.show{display:block}
+.stb-row{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:10px}
+.stb-total{font-family:'Playfair Display',Georgia,serif;font-size:1.35rem;font-weight:900;color:var(--yd);line-height:1}
+.stb-sub{font-size:.7rem;color:var(--ts);margin-top:3px}
+.stb-sub a{color:var(--yd);font-weight:700;text-decoration:none;cursor:pointer}
+.sticky-total-bar .btn-lg{padding:14px;font-size:.92rem}
+
 /* ---- SCROLL FADE ---- */
 .fade-up{opacity:0;transform:translateY(24px);transition:opacity .55s ease,transform .55s ease}
 .fade-up.visible{opacity:1;transform:none}
@@ -1160,7 +1169,7 @@ window.addEventListener('scroll',function(){
                 <div style="font-size:.75rem;color:var(--ts)" id="r-perhr"></div>
               </div>
             </div>
-            <div class="price-grid">
+            <div class="price-grid" id="price-grid-details">
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">Base Fare</span><span style="font-size:.8rem;font-weight:700" id="r-base"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">Duration</span><span style="font-size:.8rem;font-weight:700" id="r-dlbl"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;color:var(--ts)">GST 18%</span><span style="font-size:.8rem;font-weight:700" id="r-gst"></span></div>
@@ -1242,9 +1251,19 @@ window.addEventListener('scroll',function(){
               <span style="font-size:.76rem;color:#555">I agree to the <a href="policy.html" style="color:var(--yd);font-weight:700;text-decoration:none">Terms &amp; Conditions</a> of DriveDilSe.</span>
             </label>
           </div>
-          <button class="btn btn-green btn-lg" onclick="payNow()">&#128179; Pay &amp; Confirm Booking</button>
-          <div style="font-size:.7rem;color:var(--ts);text-align:center;margin-top:8px">Secure payment &#183; Confirmed instantly</div>
+          <div style="font-size:.7rem;color:var(--ts);text-align:center;margin-top:8px;padding-bottom:90px">Secure payment &#183; Confirmed instantly</div>
         </div>
+      </div>
+
+      <!-- Sticky Total Price bar -->
+      <div class="sticky-total-bar" id="sticky-total-bar">
+        <div class="stb-row">
+          <div>
+            <div class="stb-total" id="stb-total"></div>
+            <div class="stb-sub">Incl. GST &middot; <a onclick="scrollToPriceDetails()">View Details</a></div>
+          </div>
+        </div>
+        <button class="btn btn-green btn-lg" style="width:100%" onclick="payNow()">&#128179; Pay &amp; Confirm Booking</button>
       </div>
       <div id="success-section" style="display:none">
         <div class="success-box">
@@ -2533,6 +2552,7 @@ function openCar(id){
 
   // Reset state
   document.getElementById("price-section").style.display  = "none";
+  document.getElementById("sticky-total-bar").classList.remove("show");
   document.getElementById("success-section").style.display = "none";
   document.getElementById("booking-form").style.display   = "block";
 
@@ -2578,10 +2598,12 @@ function calcPrice(){
   document.getElementById("r-gst").textContent   = inr(gst);
   document.getElementById("r-dlbl").textContent  = dlbl;
   document.getElementById("r-fin").textContent   = inr(total);
+  document.getElementById("stb-total").textContent = inr(total);
   var db = document.getElementById("r-disc");
   if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
   else { db.style.display = "none"; }
   document.getElementById("price-section").style.display = "block";
+  document.getElementById("sticky-total-bar").classList.add("show");
   // Reset applied coupon for this calculation
   appliedCoupon = null; couponDiscount = 0;
   updateOfferAppliedMsg();
@@ -2670,6 +2692,7 @@ async function payNow(){
     window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+(depositFee?"\nRefundable Deposit (Paid Now): ₹"+depositFee : "")+(couponDiscount?"\nCoupon ("+appliedCoupon.code+"): -₹"+couponDiscount : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
+    document.getElementById("sticky-total-bar").classList.remove("show");
   }
 
   // Try Razorpay first; fall back to direct booking if keys not configured
@@ -2703,6 +2726,7 @@ async function payNow(){
           window._lastBookingMsg = "New Booking\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nTotal Paid: "+inr(totalWithDelivery)+"\n\n✅ Payment confirmed.";
           document.getElementById("booking-form").style.display    = "none";
           document.getElementById("success-section").style.display = "block";
+          document.getElementById("sticky-total-bar").classList.remove("show");
         } catch(e){ alert("Payment received but booking failed. Contact support.\n" + e.message); }
       }
     });
@@ -4371,6 +4395,13 @@ function updateDeliveryTotal(){
   }
   if(fin) fin.textContent = "₹"+newTotal.toLocaleString("en-IN");
   if(top) top.textContent = "₹"+newTotal.toLocaleString("en-IN");
+  var stb = document.getElementById("stb-total");
+  if(stb) stb.textContent = "₹"+newTotal.toLocaleString("en-IN");
+}
+
+function scrollToPriceDetails(){
+  var el = document.getElementById("price-grid-details");
+  if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
 }
 
 // ── OFFERS / COUPONS ──

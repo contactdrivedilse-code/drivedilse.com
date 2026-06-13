@@ -20,6 +20,9 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .login-title{font-family:Georgia,serif;font-size:1.6rem;font-weight:900;margin-bottom:6px}
 .login-sub{color:var(--ts);font-size:.88rem;margin-bottom:28px}
 .lbl{display:block;font-size:.67rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:6px}
+.feat-chip-grid{display:flex;flex-wrap:wrap;gap:7px}
+.feat-chip{font-size:.76rem;font-weight:600;padding:6px 12px;border-radius:20px;border:1.5px solid var(--b);background:var(--w);color:#666;cursor:pointer;transition:all .15s;user-select:none}
+.feat-chip.on{background:#f0fdf4;border-color:#86efac;color:#15803d}
 .inp{width:100%;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;color:var(--t);font-family:'Inter',sans-serif;font-size:.95rem;padding:13px 16px;outline:none;transition:border-color .15s}
 .inp:focus{border-color:var(--yd)}
 .btn{font-family:'Inter',sans-serif;font-weight:700;border:none;cursor:pointer;border-radius:10px;transition:all .15s;text-align:center;display:inline-block}
@@ -322,6 +325,12 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
           <div id="cm-price-rows" style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Features section -->
+    <div style="margin-top:14px;margin-bottom:4px">
+      <label class="lbl">Features (shown on car detail page)</label>
+      <div class="feat-chip-grid" id="cm-features"></div>
     </div>
 
     <!-- Photos section -->
@@ -1242,6 +1251,29 @@ async function submitPause(){
 
 // ── ADD / EDIT CAR ──
 var _carPhotosToUpload = [];
+var _carFeaturesSelected = [];
+
+var FEATURES_COMMON = ["🛞 Spare Tyre","📷 Reverse Camera","🛡️ Dual Front Airbags","🪟 Power Windows","🎚️ Power Steering","❄️ Air Conditioning","🎵 Music System","📱 Bluetooth","🔌 USB Charging","🔒 Central Locking"];
+var FEATURES_BY_CAT = {
+  Hatchback: FEATURES_COMMON,
+  Sedan:     FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","🚦 Cruise Control"]),
+  SUV:       FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","⛰️ Hill Hold Assist","🌄 Sunroof"]),
+  MPV:       FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","🪑 Captain Seats","💨 Rear AC Vents"])
+};
+var MASTER_FEATURES = FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","🚦 Cruise Control","⛰️ Hill Hold Assist","🌄 Sunroof","🪑 Captain Seats","💨 Rear AC Vents"]);
+
+function renderFeatureChips(){
+  document.getElementById("cm-features").innerHTML = MASTER_FEATURES.map(function(f){
+    var on = _carFeaturesSelected.indexOf(f) > -1 ? " on" : "";
+    return '<div class="feat-chip'+on+'" onclick="toggleFeatureChip(this,\''+f.replace(/'/g,"\\'")+'\')">'+f+'</div>';
+  }).join("");
+}
+function toggleFeatureChip(el, feat){
+  var i = _carFeaturesSelected.indexOf(feat);
+  if(i > -1) _carFeaturesSelected.splice(i,1);
+  else _carFeaturesSelected.push(feat);
+  el.classList.toggle("on");
+}
 
 function openAddCarModal(){
   document.getElementById("car-modal-title").textContent = "Add Car";
@@ -1258,6 +1290,8 @@ function openAddCarModal(){
   document.getElementById("cm-photos").value  = "";
   document.getElementById("cm-upload-lbl").textContent = "Click to add photos — max 7 total (exterior front/rear/sides + interior)";
   _carPhotosToUpload = [];
+  _carFeaturesSelected = FEATURES_BY_CAT["Hatchback"].slice();
+  renderFeatureChips();
   document.getElementById("car-modal").classList.add("open");
 }
 
@@ -1273,6 +1307,8 @@ function openEditCarModal(car){
   document.getElementById("cm-photo-previews").innerHTML  = "";
   document.getElementById("cm-photos").value  = "";
   _carPhotosToUpload = [];
+  _carFeaturesSelected = (car.features && car.features.length) ? car.features.slice() : (FEATURES_BY_CAT[car.category] || FEATURES_COMMON).slice();
+  renderFeatureChips();
   updatePricingPreview();
   // Show existing photos
   var ep = document.getElementById("cm-existing-photos");
@@ -1363,12 +1399,12 @@ async function submitCarForm(){
     if(id){
       carData = await adminFetch("/admin/fleet/"+id, {
         method:"PUT", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price })
+        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price, features:_carFeaturesSelected })
       });
     } else {
       carData = await adminFetch("/admin/fleet", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price })
+        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price, features:_carFeaturesSelected })
       });
     }
     var carId = carData._id || carData.id;

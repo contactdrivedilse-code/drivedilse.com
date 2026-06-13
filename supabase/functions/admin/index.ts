@@ -13,6 +13,7 @@ function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = 
     name: c.name, category: c.category,
     transmission: c.transmission, fuel: c.fuel, seats: c.seats,
     pricePerDay: c.price_per_day, deposit: c.deposit,
+    features: c.features ?? [],
     active: c.active,
     imageUrl: c.image_url || "",
     images: (c.images as string[] | null) || [],
@@ -229,12 +230,12 @@ Deno.serve(async (req) => {
 
     // POST /fleet — create new car
     if (req.method === "POST" && path === "/fleet") {
-      const { name, category, transmission, fuel, seats, pricePerDay } = await req.json();
+      const { name, category, transmission, fuel, seats, pricePerDay, features } = await req.json();
       if (!name || !pricePerDay) return json({ error: "name and pricePerDay required" }, 400);
       const { data, error } = await sb.from("cars").insert({
         id: crypto.randomUUID(), name, category: category || "Hatchback",
         transmission: transmission || "Manual", fuel: fuel || "Petrol",
-        seats: seats || 5, price_per_day: pricePerDay,
+        seats: seats || 5, price_per_day: pricePerDay, features: features ?? [],
         deposit: 0, active: true, image_url: "", images: [],
       }).select("*").maybeSingle();
       if (error) throw error;
@@ -296,6 +297,7 @@ Deno.serve(async (req) => {
       if (body.fuel         !== undefined) updates.fuel          = body.fuel;
       if (body.seats        !== undefined) updates.seats         = body.seats;
       if (body.pricePerDay  !== undefined) updates.price_per_day = body.pricePerDay;
+      if (body.features     !== undefined) updates.features      = body.features;
       const { data, error } = await sb.from("cars").update(updates).eq("id", carEditMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Car not found" }, 404);

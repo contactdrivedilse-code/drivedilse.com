@@ -1757,6 +1757,7 @@ function mapApiCar(c){
     rate: c.pricePerDay, deposit: c.deposit||0,
     color: colorMap[c.category]||"#f5c518",
     emoji: emojiMap[c.category]||"🚗",
+    features: c.features || [],
     active: c.active,
     paused: (c.pauses||[]).map(function(p){ return {start:p.from,end:p.to}; })
   };
@@ -2299,7 +2300,7 @@ function renderCarDetailExtras(car){
   var rating = carRating(car);
   document.getElementById("d-rating").innerHTML = "⭐ " + rating;
 
-  var feats = FEATURES_BY_CAT[car.cat] || FEATURES_COMMON;
+  var feats = (car.features && car.features.length) ? car.features : (FEATURES_BY_CAT[car.cat] || FEATURES_COMMON);
   document.getElementById("d-features").innerHTML = feats.map(function(f){
     return '<span class="feature-pill">' + f + '</span>';
   }).join("");

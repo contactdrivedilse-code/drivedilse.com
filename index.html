@@ -1705,6 +1705,14 @@ var WHATSAPP = "919999999999"; // ← your WhatsApp number
 
 // HTML-escape any string before putting it in innerHTML — prevents XSS
 function esc(s){ var d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }
+
+// Prevent Backspace from triggering browser "go back" navigation when focus isn't in an editable field
+document.addEventListener("keydown", function(e){
+  if(e.key !== "Backspace") return;
+  var el = e.target;
+  var editable = el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable;
+  if(!editable) e.preventDefault();
+});
 // Auto-clear if ?reset=1 in URL
 (function(){ if(new URLSearchParams(location.search).get("reset")==="1"){ ["dds_token","dds_bk_cache","dds_profile_photo","dds_pending_selfie","dds_my_bk_ids"].forEach(function(k){ localStorage.removeItem(k); }); location.replace(location.pathname); } })();
 

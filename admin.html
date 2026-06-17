@@ -621,12 +621,9 @@ async function adminFetch(path, opts){
   opts.headers = opts.headers || {};
   opts.headers["Authorization"] = "Bearer " + ANON_KEY;
   opts.headers["x-admin-token"] = adminToken;
-  // Append token as query param as failsafe (some gateways strip custom headers)
-  var sep = path.includes("?") ? "&" : "?";
-  var url = API + path + sep + "_t=" + encodeURIComponent(adminToken);
   // Don't set Content-Type for FormData — browser sets it with boundary
   if(opts.body instanceof FormData) delete opts.headers["Content-Type"];
-  var r = await fetch(url, opts);
+  var r = await fetch(API + path, opts);
   if(!r.ok){ var e = await r.json().catch(function(){ return {error:r.status}; }); throw new Error(e.error || r.status); }
   return r.json();
 }

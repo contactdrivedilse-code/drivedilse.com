@@ -2009,13 +2009,10 @@ function mapApiCar(c){
 function apiFetch(path, opts){
   opts = opts || {};
   opts.headers = opts.headers || {};
-  // Always send anon key for Supabase gateway; user JWT goes in x-user-token + _ut param
   opts.headers["Authorization"] = "Bearer " + ANON_KEY;
   var _ut = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
   if(_ut) opts.headers["x-user-token"] = _ut;
-  var _sep = path.includes("?") ? "&" : "?";
-  var _url = API + path + (_ut ? _sep + "_ut=" + encodeURIComponent(_ut) : "");
-  return fetch(_url, opts).then(function(r){
+  return fetch(API + path, opts).then(function(r){
     if(!r.ok) return r.json().then(function(e){ throw new Error(e.error||"Request failed"); });
     return r.json();
   });

@@ -251,13 +251,45 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .faq-item.open{box-shadow:0 6px 28px rgba(0,0,0,.08);border-color:rgba(201,160,16,.35)}
 
 /* ---- FOOTER ---- */
-footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:40px 48px}
-.footer-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px}
+footer{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:48px 48px 0}
+.footer-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px}
 .footer-links{display:flex;gap:22px;flex-wrap:wrap}
 .footer-links a{font-size:.82rem;color:#888;cursor:pointer;font-weight:500;text-decoration:none;transition:color .2s}
 .footer-links a:hover{color:var(--yd)}
 .footer-brand{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:var(--yd)}
 .footer-copy{font-size:.76rem;color:#aaa;margin-top:4px}
+
+/* ---- FOOTER v2 (4-column) ---- */
+.ftr2{background:#fffbe6;border-top:1.5px solid rgba(201,160,16,.25);padding:56px 48px 0}
+.ftr2-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:32px;padding-bottom:40px}
+.ftr2-brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.ftr2-brand-row img{height:34px}
+.ftr2-brand-name{font-family:'Montserrat',sans-serif;font-weight:800;font-size:1.25rem;color:var(--yd);letter-spacing:.02em}
+.ftr2-tagline{font-size:.85rem;color:#8a7a55;line-height:1.5;margin-bottom:18px;max-width:320px}
+.ftr2-meta{display:flex;align-items:flex-start;gap:9px;font-size:.84rem;color:#5c4f33;margin-bottom:11px;text-decoration:none}
+.ftr2-meta:hover{color:var(--yd)}
+.ftr2-meta span.ico{flex-shrink:0;width:18px;text-align:center}
+.ftr2-h{font-family:'Montserrat',sans-serif;font-weight:800;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:#1a1407;margin-bottom:16px}
+.ftr2-col a{display:block;font-size:.86rem;color:#7a6a48;text-decoration:none;margin-bottom:13px;cursor:pointer;transition:color .2s}
+.ftr2-col a:hover{color:var(--yd)}
+.ftr2-bottom{max-width:1180px;margin:0 auto;border-top:1px solid rgba(201,160,16,.22);padding:20px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.ftr2-copy{font-size:.78rem;color:#9a8a64}
+.ftr2-social{display:flex;gap:10px}
+.ftr2-social a{width:36px;height:36px;border-radius:50%;background:#fff;border:1px solid rgba(201,160,16,.3);display:flex;align-items:center;justify-content:center;font-size:1rem;text-decoration:none;color:#5c4f33;transition:transform .2s,background .2s}
+.ftr2-social a:hover{background:var(--y);color:#1a1407;transform:translateY(-2px)}
+.ftr2-pay{display:flex;gap:8px;flex-wrap:wrap}
+.ftr2-pay span{font-size:.72rem;font-weight:700;color:#5c4f33;background:#fff;border:1px solid rgba(201,160,16,.3);border-radius:6px;padding:6px 10px}
+.ftr2-pay span.razorpay{color:#3395FF;border-color:#3395FF}
+@media(max-width:900px){
+  .ftr2-grid{grid-template-columns:1fr 1fr;gap:28px}
+}
+@media(max-width:560px){
+  .ftr2{padding:40px 20px 0}
+  .ftr2-grid{grid-template-columns:1fr;gap:30px;text-align:center}
+  .ftr2-brand-row,.ftr2-meta{justify-content:center}
+  .ftr2-tagline{margin-left:auto;margin-right:auto}
+  .ftr2-bottom{flex-direction:column;text-align:center;justify-content:center}
+}
 
 /* ---- WHATSAPP FLOAT ---- */
 .wa-float{position:fixed;bottom:28px;right:28px;width:58px;height:58px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.55rem;cursor:pointer;box-shadow:0 4px 24px rgba(37,211,102,.5);z-index:300;transition:transform .2s,box-shadow .2s;text-decoration:none}
@@ -893,7 +925,7 @@ function csTick(){
     <p class="cta-band-sub">Self-Drive Platform — pick up your keys, go wherever you want, return when you're done.</p>
     <div class="cta-band-btns">
       <button class="btn btn-y btn-md" onclick="goTo('fleet-sec')" style="min-width:180px;font-size:.95rem;padding:15px 32px">View Fleet</button>
-      <a class="btn btn-green btn-md" href="https://wa.me/919999999999" target="_blank" style="text-decoration:none;min-width:180px;font-size:.95rem;padding:15px 32px">WhatsApp Us</a>
+      <a class="btn btn-green btn-md" href="https://wa.me/917709209765" target="_blank" style="text-decoration:none;min-width:180px;font-size:.95rem;padding:15px 32px">WhatsApp Us</a>
     </div>
   </section>
 
@@ -915,21 +947,51 @@ function csTick(){
   </section>
 
   <!-- FOOTER -->
-  <footer>
-    <div class="footer-inner">
-      <div style="display:flex;align-items:center;gap:14px">
-        <img src="assets/logo-icon.png" style="height:48px" alt="DriveDilSe">
-        <div><div class="footer-brand">DriveDilSe</div><div class="footer-copy">&#169; 2025 DriveDilSe &#183; Self-Drive Platform &#183; Pune</div></div>
+  <footer class="ftr2">
+    <div class="ftr2-grid">
+      <div>
+        <div class="ftr2-brand-row">
+          <img src="assets/logo-icon.png" alt="DriveDilSe">
+          <span class="ftr2-brand-name">Drive<span style="color:#1a1407">DilSe</span></span>
+        </div>
+        <div class="ftr2-tagline">Self-drive car rentals — doorstep delivery, transparent pricing, booked your way. Pune, India.</div>
+        <a class="ftr2-meta" href="https://maps.app.goo.gl/6eUfpDCcoDJkDaA66" target="_blank"><span class="ico">📍</span><span>Shop no.3, Abhang Society, Pandurang Nagar, Ambegaon Pathar, Suvarnayug Nagar, Pune, Maharashtra 411046</span></a>
+        <a class="ftr2-meta" href="mailto:info@drivedilse.com"><span class="ico">✉️</span><span>info@drivedilse.com</span></a>
+        <a class="ftr2-meta" href="tel:+917709209765"><span class="ico">📞</span><span>+91 77092 09765</span></a>
+        <div class="ftr2-meta"><span class="ico">🕒</span><span>Open 24 hours</span></div>
       </div>
-      <div class="footer-links">
-        <a onclick="goTo('fleet-sec')">Fleet</a>
-        <a onclick="goTo('how-sec')">How It Works</a>
-        <a onclick="goTo('faq-sec')">FAQ</a>
+      <div class="ftr2-col">
+        <div class="ftr2-h">Explore</div>
         <a onclick="goTo('search-sec')">Book Now</a>
-        <a href="policy.html">Policies &amp; Terms</a>
-        <a href="admin.html">Admin</a>
+        <a onclick="goTo('fleet-sec')">View Fleet</a>
+        <a onclick="goTo('how-sec')">How It Works</a>
+        <a onclick="goTo('faq-sec')">Pricing &amp; FAQ</a>
       </div>
-      <a class="btn btn-green btn-sm" href="https://wa.me/919999999999" target="_blank" style="text-decoration:none">WhatsApp Us</a>
+      <div class="ftr2-col">
+        <div class="ftr2-h">Company</div>
+        <a onclick="goTo('how-sec')">About Us</a>
+        <a href="mailto:info@drivedilse.com">Contact Us</a>
+        <a href="https://wa.me/917709209765" target="_blank">WhatsApp Support</a>
+        <a href="admin.html">Fleet Manager</a>
+      </div>
+      <div class="ftr2-col">
+        <div class="ftr2-h">Policies</div>
+        <a href="policy.html">Privacy Policy</a>
+        <a href="policy.html">Terms &amp; Conditions</a>
+        <a href="policy.html">Refund Policy</a>
+        <a href="policy.html">Cancellation Policy</a>
+        <a href="policy.html">Delivery &amp; Pickup</a>
+      </div>
+    </div>
+    <div class="ftr2-bottom">
+      <div class="ftr2-copy">&#169; 2026 DriveDilSe — All Rights Reserved</div>
+      <div class="ftr2-social">
+        <a href="https://www.instagram.com/drivedilse/" target="_blank" title="Instagram">📷</a>
+        <a href="https://wa.me/917709209765" target="_blank" title="WhatsApp">💬</a>
+      </div>
+      <div class="ftr2-pay">
+        <span>UPI</span><span>VISA</span><span>Mastercard</span><span>RuPay</span><span class="razorpay">🔒 Razorpay</span>
+      </div>
     </div>
   </footer>
 
@@ -962,7 +1024,7 @@ function csTick(){
   </section>
 </div>
 
-<a class="wa-float" href="https://wa.me/919999999999" target="_blank" title="Chat on WhatsApp">💬</a>
+<a class="wa-float" href="https://wa.me/917709209765" target="_blank" title="Chat on WhatsApp">💬</a>
 
 <div class="mob-cta" id="mob-cta">
   <button class="btn btn-y" style="width:100%;padding:15px;font-size:1rem;border-radius:12px" onclick="goTo('fleet-sec')">Book a Car Now</button>
@@ -1088,7 +1150,7 @@ window.addEventListener('scroll',function(){
       <div class="profile-card-body">
         <div style="display:flex;flex-direction:column;gap:10px">
           <button class="btn btn-y btn-lg" id="prof-verify-btn" onclick="openVerifyModal()">Complete Profile Verification &#8594;</button>
-          <a class="btn btn-green btn-lg" href="https://wa.me/919999999999" target="_blank" style="text-decoration:none;display:block;text-align:center;padding:14px">&#128172; Contact Support on WhatsApp</a>
+          <a class="btn btn-green btn-lg" href="https://wa.me/917709209765" target="_blank" style="text-decoration:none;display:block;text-align:center;padding:14px">&#128172; Contact Support on WhatsApp</a>
           <button class="btn btn-g btn-lg" onclick="goHome()">&#8592; Back to Fleet</button>
           <button class="btn btn-lg" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:12px;padding:14px 20px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif" onclick="clearMyProfile()">🗑 Clear My Data &amp; Start Fresh</button>
         </div>
@@ -1882,7 +1944,7 @@ window.addEventListener('scroll',function(){
 // ── API CONFIG ──
 var API = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
 var ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
-var WHATSAPP = "919999999999"; // ← your WhatsApp number
+var WHATSAPP = "917709209765"; // ← your WhatsApp number
 
 // HTML-escape any string before putting it in innerHTML — prevents XSS
 function esc(s){ var d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }

@@ -1,11 +1,24 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
+import { signStorageUrl } from "../_shared/storage.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
+
+async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const ci = (b.checkin ?? {}) as Record<string, unknown>;
+  const photos = (ci.photos ?? {}) as Record<string, unknown>;
+  const [front, rear, passengerSide, driverSide] = await Promise.all([
+    signStorageUrl(sb, photos.front as string),
+    signStorageUrl(sb, photos.rear as string),
+    signStorageUrl(sb, photos.passengerSide as string),
+    signStorageUrl(sb, photos.driverSide as string),
+  ]);
+  return { ...b, checkin: { ...ci, photos: { front, rear, passengerSide, driverSide } } };
+}
 
 const CHECKIN_WINDOW_MINS = 30;
 function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
@@ -119,7 +132,7 @@ Deno.serve(async (req) => {
         extMap[bid].push(ee);
       }
 
-      return json((bookings ?? []).map((b: Record<string, unknown>) => mapBooking(b, extMap[b.id as string])));
+      return json(await Promise.all((bookings ?? []).map((b: Record<string, unknown>) => signBookingPhotos(mapBooking(b, extMap[b.id as string])))));
     }
 
     // GET /:id/selfie-status — customer polls for selfie verification result

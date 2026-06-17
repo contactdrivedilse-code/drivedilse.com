@@ -3,3 +3,7 @@
 .env.*
 !.env.example
 node_modules/
+
+# Supabase CLI local cache
+supabase/.temp/
+.branches

@@ -1,11 +1,27 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
+import { signStorageUrl } from "../_shared/storage.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
+
+// Replace stored public KYC URLs with short-lived signed URLs so private
+// buckets remain viewable by the owning customer.
+async function signProfileKyc(p: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const [aadhaarUrl, dlUrl, profilePhotoUrl] = await Promise.all([
+    signStorageUrl(sb, p.kyc && (p.kyc as Record<string, unknown>).aadhaarUrl as string),
+    signStorageUrl(sb, p.kyc && (p.kyc as Record<string, unknown>).dlUrl as string),
+    signStorageUrl(sb, p.profilePhotoUrl as string),
+  ]);
+  return {
+    ...p,
+    profilePhotoUrl,
+    kyc: { ...(p.kyc as Record<string, unknown>), aadhaarUrl, dlUrl },
+  };
+}
 
 function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -96,7 +112,7 @@ Deno.serve(async (req) => {
 
       const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
       const token = await signJwt({ id: u.id, phone }, JWT_SECRET, 30 * 24 * 60 * 60);
-      return json({ token, user: mapProfile({ ...u, ...updates }) });
+      return json({ token, user: await signProfileKyc(mapProfile({ ...u, ...updates })) });
     }
 
     // GET /profile
@@ -107,7 +123,7 @@ Deno.serve(async (req) => {
       const { data, error } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "User not found" }, 404);
-      return json(mapProfile(data as Record<string, unknown>));
+      return json(await signProfileKyc(mapProfile(data as Record<string, unknown>)));
     }
 
     // POST /profile — KYC with file uploads
@@ -176,7 +192,7 @@ Deno.serve(async (req) => {
       const { data: updated } = await sb.from("profiles").select("*").eq("id", profileId).maybeSingle();
       // Issue fresh token so frontend session is renewed
       const freshToken = jwtUser ? null : await signJwt({ id: profileId, phone: (existing as Record<string,unknown>).phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
-      return json({ success: true, user: mapProfile(updated as Record<string, unknown>), ...(freshToken ? { token: freshToken } : {}) });
+      return json({ success: true, user: await signProfileKyc(mapProfile(updated as Record<string, unknown>)), ...(freshToken ? { token: freshToken } : {}) });
     }
 
     return json({ error: "Not found" }, 404);

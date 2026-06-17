@@ -1,11 +1,25 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer } from "../_shared/jwt.ts";
+import { signStorageUrl } from "../_shared/storage.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
+
+// Sign the check-in photo URLs on a mapped booking (private bucket support).
+async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const ci = (b.checkin ?? {}) as Record<string, unknown>;
+  const photos = (ci.photos ?? {}) as Record<string, unknown>;
+  const [front, rear, passengerSide, driverSide] = await Promise.all([
+    signStorageUrl(sb, photos.front as string),
+    signStorageUrl(sb, photos.rear as string),
+    signStorageUrl(sb, photos.passengerSide as string),
+    signStorageUrl(sb, photos.driverSide as string),
+  ]);
+  return { ...b, checkin: { ...ci, photos: { front, rear, passengerSide, driverSide } } };
+}
 
 function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = []) {
   return {
@@ -138,7 +152,7 @@ Deno.serve(async (req) => {
     if (req.method === "GET" && path === "/bookings") {
       const { data, error } = await sb.from("bookings").select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
+      return json(await Promise.all((data ?? []).map((b: Record<string, unknown>) => signBookingPhotos(mapBooking(b)))));
     }
 
     // PUT /bookings/:id/status
@@ -150,7 +164,7 @@ Deno.serve(async (req) => {
         .eq("id", bkStatusMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);
-      return json(mapBooking(data as Record<string, unknown>));
+      return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
     }
 
     // POST /bookings/:id/checkin-otp — reveal check-in OTP to admin
@@ -179,18 +193,18 @@ Deno.serve(async (req) => {
         .select("id, phone, name, dob, email, aadhaar_url, dl_url, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
         .eq("phone_verified", true).order("created_at", { ascending: false });
       if (error) throw error;
-      return json((data ?? []).map((u: Record<string, unknown>) => ({
+      return json(await Promise.all((data ?? []).map(async (u: Record<string, unknown>) => ({
         _id: u.id, id: u.id,
         phone: u.phone, name: u.name, email: u.email, dob: u.dob,
         createdAt: u.created_at,
         kyc: {
           status: u.kyc_status || "pending",
-          aadhaarUrl: u.aadhaar_url || null,
-          dlUrl: u.dl_url || null,
+          aadhaarUrl: (await signStorageUrl(sb, u.aadhaar_url as string)) || null,
+          dlUrl: (await signStorageUrl(sb, u.dl_url as string)) || null,
           aadhaarUploaded: u.aadhaar_uploaded,
           dlVerified: u.dl_verified,
         },
-      })));
+      }))));
     }
 
     // PUT /customers/:id/kyc
@@ -217,7 +231,11 @@ Deno.serve(async (req) => {
       const p = data as Record<string, unknown>;
       return json({
         _id: p.id, id: p.id, phone: p.phone, name: p.name,
-        kyc: { status: p.kyc_status, aadhaarUrl: p.aadhaar_url, dlUrl: p.dl_url },
+        kyc: {
+          status: p.kyc_status,
+          aadhaarUrl: await signStorageUrl(sb, p.aadhaar_url as string),
+          dlUrl: await signStorageUrl(sb, p.dl_url as string),
+        },
       });
     }
 

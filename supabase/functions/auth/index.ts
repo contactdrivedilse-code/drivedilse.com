@@ -92,8 +92,10 @@ Deno.serve(async (req) => {
 
       const { data: user } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
       const u = user as Record<string, unknown> | null;
-      const testOtp = Deno.env.get("TEST_OTP") || "1234";
-      const isTestOtp = otp === testOtp;
+      // Test-OTP bypass is OFF unless explicitly enabled. Previously it
+      // defaulted to "1234" for ANY phone, allowing account takeover.
+      const testOtp = Deno.env.get("TEST_OTP");
+      const isTestOtp = Deno.env.get("ALLOW_TEST_OTP") === "true" && !!testOtp && otp === testOtp;
       if (!u) {
         // Auto-create profile for test OTP
         if (!isTestOtp) return json({ error: "Invalid or expired OTP" }, 400);

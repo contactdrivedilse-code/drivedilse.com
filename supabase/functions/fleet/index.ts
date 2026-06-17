@@ -11,7 +11,7 @@ function mapCar(c: Record<string, unknown>) {
     _id: c.id, id: c.id, name: c.name, category: c.category,
     fuel: c.fuel, seats: c.seats, transmission: c.transmission,
     pricePerDay: c.price_per_day, deposit: c.deposit,
-    features: c.features ?? [], image: c.image ?? "",
+    features: c.features ?? [], image: c.image_url ?? "", images: c.images ?? [],
     active: c.active, createdAt: c.created_at,
   };
 }

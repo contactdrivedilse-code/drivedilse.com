@@ -579,6 +579,55 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 </head>
 <body>
+<!-- ======== COMING SOON GATE ======== -->
+<div id="comingSoonOverlay" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#15110a,#241c0d 60%,#15110a);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:'Inter',sans-serif">
+  <div style="max-width:480px;width:100%">
+    <img src="assets/logo.png" alt="DriveDilSe" style="height:64px;margin-bottom:28px">
+    <div style="font-family:'Playfair Display',serif;font-weight:900;font-size:clamp(1.8rem,6vw,2.6rem);color:#fff;line-height:1.15;margin-bottom:10px">
+      We're <span style="color:#f5c518">Launching Soon</span>
+    </div>
+    <div style="color:#cbb98a;font-size:.95rem;margin-bottom:34px">DriveDilSe goes live on <strong style="color:#f5c518">22 June</strong>. Self-drive cars in Pune, booked your way.</div>
+    <div id="csCountdown" style="display:flex;gap:12px;justify-content:center;margin-bottom:36px">
+      <div class="cs-unit"><div class="cs-num" id="csDays">00</div><div class="cs-label">Days</div></div>
+      <div class="cs-unit"><div class="cs-num" id="csHrs">00</div><div class="cs-label">Hrs</div></div>
+      <div class="cs-unit"><div class="cs-num" id="csMin">00</div><div class="cs-label">Min</div></div>
+      <div class="cs-unit"><div class="cs-num" id="csSec">00</div><div class="cs-label">Sec</div></div>
+    </div>
+    <a href="https://wa.me/?text=Notify%20me%20when%20DriveDilSe%20launches" target="_blank" style="display:inline-block;background:#f5c518;color:#1a1407;font-weight:800;font-size:.9rem;padding:13px 30px;border-radius:30px;text-decoration:none">Notify Me on WhatsApp</a>
+  </div>
+  <style>
+    .cs-unit{background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);border-radius:14px;padding:14px 16px;min-width:64px}
+    .cs-num{font-family:'Playfair Display',serif;font-weight:900;font-size:1.7rem;color:#f5c518;line-height:1}
+    .cs-label{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:#cbb98a;margin-top:6px}
+  </style>
+</div>
+<script>
+(function(){
+  var LAUNCH = new Date("2026-06-22T00:00:00+05:30").getTime();
+  var overlay = document.getElementById('comingSoonOverlay');
+  function tick(){
+    var diff = LAUNCH - Date.now();
+    if(diff <= 0){
+      overlay.style.display = 'none';
+      document.documentElement.style.overflow = '';
+      clearInterval(timer);
+      return;
+    }
+    var d = Math.floor(diff/86400000);
+    var h = Math.floor(diff%86400000/3600000);
+    var m = Math.floor(diff%3600000/60000);
+    var s = Math.floor(diff%60000/1000);
+    var pad = function(n){ return String(n).padStart(2,'0'); };
+    document.getElementById('csDays').textContent = pad(d);
+    document.getElementById('csHrs').textContent  = pad(h);
+    document.getElementById('csMin').textContent  = pad(m);
+    document.getElementById('csSec').textContent  = pad(s);
+  }
+  document.documentElement.style.overflow = 'hidden';
+  tick();
+  var timer = setInterval(tick, 1000);
+})();
+</script>
 <!-- ======== HOME ======== -->
 <div id="pg-home" class="page active">
 

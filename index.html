@@ -1418,8 +1418,10 @@ window.addEventListener('scroll',function(){
               <button class="btn btn-y btn-sm" onclick="pbSendOtp()" style="width:100%">Send OTP to verify →</button>
             </div>
             <div id="pb-otp-verify-row" style="display:none">
+              <div style="font-size:.76rem;color:#555;margin-bottom:6px">Code sent to +91 <strong id="pb-otp-phone-lbl"></strong> &middot; <a onclick="pbChangeNumber()" style="color:var(--yd);font-weight:700;cursor:pointer">Change number</a></div>
               <input type="text" id="pb-otp-code" class="inp" placeholder="Enter OTP" maxlength="6" style="width:100%;margin-bottom:8px">
-              <button class="btn btn-y btn-sm" onclick="pbVerifyOtp()" style="width:100%">Verify →</button>
+              <button class="btn btn-y btn-sm" onclick="pbVerifyOtp()" style="width:100%;margin-bottom:8px">Verify →</button>
+              <button class="btn btn-g btn-sm" id="pb-otp-resend-btn" onclick="pbSendOtp()" style="width:100%" disabled>Resend OTP</button>
             </div>
             <div id="pb-otp-msg" style="font-size:.74rem;margin-top:8px"></div>
             <a onclick="document.getElementById('pb-otp-box').style.display='none'" style="display:block;text-align:center;font-size:.7rem;color:var(--ts);margin-top:8px;cursor:pointer">Skip for now</a>
@@ -1515,6 +1517,10 @@ window.addEventListener('scroll',function(){
           <div><label class="lbl">Enter OTP</label><input id="vm-otp" class="inp" placeholder="6-digit OTP" maxlength="6"></div>
           <button class="btn btn-y btn-sm" onclick="vmVerifyOtp()">Verify</button>
         </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <a onclick="vmChangeNumber()" style="font-size:.72rem;color:var(--yd);font-weight:700;cursor:pointer">Change number</a>
+          <button class="btn btn-g btn-sm" id="vm-resend-btn" onclick="vmSendOtp()" style="padding:6px 12px;font-size:.72rem" disabled>Resend OTP</button>
+        </div>
       </div>
       <div id="vm-otp-msg" style="font-size:.72rem;margin-top:6px;margin-bottom:10px"></div>
       <div style="margin-bottom:14px">
@@ -1570,11 +1576,15 @@ window.addEventListener('scroll',function(){
       </div>
     </div>
     <div id="ql-otp-row" style="display:none;margin-bottom:14px">
-      <label class="lbl">OTP</label>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <label class="lbl" style="margin-bottom:0">OTP</label>
+        <a onclick="qlChangeNumber()" style="font-size:.74rem;color:var(--yd);font-weight:700;cursor:pointer">Change number</a>
+      </div>
       <input class="inp" type="number" id="ql-otp" placeholder="6-digit OTP" onkeydown="if(event.key==='Enter')qlVerifyAndPay()">
     </div>
     <div id="ql-msg" style="font-size:.8rem;margin-bottom:12px;min-height:16px"></div>
     <button class="btn btn-y btn-lg" id="ql-btn" onclick="qlSendOtp()">Send OTP →</button>
+    <button class="btn btn-g btn-sm" id="ql-resend-btn" onclick="qlSendOtp()" style="width:100%;margin-top:8px;display:none" disabled>Resend OTP</button>
   </div>
 </div>
 <!-- ══════════ CHECK-IN MODAL ══════════ -->
@@ -2896,6 +2906,7 @@ async function payNow(){
 // ── VERIFY MODAL ──
 function openVerifyModal(){
   // Reset
+  if(typeof resetOtpResend === "function") resetOtpResend("vm");
   document.getElementById("vm-already-verified").style.display = "none";
   document.getElementById("vm-form-wrap").style.display        = "block";
   document.getElementById("vm-done-wrap").style.display        = "none";
@@ -2940,8 +2951,10 @@ async function vmSendOtp(){
   var ph = document.getElementById("vm-phone").value.trim();
   if(!ph || !/^[6-9]\d{9}$/.test(ph)){ alert("Enter a valid 10-digit Indian mobile number."); return; }
   var btn = document.getElementById("vm-otp-btn");
+  var resendBtn = document.getElementById("vm-resend-btn");
   var msg = document.getElementById("vm-otp-msg");
-  btn.textContent = "Sending..."; btn.disabled = true;
+  var firstSend = document.getElementById("vm-otp-row").style.display !== "block";
+  if(firstSend){ btn.textContent = "Sending..."; btn.disabled = true; }
   try {
     await apiFetch("/auth/send-otp", {
       method: "POST",
@@ -2949,14 +2962,24 @@ async function vmSendOtp(){
       body: JSON.stringify({ phone: ph })
     });
     document.getElementById("vm-otp-row").style.display = "block";
-    btn.textContent = "Resend"; btn.disabled = false;
+    btn.textContent = "Sent"; btn.disabled = true;
     msg.innerHTML = '<span style="color:#1a5fa8">OTP sent to +91 ' + ph + '</span>';
+    armOtpResend("vm", resendBtn);
   } catch(e){
     // Offline / backend down — show demo OTP
     document.getElementById("vm-otp-row").style.display = "block";
-    btn.textContent = "Resend"; btn.disabled = false;
+    btn.textContent = "Sent"; btn.disabled = true;
     msg.innerHTML = '<span style="color:#e67e22">⚡ Demo mode — use OTP <strong style="font-size:1rem;letter-spacing:2px">1234</strong></span>';
+    armOtpResend("vm", resendBtn);
   }
+}
+function vmChangeNumber(){
+  resetOtpResend("vm");
+  document.getElementById("vm-otp-row").style.display = "none";
+  document.getElementById("vm-otp-msg").textContent = "";
+  var btn = document.getElementById("vm-otp-btn");
+  btn.textContent = "Send OTP"; btn.disabled = false; btn.className = "btn btn-y btn-sm";
+  document.getElementById("vm-phone").focus();
 }
 async function vmVerifyOtp(){
   var ph  = document.getElementById("vm-phone").value.trim();
@@ -4663,23 +4686,72 @@ async function payExtension(){
   }
 }
 
+// ── OTP RESEND COOLDOWN (shared) ──
+var _otpResend = {}; // key -> { count, expiresAt, timer }
+var OTP_COOLDOWNS = [30, 120, 300]; // seconds: 30s, 2min, 5min, then "try again later"
+
+function resetOtpResend(key){
+  var st = _otpResend[key];
+  if(st && st.timer) clearInterval(st.timer);
+  _otpResend[key] = { count: 0, expiresAt: 0, timer: null };
+}
+function otpResendLabel(seconds){ return "Resend OTP in " + (seconds >= 60 ? Math.ceil(seconds/60) + "m" : seconds + "s"); }
+function armOtpResend(key, btn){
+  var st = _otpResend[key] || (resetOtpResend(key), _otpResend[key]);
+  if(st.timer) clearInterval(st.timer);
+  if(st.count >= OTP_COOLDOWNS.length){
+    btn.disabled = true; btn.textContent = "Try again later";
+    return;
+  }
+  var dur = OTP_COOLDOWNS[st.count];
+  st.count++;
+  st.expiresAt = Date.now() + dur * 1000;
+  btn.disabled = true;
+  st.timer = setInterval(function(){
+    var left = Math.ceil((st.expiresAt - Date.now()) / 1000);
+    if(left <= 0){
+      clearInterval(st.timer); st.timer = null;
+      if(st.count >= OTP_COOLDOWNS.length){ btn.disabled = true; btn.textContent = "Try again later"; }
+      else { btn.disabled = false; btn.textContent = "Resend OTP"; }
+      return;
+    }
+    btn.textContent = otpResendLabel(left);
+  }, 1000);
+  btn.textContent = otpResendLabel(dur);
+}
+
 // ── POST-BOOKING OTP VERIFICATION ──
 var _pbPhone = "";
 function showPostBookingOtp(phone){
   _pbPhone = phone || userProfile.phone || "";
   if(!_pbPhone || userProfile.phoneVerified) return;
+  resetOtpResend("pb");
   document.getElementById("pb-otp-send-row").style.display   = "block";
   document.getElementById("pb-otp-verify-row").style.display = "none";
   document.getElementById("pb-otp-msg").textContent = "";
   document.getElementById("pb-otp-box").style.display = "block";
 }
+function pbChangeNumber(){
+  resetOtpResend("pb");
+  var nm = prompt("Enter your correct 10-digit mobile number:", _pbPhone || "");
+  if(nm === null) return;
+  nm = nm.trim();
+  if(!/^[6-9]\d{9}$/.test(nm)){ alert("Please enter a valid 10-digit mobile number."); return; }
+  _pbPhone = nm; userProfile.phone = nm;
+  document.getElementById("pb-otp-send-row").style.display   = "block";
+  document.getElementById("pb-otp-verify-row").style.display = "none";
+  document.getElementById("pb-otp-msg").textContent = "";
+}
 async function pbSendOtp(){
   if(!_pbPhone) return;
+  var resendBtn = document.getElementById("pb-otp-resend-btn");
   try {
     await apiFetch("/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:_pbPhone})});
     document.getElementById("pb-otp-send-row").style.display   = "none";
     document.getElementById("pb-otp-verify-row").style.display = "block";
+    document.getElementById("pb-otp-phone-lbl").textContent    = _pbPhone;
     document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#1a5fa8">OTP sent to +91 ' + esc(_pbPhone) + '</span>';
+    armOtpResend("pb", resendBtn);
   } catch(e){
     document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not send OTP") + '</span>';
   }
@@ -4712,7 +4784,21 @@ function openQuickLogin(afterLoginFn){
   document.getElementById("ql-btn").textContent = "Send OTP →";
   document.getElementById("ql-btn").onclick = qlSendOtp;
   document.getElementById("ql-btn").disabled = false;
+  document.getElementById("ql-resend-btn").style.display = "none";
+  resetOtpResend("ql");
   openModal("quick-login-modal");
+}
+
+function qlChangeNumber(){
+  resetOtpResend("ql");
+  document.getElementById("ql-otp-row").style.display  = "none";
+  document.getElementById("ql-name-row").style.display = "block";
+  document.getElementById("ql-resend-btn").style.display = "none";
+  document.getElementById("ql-msg").textContent = "";
+  document.getElementById("ql-btn").textContent = "Send OTP →";
+  document.getElementById("ql-btn").onclick = qlSendOtp;
+  document.getElementById("ql-btn").disabled = false;
+  document.getElementById("ql-phone").focus();
 }
 
 async function qlSendOtp(){
@@ -4727,7 +4813,9 @@ async function qlSendOtp(){
     return;
   }
   var btn = document.getElementById("ql-btn");
-  btn.textContent = "Sending..."; btn.disabled = true;
+  var resendBtn = document.getElementById("ql-resend-btn");
+  var wasSending = btn.textContent !== "Resend OTP" && resendBtn.style.display === "none";
+  if(wasSending){ btn.textContent = "Sending..."; btn.disabled = true; }
   try {
     await apiFetch("/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph})});
     document.getElementById("ql-otp-row").style.display = "block";
@@ -4735,6 +4823,8 @@ async function qlSendOtp(){
     btn.textContent = "Verify & Pay →";
     btn.disabled = false;
     btn.onclick = qlVerifyAndPay;
+    resendBtn.style.display = "block";
+    armOtpResend("ql", resendBtn);
   } catch(e){
     // Offline fallback: skip OTP and proceed with a temp token
     // Show demo OTP for testing when backend is offline
@@ -4743,6 +4833,8 @@ async function qlSendOtp(){
     document.getElementById("ql-msg").innerHTML = '<span style="color:#e67e22;font-weight:700">⚡ Demo OTP: <span style="font-family:monospace;letter-spacing:2px;font-size:1rem">1234</span> (server offline — for testing only)</span>';
     btn.textContent = "Verify & Continue →"; btn.disabled = false;
     btn.onclick = qlOfflineProceed;
+    resendBtn.style.display = "block";
+    armOtpResend("ql", resendBtn);
   }
 }
 

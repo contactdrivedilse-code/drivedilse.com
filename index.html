@@ -367,11 +367,9 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 }
 
 /* ---- WHATSAPP FLOAT ---- */
-.wa-float{position:fixed;bottom:28px;right:28px;width:58px;height:58px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.55rem;cursor:pointer;box-shadow:0 4px 24px rgba(37,211,102,.5);z-index:300;transition:transform .2s,box-shadow .2s;text-decoration:none}
-.wa-float:hover{transform:scale(1.12);box-shadow:0 8px 32px rgba(37,211,102,.65)}
 
 /* ── HELP CHAT WIDGET ── */
-.chat-bubble{position:fixed;bottom:28px;right:96px;width:58px;height:58px;background:var(--y);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 24px rgba(245,197,24,.55);z-index:301;transition:transform .2s,box-shadow .2s}
+.chat-bubble{position:fixed;bottom:28px;right:28px;width:58px;height:58px;background:var(--y);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 24px rgba(245,197,24,.55);z-index:301;transition:transform .2s,box-shadow .2s}
 .chat-bubble:hover{transform:scale(1.12);box-shadow:0 8px 32px rgba(245,197,24,.7)}
 .chat-widget{position:fixed;bottom:96px;right:28px;width:340px;max-height:72vh;background:#fff;border-radius:18px;box-shadow:0 12px 48px rgba(0,0,0,.22);z-index:302;display:none;flex-direction:column;overflow:hidden}
 .chat-widget.open{display:flex}
@@ -396,7 +394,7 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .chat-contact-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--b);border-radius:10px;margin-bottom:9px;font-size:.82rem;color:var(--t);text-decoration:none;font-weight:600}
 .chat-contact-row:hover{background:var(--wg)}
 .chat-contact-row .ico{font-size:1rem}
-@media(max-width:480px){.chat-widget{right:14px;left:14px;width:auto;bottom:90px}.chat-bubble{right:84px}}
+@media(max-width:480px){.chat-widget{right:14px;left:14px;width:auto;bottom:90px}}
 
 /* ---- MOBILE STICKY CTA ---- */
 .mob-cta{display:none;position:fixed;bottom:0;left:0;right:0;padding:12px 16px 20px;background:#fff;border-top:1px solid #ede9db;box-shadow:0 -4px 24px rgba(200,160,0,.12);z-index:200}
@@ -614,7 +612,7 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   .steps{grid-template-columns:1fr;gap:14px}
   .steps::before{display:none}
   .mob-cta{display:block}
-  .wa-float{bottom:84px}
+  .chat-bubble{bottom:84px}
   .footer-inner{flex-direction:column;text-align:center}
   .footer-links{justify-content:center}
   .nav-link{display:none}
@@ -1146,8 +1144,6 @@ function csTick(){
   </section>
 </div>
 
-<a class="wa-float" href="https://wa.me/917709209765" target="_blank" title="Chat on WhatsApp">💬</a>
-
 <!-- ── HELP CHAT WIDGET ── -->
 <button class="chat-bubble" id="chatBubble" onclick="toggleChatWidget()" title="Need help?">
   <span id="chatBubbleIcon">💁</span>
@@ -1259,7 +1255,7 @@ async function submitTicket(){
   status.textContent = "Submitting...";
   try{
     var res = await fetch(API+"/support/tickets", {
-      method:"POST", headers:{"Content-Type":"application/json"},
+      method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+ANON_KEY},
       body:JSON.stringify({name:name, phone:phone, email:email, message:message})
     });
     var data = await res.json();

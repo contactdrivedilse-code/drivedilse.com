@@ -704,13 +704,11 @@ async function renderTab(tab){
 
 async function renderDashboard(isLocal, c){
   var stats = [];
-  var todaySchedule = [];
   if(!isLocal){
     try {
       var dash = await adminFetch("/admin/dashboard");
       allBookings = await adminFetch("/admin/bookings");
       updateBadges();
-      try { todaySchedule = await adminFetch("/admin/schedule/today"); } catch(e){}
       var paidBks = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
       var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);
       var gst = Math.round(rev * 18 / 118);
@@ -757,12 +755,6 @@ async function renderDashboard(isLocal, c){
     return '<div class="stat-card"'+clickable+'><div class="stat-icon">'+s.icon+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
   }).join("");
 
-  var recentHtml = "";
-  if(allBookings.length){
-    var recent = allBookings.slice(0,8);
-    recentHtml = '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">Recent Bookings</span><button class="btn btn-g btn-sm" onclick="navTo(\'bookings\',document.querySelector(\'[data-tab=bookings]\'))">View All →</button></div><div class="table-wrap">'+buildTable(recent, true)+'</div></div>';
-  }
-
   c.innerHTML =
     '<div class="page-title">Dashboard</div>' +
     '<div class="page-sub">Overview of DriveDilSe operations.</div>' +
@@ -770,9 +762,7 @@ async function renderDashboard(isLocal, c){
       ? '<div style="background:#fff3cd;border:1px solid #e8b800;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#856404;display:flex;align-items:center;gap:8px">⚠️ <strong>Demo mode</strong> — backend unreachable. Showing sample data.</div>'
       : '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#15803d;display:flex;align-items:center;gap:8px">✅ <strong>Live Backend Connected</strong> — showing real data from database.</div>'
     ) +
-    '<div class="stat-grid">' + statHtml + '</div>' +
-    renderScheduleCard(todaySchedule, isLocal) +
-    recentHtml;
+    '<div class="stat-grid">' + statHtml + '</div>';
 }
 
 function renderScheduleCard(items, isLocal){
@@ -929,6 +919,12 @@ async function renderSchedule(isLocal, c){
     ? pausesOnDay.join("") + selItems.map(function(it){ return scheduleRowHtml(it, isFleet); }).join("")
     : '<div class="empty" style="padding:20px"><div class="empty-icon">📭</div><div class="empty-msg">Nothing scheduled for this day.</div></div>';
 
+  var recentHtml = "";
+  if(bookings.length){
+    var recent = bookings.slice(0,8);
+    recentHtml = '<div class="card" style="margin-top:16px"><div class="card-hdr"><span class="card-title">Recent Bookings</span><button class="btn btn-g btn-sm" onclick="navTo(\'bookings\',document.querySelector(\'[data-tab=bookings]\'))">View All →</button></div><div class="table-wrap">'+buildTable(recent, true)+'</div></div>';
+  }
+
   c.innerHTML =
     '<div class="page-title">Today\'s Schedule</div>' +
     '<div class="page-sub">'+(isFleet ? "Manage pickups, drop-offs and pauses." : "View-only — Fleet Manager updates the schedule.")+'</div>' +
@@ -950,7 +946,8 @@ async function renderSchedule(isLocal, c){
         '<div class="card-hdr"><span class="card-title">'+selLbl+'</span>'+addBtn+'</div>' +
         '<div>'+detailBody+'</div>' +
       '</div>' +
-    '</div>';
+    '</div>' +
+    recentHtml;
 }
 
 function shiftScheduleMonth(delta){

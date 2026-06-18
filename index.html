@@ -611,6 +611,11 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 </head>
 <body>
+<!-- ======== COOKIE CONSENT BANNER ======== -->
+<div id="cookie-consent-bar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:100000;background:#161616;color:#fff;padding:14px 18px;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;font-size:.82rem">
+  <span style="max-width:560px">🍪 We use cookies to remember your name &amp; phone so your bookings and details are ready next time — no login needed.</span>
+  <button class="btn btn-y btn-sm" onclick="acceptCookieConsent()" style="white-space:nowrap">Accept Cookies</button>
+</div>
 <!-- ======== COMING SOON GATE ======== -->
 <div id="comingSoonOverlay" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#15110a,#241c0d 60%,#15110a);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:'Inter',sans-serif">
   <div style="max-width:480px;width:100%">
@@ -1271,6 +1276,16 @@ window.addEventListener('scroll',function(){
             </div>
           </div>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div class="dt-pair">
+            <div class="dt-pair-label">👤 Full Name</div>
+            <input type="text" class="inp" id="bf-name" placeholder="Your full name" style="width:100%">
+          </div>
+          <div class="dt-pair">
+            <div class="dt-pair-label">📱 Mobile Number</div>
+            <input type="tel" class="inp" id="bf-phone" placeholder="10-digit mobile number" maxlength="10" style="width:100%">
+          </div>
+        </div>
         <button class="btn btn-y btn-lg" onclick="calcPrice()">Calculate Price →</button>
         <div id="price-section" style="display:none">
           <div class="price-result">
@@ -1396,6 +1411,19 @@ window.addEventListener('scroll',function(){
           <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;color:#1a7a3c;margin-bottom:8px">Booking Confirmed!</div>
           <div style="font-size:.84rem;color:#555;margin-bottom:8px">Payment received. Your booking is confirmed!</div>
           <button class="btn btn-green btn-lg" onclick="window.open('https://wa.me/'+WHATSAPP+'?text='+encodeURIComponent(window._lastBookingMsg||'New booking - DriveDilSe'),'_blank')" style="margin-bottom:12px">&#128172; Notify Admin on WhatsApp</button>
+          <div id="pb-otp-box" style="display:none;text-align:left;background:#f4f8ff;border:1.5px solid #b9d3f5;border-radius:10px;padding:14px;margin-bottom:18px">
+            <div style="font-weight:700;font-size:.84rem;margin-bottom:6px">📱 Verify your mobile number</div>
+            <div style="font-size:.74rem;color:#555;margin-bottom:10px">Helps us confirm your booking is genuine. Takes 10 seconds.</div>
+            <div id="pb-otp-send-row">
+              <button class="btn btn-y btn-sm" onclick="pbSendOtp()" style="width:100%">Send OTP to verify →</button>
+            </div>
+            <div id="pb-otp-verify-row" style="display:none">
+              <input type="text" id="pb-otp-code" class="inp" placeholder="Enter OTP" maxlength="6" style="width:100%;margin-bottom:8px">
+              <button class="btn btn-y btn-sm" onclick="pbVerifyOtp()" style="width:100%">Verify →</button>
+            </div>
+            <div id="pb-otp-msg" style="font-size:.74rem;margin-top:8px"></div>
+            <a onclick="document.getElementById('pb-otp-box').style.display='none'" style="display:block;text-align:center;font-size:.7rem;color:var(--ts);margin-top:8px;cursor:pointer">Skip for now</a>
+          </div>
           <div style="font-size:.82rem;color:#555;margin-bottom:20px;background:#fff8d0;border:1.5px solid var(--yd);border-radius:10px;padding:12px">📋 <strong>One last step:</strong> Upload your Aadhaar &amp; Driving Licence below. Our representative needs this to hand over the car and give you the Check-In OTP.</div>
           <button class="btn btn-y btn-lg" onclick="showProfile()" style="margin-bottom:10px">View My Bookings →</button>
           <button class="btn btn-y btn-lg" onclick="openVerifyModal()" style="margin-bottom:10px;background:#fff;border:2px solid var(--yd);color:#333">Complete Profile Verification →</button>
@@ -1931,7 +1959,38 @@ document.addEventListener("click", function(e){
   if(pp) setTimeout(function(){ renderProfilePhoto && renderProfilePhoto(pp); }, 300);
 })();
 
-var authToken = localStorage.getItem("dds_token") || "";
+// ── COOKIES ──
+function setCookie(name, value, days){
+  var exp = new Date(Date.now() + days*86400000).toUTCString();
+  document.cookie = name + "=" + encodeURIComponent(value) + "; expires=" + exp + "; path=/; SameSite=Lax" + (location.protocol==="https:" ? "; Secure" : "");
+}
+function getCookie(name){
+  var m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  return m ? decodeURIComponent(m[1]) : "";
+}
+function hasCookieConsent(){ return getCookie("dds_consent") === "1"; }
+function setAuthToken(token){
+  authToken = token;
+  localStorage.setItem("dds_token", token);
+  if(hasCookieConsent()) setCookie("dds_token", token, 90);
+}
+function initCookieConsent(){
+  if(hasCookieConsent()){
+    // Consent already given earlier — make sure cookie mirrors current session
+    if(authToken) setCookie("dds_token", authToken, 90);
+    return;
+  }
+  var bar = document.getElementById("cookie-consent-bar");
+  if(bar) bar.style.display = "flex";
+}
+function acceptCookieConsent(){
+  setCookie("dds_consent", "1", 365);
+  if(authToken) setCookie("dds_token", authToken, 90);
+  var bar = document.getElementById("cookie-consent-bar");
+  if(bar) bar.style.display = "none";
+}
+
+var authToken = localStorage.getItem("dds_token") || getCookie("dds_token") || "";
 var adminToken = "";
 window._bkdMap = {}; window._bkdSelected = null; window._bkdCurrent = null;
 
@@ -2021,6 +2080,7 @@ function clearMyProfile(){
   if(!confirm("This will clear all your local bookings, profile data and login. Continue?")) return;
   // Clear all local storage keys
   ["dds_token","dds_bk_cache","dds_profile_photo","dds_pending_selfie","dds_my_bk_ids"].forEach(function(k){ localStorage.removeItem(k); });
+  setCookie("dds_token", "", -1);
   // Reset in-memory state
   authToken = ""; userProfile = { name:"", phone:"", phoneVerified:false, kyc:{} };
   myBookingIds = []; allCars = [];
@@ -2561,6 +2621,7 @@ function renderFleet(pickup, drop, searched, gridId){
   });
 }
 loadFleet();
+initCookieConsent();
 
 async function doSearch(){
   var p = getDt("h-pickup");
@@ -2587,10 +2648,6 @@ async function doSearch(){
 
 // ── CAR DETAIL ──
 function openCar(id){
-  if(!authToken){
-    openQuickLogin(function(){ openCar(id); });
-    return;
-  }
   selCar = null;
   for(var i=0; i<FLEET.length; i++){ if(String(FLEET[i].id) === String(id)){ selCar = FLEET[i]; break; } }
   if(!selCar) return;
@@ -2642,7 +2699,9 @@ function openCar(id){
   document.getElementById("success-section").style.display = "none";
   document.getElementById("booking-form").style.display   = "block";
 
-  // Pre-fill details if already logged in
+  // Pre-fill details if already logged in / cookie remembered
+  document.getElementById("bf-name").value  = userProfile.name  || "";
+  document.getElementById("bf-phone").value = userProfile.phone || "";
   document.getElementById("chk-ded").checked = false;
   document.getElementById("chk-tnc").checked = false;
   // Delivery charge (chosen on homepage) carries over read-only
@@ -2741,7 +2800,14 @@ async function payNow(){
   if(!document.getElementById("chk-ded").checked){ alert("Please acknowledge the damage liability clause."); return; }
   if(!document.getElementById("chk-tnc").checked){ alert("Please accept the Terms & Conditions."); return; }
 
-  if(!authToken){ openQuickLogin(payNow); return; }
+  var bfName = "", bfPhone = "";
+  if(!authToken){
+    bfName  = document.getElementById("bf-name").value.trim();
+    bfPhone = document.getElementById("bf-phone").value.trim();
+    if(!bfName){ alert("Please enter your full name."); return; }
+    if(!/^[6-9]\d{9}$/.test(bfPhone)){ alert("Please enter a valid 10-digit mobile number."); return; }
+    userProfile.name = bfName; userProfile.phone = bfPhone;
+  }
 
   if(!isAvail(selCar, priceResult.pickup, priceResult.drop)){
     alert("Sorry, this car is already booked for the selected dates. Please choose different dates.");
@@ -2762,28 +2828,29 @@ async function payNow(){
   var dropLoc   = (deliveryCharge > 0 && !isSame && dropAddress) ? dropAddress + " (Doorstep)" : pickupLoc;
 
   async function bookDirect(){
-    var isDemo = authToken.startsWith("demo_");
+    var isGuest = !authToken || authToken.startsWith("demo_");
     var endpoint, body;
-    if(isDemo){
-      var demoPhone = authToken.split("_")[1] || userProfile.phone || "";
+    if(isGuest){
+      var guestPhone = bfPhone || (authToken && authToken.split("_")[1]) || userProfile.phone || "";
       endpoint = "/payment/guest-direct";
-      body = { phone: demoPhone, name: userProfile.name||"", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
+      body = { phone: guestPhone, name: bfName || userProfile.name || "", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
     } else {
       endpoint = "/payment/direct";
       body = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
     }
     var result = await apiFetch(endpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
-    if(result.token){ authToken = result.token; localStorage.setItem("dds_token", authToken); }
+    if(result.token){ authToken = result.token; setAuthToken(authToken); }
     myBookingIds.push(result.bookingId);
     cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup:{date:priceResult.pickup}, drop:{date:priceResult.drop}, total:priceResult.total, status:"pending_kyc" });
     window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+(depositFee?"\nRefundable Deposit (Paid Now): ₹"+depositFee : "")+(couponDiscount?"\nCoupon ("+appliedCoupon.code+"): -₹"+couponDiscount : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
     document.getElementById("sticky-total-bar").classList.remove("show");
+    showPostBookingOtp(guestPhone || userProfile.phone || "");
   }
 
-  // Try Razorpay first; fall back to direct booking if keys not configured
-  if(authToken.startsWith("demo_")){
+  // Guests (no login) and offline/demo tokens skip Razorpay and book directly — OTP verification happens after booking
+  if(!authToken || authToken.startsWith("demo_")){
     try { await bookDirect(); }
     catch(e){ if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;} alert("Booking failed: " + e.message); }
     return;
@@ -4593,6 +4660,41 @@ async function payExtension(){
       alert("Extension failed: " + e2.message);
     }
     btn.disabled = false; btn.textContent = "Pay & Extend →";
+  }
+}
+
+// ── POST-BOOKING OTP VERIFICATION ──
+var _pbPhone = "";
+function showPostBookingOtp(phone){
+  _pbPhone = phone || userProfile.phone || "";
+  if(!_pbPhone || userProfile.phoneVerified) return;
+  document.getElementById("pb-otp-send-row").style.display   = "block";
+  document.getElementById("pb-otp-verify-row").style.display = "none";
+  document.getElementById("pb-otp-msg").textContent = "";
+  document.getElementById("pb-otp-box").style.display = "block";
+}
+async function pbSendOtp(){
+  if(!_pbPhone) return;
+  try {
+    await apiFetch("/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:_pbPhone})});
+    document.getElementById("pb-otp-send-row").style.display   = "none";
+    document.getElementById("pb-otp-verify-row").style.display = "block";
+    document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#1a5fa8">OTP sent to +91 ' + esc(_pbPhone) + '</span>';
+  } catch(e){
+    document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not send OTP") + '</span>';
+  }
+}
+async function pbVerifyOtp(){
+  var otp = document.getElementById("pb-otp-code").value.trim();
+  if(!otp){ document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#c0392b">Enter the OTP.</span>'; return; }
+  try {
+    var resp = await apiFetch("/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:_pbPhone,otp:otp,name:userProfile.name||""})});
+    if(resp.token) setAuthToken(resp.token);
+    userProfile.phoneVerified = true;
+    document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#1a7a3c">✅ Mobile number verified.</span>';
+    setTimeout(function(){ document.getElementById("pb-otp-box").style.display = "none"; }, 1500);
+  } catch(e){
+    document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not verify OTP") + '</span>';
   }
 }
 

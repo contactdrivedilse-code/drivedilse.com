@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DriveDilSe — Self-Drive Platform</title>
+<title>DriveDilSe — Leasing Platform</title>
 <link rel="icon" type="image/png" href="assets/logo-icon.png">
 <link rel="apple-touch-icon" href="assets/logo-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
@@ -706,7 +706,7 @@ function csTick(){
       <!-- LEFT: Check-availability search card -->
       <div>
         <div class="hero-search-card">
-          <div class="hero-search-eyebrow">Looking for the best car rentals?</div>
+          <div class="hero-search-eyebrow">Looking for the best car Leases?</div>
           <div class="hero-search-heading">Book Self-Drive Cars in Pune</div>
           <div class="hero-city-row">📍 Pune</div>
           <div class="hero-trip-row">
@@ -793,7 +793,7 @@ function csTick(){
       </div>
       <!-- RIGHT: Headline + feature highlights -->
       <div>
-        <div class="hero-badge">&#10022; Self-Drive Platform</div>
+        <div class="hero-badge">&#10022; Leasing Platform</div>
         <h1>Drive on your<br>terms. <span class="gold">Your car.<br>Your freedom.</span></h1>
         <p class="hero-sub">Well-maintained self-drive cars across Pune. No driver, no hidden charges — pick your dates and take the wheel.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px">
@@ -921,7 +921,7 @@ function csTick(){
   <!-- DARK CTA BAND -->
   <section class="cta-band">
     <div class="cta-band-title">The road is waiting.<br><em>Your car is ready.</em></div>
-    <p class="cta-band-sub">Self-Drive Platform — pick up your keys, go wherever you want, return when you're done.</p>
+    <p class="cta-band-sub">Leasing Platform — pick up your keys, go wherever you want, return when you're done.</p>
     <div class="cta-band-btns">
       <button class="btn btn-y btn-md" onclick="goTo('fleet-sec')" style="min-width:180px;font-size:.95rem;padding:15px 32px">View Fleet</button>
       <a class="btn btn-green btn-md" href="https://wa.me/917709209765" target="_blank" style="text-decoration:none;min-width:180px;font-size:.95rem;padding:15px 32px">WhatsApp Us</a>
@@ -953,7 +953,7 @@ function csTick(){
           <img src="assets/logo-icon.png" alt="DriveDilSe">
           <span class="ftr2-brand-name">Drive<span style="color:#1a1407">DilSe</span></span>
         </div>
-        <div class="ftr2-tagline">Self-drive car rentals — doorstep delivery, transparent pricing, booked your way. Pune, India.</div>
+        <div class="ftr2-tagline">Self-drive car Leases — doorstep delivery, transparent pricing, booked your way. Pune, India.</div>
         <a class="ftr2-meta" href="https://maps.app.goo.gl/6eUfpDCcoDJkDaA66" target="_blank"><span class="ico">📍</span><span>Shop no.3, Abhang Society, Pandurang Nagar, Ambegaon Pathar, Suvarnayug Nagar, Pune, Maharashtra 411046</span></a>
         <a class="ftr2-meta" href="mailto:info@drivedilse.com"><span class="ico">✉️</span><span>info@drivedilse.com</span></a>
         <a class="ftr2-meta" href="tel:+917709209765"><span class="ico">📞</span><span>+91 77092 09765</span></a>
@@ -1224,7 +1224,7 @@ window.addEventListener('scroll',function(){
           <li>⛽ Fuel not included — return the car with the same fuel level as at pickup</li>
           <li>🛣️ Toll / FASTag charges not included — recharge your own FASTag</li>
           <li>📄 Traffic fines &amp; challans during the booking period are the guest's responsibility</li>
-          <li>⚠️ ₹2,000 compulsory damage deductible applies on any new damage during the rental</li>
+          <li>⚠️ ₹2,000 compulsory damage deductible applies on any new damage during the Lease</li>
           <li>🚫 Trip protection excludes off-road use, driving under influence, over-speeding &amp; illegal use</li>
         </ul>
       </div>
@@ -1387,7 +1387,7 @@ window.addEventListener('scroll',function(){
           </div>
           <div class="clause-box">
             <div style="font-size:.78rem;font-weight:700;color:var(--yd);margin-bottom:8px">⚠️ Damage Liability — <span id="clause-ded-amt">₹3,499</span></div>
-            <p id="clause-ded-txt" style="font-size:.76rem;color:#555;line-height:1.65;margin-bottom:12px">Please choose a Trip Protection option above. In case of any new damage during your rental, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair, unless you've added Trip Protection (₹1,999). Any damage exceeding this will be assessed separately.</p>
+            <p id="clause-ded-txt" style="font-size:.76rem;color:#555;line-height:1.65;margin-bottom:12px">Please choose a Trip Protection option above. In case of any new damage during your Lease, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair, unless you've added Trip Protection (₹1,999). Any damage exceeding this will be assessed separately.</p>
             <label style="display:flex;gap:10px;cursor:pointer;align-items:flex-start;margin-bottom:8px">
               <input type="checkbox" id="chk-ded" style="margin-top:2px;accent-color:var(--y);width:16px;height:16px">
               <span id="chk-ded-lbl" style="font-size:.76rem;font-weight:600;color:#333">I acknowledge the damage liability shown above.</span>
@@ -2784,7 +2784,7 @@ function calcPrice(){
   if(tpNo)  tpNo.classList.remove("on");
   var amtEl = document.getElementById("clause-ded-amt"), txtEl = document.getElementById("clause-ded-txt"), lblEl = document.getElementById("chk-ded-lbl");
   if(amtEl) amtEl.textContent = "₹3,499";
-  if(txtEl) txtEl.innerHTML = "Please choose a Trip Protection option above. In case of any new damage during your rental, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair, unless you've added Trip Protection (₹1,999). Any damage exceeding this will be assessed separately.";
+  if(txtEl) txtEl.innerHTML = "Please choose a Trip Protection option above. In case of any new damage during your Lease, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair, unless you've added Trip Protection (₹1,999). Any damage exceeding this will be assessed separately.";
   if(lblEl) lblEl.textContent = "I acknowledge the damage liability shown above.";
   updateDeliveryTotal();
 }
@@ -4527,11 +4527,11 @@ function selectTripProtection(choice){
   var amtEl = document.getElementById("clause-ded-amt"), txtEl = document.getElementById("clause-ded-txt"), lblEl = document.getElementById("chk-ded-lbl");
   if(choice === "yes"){
     if(amtEl) amtEl.textContent = "₹1,999";
-    if(txtEl) txtEl.innerHTML = "With Trip Protection, in case of any new damage during your rental, you are liable to pay only <strong>₹1,999</strong> towards the cost of repair. Any damage exceeding this will be assessed separately.";
+    if(txtEl) txtEl.innerHTML = "With Trip Protection, in case of any new damage during your Lease, you are liable to pay only <strong>₹1,999</strong> towards the cost of repair. Any damage exceeding this will be assessed separately.";
     if(lblEl) lblEl.textContent = "I acknowledge the ₹1,999 damage liability with Trip Protection.";
   } else if(choice === "no"){
     if(amtEl) amtEl.textContent = "₹3,499";
-    if(txtEl) txtEl.innerHTML = "In case of any new damage during your rental, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair. Any damage exceeding this will be assessed separately.";
+    if(txtEl) txtEl.innerHTML = "In case of any new damage during your Lease, you are liable to pay up to <strong>₹3,499</strong> towards the cost of repair. Any damage exceeding this will be assessed separately.";
     if(lblEl) lblEl.textContent = "I acknowledge the ₹3,499 damage liability.";
   }
   updateDeliveryTotal();

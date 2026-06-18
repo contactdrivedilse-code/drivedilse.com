@@ -919,12 +919,6 @@ async function renderSchedule(isLocal, c){
     ? pausesOnDay.join("") + selItems.map(function(it){ return scheduleRowHtml(it, isFleet); }).join("")
     : '<div class="empty" style="padding:20px"><div class="empty-icon">📭</div><div class="empty-msg">Nothing scheduled for this day.</div></div>';
 
-  var recentHtml = "";
-  if(bookings.length){
-    var recent = bookings.slice(0,8);
-    recentHtml = '<div class="card" style="margin-top:16px"><div class="card-hdr"><span class="card-title">Recent Bookings</span><button class="btn btn-g btn-sm" onclick="navTo(\'bookings\',document.querySelector(\'[data-tab=bookings]\'))">View All →</button></div><div class="table-wrap">'+buildTable(recent, true)+'</div></div>';
-  }
-
   c.innerHTML =
     '<div class="page-title">Today\'s Schedule</div>' +
     '<div class="page-sub">'+(isFleet ? "Manage pickups, drop-offs and pauses." : "View-only — Fleet Manager updates the schedule.")+'</div>' +
@@ -946,8 +940,7 @@ async function renderSchedule(isLocal, c){
         '<div class="card-hdr"><span class="card-title">'+selLbl+'</span>'+addBtn+'</div>' +
         '<div>'+detailBody+'</div>' +
       '</div>' +
-    '</div>' +
-    recentHtml;
+    '</div>';
 }
 
 function shiftScheduleMonth(delta){

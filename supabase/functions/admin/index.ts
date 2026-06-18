@@ -488,6 +488,27 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    // GET /tickets — support tickets raised from the chat widget
+    if (req.method === "GET" && path === "/tickets") {
+      const { data, error } = await sb.from("support_tickets").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return json((data ?? []).map((t: Record<string, unknown>) => ({
+        _id: t.id, id: t.id, name: t.name, phone: t.phone, email: t.email ?? "",
+        message: t.message, status: t.status, createdAt: t.created_at,
+      })));
+    }
+
+    // PUT /tickets/:id/resolve — mark a ticket resolved/open
+    const ticketResolveMatch = path.match(/^\/tickets\/([^/]+)\/resolve$/);
+    if (req.method === "PUT" && ticketResolveMatch) {
+      const { resolved } = await req.json();
+      const { error } = await sb.from("support_tickets")
+        .update({ status: resolved ? "resolved" : "open" })
+        .eq("id", ticketResolveMatch[1]);
+      if (error) throw error;
+      return json({ success: true });
+    }
+
     return json({ error: "Not found" }, 404);
   } catch (e) {
     return json({ error: (e as Error).message }, 500);

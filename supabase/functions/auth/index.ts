@@ -27,10 +27,28 @@ function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function sendSmsOtp(phone: string, otp: string) {
-  const apiKey = Deno.env.get("FAST2SMS_API_KEY");
-  if (!apiKey) { console.log(`[OTP] ${phone} → ${otp}`); return; }
-  await fetch(`https://www.fast2sms.com/dev/bulkV2?authorization=${apiKey}&variables_values=${otp}&route=otp&numbers=${phone}`);
+async function sendEmailOtp(email: string, otp: string) {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) { console.log(`[OTP] ${email} → ${otp}`); return; }
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "DriveDilSe <info@drivedilse.com>",
+      to: [email],
+      subject: `${otp} is your DriveDilSe verification code`,
+      html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+        <h2 style="color:#161616">DriveDilSe</h2>
+        <p>Your verification code is:</p>
+        <p style="font-size:28px;font-weight:800;letter-spacing:4px">${otp}</p>
+        <p style="color:#666;font-size:13px">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+      </div>`,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Failed to send OTP email (${res.status}): ${body}`);
+  }
 }
 
 function mapProfile(u: Record<string, unknown>) {
@@ -38,6 +56,7 @@ function mapProfile(u: Record<string, unknown>) {
     _id: u.id, id: u.id, phone: u.phone,
     name: u.name ?? "", dob: u.dob ?? "", email: u.email ?? "",
     phoneVerified: u.phone_verified ?? false,
+    emailVerified: u.phone_verified ?? false,
     profilePhotoUrl: u.profile_photo_url ?? "",
     kyc: {
       aadhaarUrl:      u.aadhaar_url      ?? "",
@@ -55,7 +74,7 @@ async function getUser(req: Request) {
   if (!token) return null;
   try {
     const payload = await verifyJwt(token, Deno.env.get("JWT_SECRET")!);
-    return payload as { id: string; phone: string };
+    return payload as { id: string; phone: string; email?: string };
   } catch { return null; }
 }
 
@@ -66,54 +85,72 @@ Deno.serve(async (req) => {
   const path = url.pathname.replace("/auth", "") || "/";
 
   try {
-    // POST /send-otp
+    // POST /send-otp — OTP is always emailed, never texted. `phone` is kept
+    // only as the contact field on the profile; `email` is the verification channel.
     if (req.method === "POST" && path === "/send-otp") {
-      const { phone } = await req.json();
-      if (!phone || !/^[6-9]\d{9}$/.test(phone))
+      const { phone, email } = await req.json();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return json({ error: "Invalid email address" }, 400);
+      if (phone && !/^[6-9]\d{9}$/.test(phone))
         return json({ error: "Invalid Indian mobile number" }, 400);
 
       const otp       = generateOtp();
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const emailLc   = String(email).trim().toLowerCase();
 
-      const { data: existing } = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
-      if (existing) {
-        await sb.from("profiles").update({ otp, otp_expiry: otpExpiry }).eq("id", (existing as Record<string, string>).id);
-      } else {
-        await sb.from("profiles").insert({ id: crypto.randomUUID(), phone, otp, otp_expiry: otpExpiry });
+      // Look up by email first (the identity key for OTP); fall back to phone
+      // so an existing phone-only profile (e.g. from a guest booking) gets merged.
+      let { data: existing } = await sb.from("profiles").select("id").eq("email", emailLc).maybeSingle();
+      if (!existing && phone) {
+        const byPhone = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
+        existing = byPhone.data;
       }
 
-      await sendSmsOtp(phone, otp);
+      if (existing) {
+        const updates: Record<string, unknown> = { otp, otp_expiry: otpExpiry, email: emailLc };
+        if (phone) updates.phone = phone;
+        await sb.from("profiles").update(updates).eq("id", (existing as Record<string, string>).id);
+      } else {
+        await sb.from("profiles").insert({ id: crypto.randomUUID(), phone: phone || null, email: emailLc, otp, otp_expiry: otpExpiry });
+      }
+
+      await sendEmailOtp(emailLc, otp);
       return json({ success: true, message: "OTP sent" });
     }
 
     // POST /verify-otp
     if (req.method === "POST" && path === "/verify-otp") {
-      const { phone, otp, name } = await req.json();
+      const { phone, otp, name, email } = await req.json();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return json({ error: "Invalid email address" }, 400);
+      const emailLc = String(email).trim().toLowerCase();
 
-      const { data: user } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
+      const { data: user } = await sb.from("profiles").select("*").eq("email", emailLc).maybeSingle();
       const u = user as Record<string, unknown> | null;
       // Test-OTP bypass is OFF unless explicitly enabled. Previously it
-      // defaulted to "1234" for ANY phone, allowing account takeover.
+      // defaulted to "1234" for ANY identity, allowing account takeover.
       const testOtp = Deno.env.get("TEST_OTP");
       const isTestOtp = Deno.env.get("ALLOW_TEST_OTP") === "true" && !!testOtp && otp === testOtp;
       if (!u) {
         // Auto-create profile for test OTP
         if (!isTestOtp) return json({ error: "Invalid or expired OTP" }, 400);
         const id = crypto.randomUUID();
-        await sb.from("profiles").insert({ id, phone, name: name ?? "", phone_verified: true });
+        await sb.from("profiles").insert({ id, phone: phone || null, email: emailLc, name: name ?? "", phone_verified: true });
         const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
-        const token = await signJwt({ id, phone }, JWT_SECRET, 30 * 24 * 60 * 60);
-        return json({ token, user: { _id: id, id, phone, name: name ?? "", phoneVerified: true, kyc: { status: "pending" } } });
+        const token = await signJwt({ id, phone: phone ?? "", email: emailLc }, JWT_SECRET, 30 * 24 * 60 * 60);
+        return json({ token, user: { _id: id, id, phone: phone ?? "", email: emailLc, name: name ?? "", phoneVerified: true, emailVerified: true, kyc: { status: "pending" } } });
       }
       if (!isTestOtp && (u.otp !== otp || !u.otp_expiry || new Date(u.otp_expiry as string) < new Date()))
         return json({ error: "Invalid or expired OTP" }, 400);
 
       const updates: Record<string, unknown> = { otp: "", otp_expiry: null, phone_verified: true };
       if (name && !u.name) updates.name = name;
+      if (phone && !u.phone) updates.phone = phone;
       await sb.from("profiles").update(updates).eq("id", u.id);
 
       const JWT_SECRET = Deno.env.get("JWT_SECRET")!;
-      const token = await signJwt({ id: u.id, phone }, JWT_SECRET, 30 * 24 * 60 * 60);
+      const finalPhone = (updates.phone as string) ?? (u.phone as string) ?? "";
+      const token = await signJwt({ id: u.id, phone: finalPhone, email: emailLc }, JWT_SECRET, 30 * 24 * 60 * 60);
       return json({ token, user: await signProfileKyc(mapProfile({ ...u, ...updates })) });
     }
 

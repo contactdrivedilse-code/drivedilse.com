@@ -4175,8 +4175,9 @@ function setDeliveryMode(mode, btn){
     pickupSec.style.display = "none";
     dropSec.style.display = "none";
     var name = mode === "airport" ? AIRPORT_LABEL : STATION_LABEL;
+    var flat = mode === "airport" ? 1600 : 1200;
     fixedNote.style.display = "block";
-    fixedNote.textContent = "🚐 Round trip: Hub ⇄ " + name;
+    fixedNote.textContent = "🚐 Round trip: Hub ⇄ " + name + " · Flat ₹" + flat;
   }
   calcAndShowDeliveryTotal();
 }
@@ -4282,16 +4283,16 @@ function calcAndShowDeliveryTotal(){
                   ' &nbsp;·&nbsp; ~'+totalKm.toFixed(1)+' km total: ₹'+fee.toLocaleString("en-IN");
     }
   } else if(deliveryMode === "airport" || deliveryMode === "railway"){
-    // Fixed round trip: Hub ⇄ Airport/Railway Station (no customer location needed)
+    // Flat round-trip fee: Hub ⇄ Airport/Railway Station (no customer location needed)
     var dest = deliveryMode === "airport"
-      ? {lat:AIRPORT_LAT, lon:AIRPORT_LON, label:AIRPORT_LABEL}
-      : {lat:STATION_LAT, lon:STATION_LON, label:STATION_LABEL};
+      ? {lat:AIRPORT_LAT, lon:AIRPORT_LON, label:AIRPORT_LABEL, flatFee:1600}
+      : {lat:STATION_LAT, lon:STATION_LON, label:STATION_LABEL, flatFee:1200};
     var oneWayKm = roadKm(HUB_LAT, HUB_LON, dest.lat, dest.lon);
     var roundTripKm3 = oneWayKm * 2;
     deliveryAddress = dest.label;
     pickupDist = oneWayKm; dropDist = 0; dropAddress = "";
-    fee = calcDeliveryFee(roundTripKm3);
-    breakdown = 'Hub ⇄ '+dest.label+': ~'+oneWayKm.toFixed(1)+' km one-way &nbsp;·&nbsp; ~'+roundTripKm3.toFixed(1)+' km round trip: ₹'+fee.toLocaleString("en-IN");
+    fee = dest.flatFee;
+    breakdown = 'Hub ⇄ '+dest.label+' &nbsp;·&nbsp; Flat round-trip fee: ₹'+fee.toLocaleString("en-IN");
   } else {
     // Round trip to same location: hub→location→hub
     var roundTripKm = pickupDist * 2;

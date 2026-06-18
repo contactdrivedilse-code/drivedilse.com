@@ -40,6 +40,7 @@ function mapCoupon(c: Record<string, unknown>) {
     _id: c.id, id: c.id, code: c.code, title: c.title,
     description: c.description ?? "", type: c.type, value: c.value,
     minAmount: c.min_amount ?? 0, active: c.active, createdAt: c.created_at,
+    newCustomerOnly: c.new_customer_only ?? false,
   };
 }
 
@@ -364,12 +365,13 @@ Deno.serve(async (req) => {
     // POST /coupons — create coupon (admin only)
     if (req.method === "POST" && path === "/coupons") {
       if (!isAdmin) return json({ error: "Admin access required" }, 403);
-      const { code, title, description, type, value, minAmount, active } = await req.json();
+      const { code, title, description, type, value, minAmount, active, newCustomerOnly } = await req.json();
       if (!code || !title || !value) return json({ error: "code, title and value required" }, 400);
       const { data, error } = await sb.from("coupons").insert({
         id: crypto.randomUUID(), code: String(code).toUpperCase().trim(), title,
         description: description ?? "", type: type === "flat" ? "flat" : "percent",
         value, min_amount: minAmount ?? 0, active: active !== false,
+        new_customer_only: newCustomerOnly === true,
       }).select("*").maybeSingle();
       if (error) throw error;
       return json(mapCoupon(data as Record<string, unknown>), 201);
@@ -388,6 +390,7 @@ Deno.serve(async (req) => {
       if (body.value       !== undefined) updates.value       = body.value;
       if (body.minAmount   !== undefined) updates.min_amount  = body.minAmount;
       if (body.active      !== undefined) updates.active      = body.active;
+      if (body.newCustomerOnly !== undefined) updates.new_customer_only = body.newCustomerOnly === true;
       const { data, error } = await sb.from("coupons").update(updates).eq("id", couponEditMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Coupon not found" }, 404);

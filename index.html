@@ -4428,6 +4428,7 @@ function renderOffersList(){
           '<div class="coupon-title">'+esc(o.title)+'</div>' +
           (o.description ? '<div class="coupon-desc">'+esc(o.description)+'</div>' : '') +
           (minTxt ? '<div class="coupon-desc">'+minTxt+'</div>' : '') +
+          (o.newCustomerOnly ? '<div class="coupon-desc" style="color:#1a5fa8;font-weight:700">🆕 New customers only — verify phone with OTP to apply</div>' : '') +
         '</div>' +
         '<div style="font-weight:800;color:var(--yd);font-size:.78rem;white-space:nowrap">'+off+'</div>' +
       '</div>' +
@@ -4444,6 +4445,17 @@ function applyCouponCode(code){
   if(!found){ alert("Invalid or expired coupon code."); return; }
   if(found.minAmount && priceResult.total < found.minAmount){
     alert("This coupon requires a minimum booking value of ₹"+found.minAmount.toLocaleString("en-IN")+".");
+    return;
+  }
+  // New-customer-only coupons require a real OTP-verified signup (not guest checkout) — enforced server-side too
+  if(found.newCustomerOnly && (!authToken || authToken.startsWith("demo_"))){
+    closeModal("offers-modal");
+    document.getElementById("ql-msg") && (document.getElementById("ql-name-row").style.display = "block");
+    openQuickLogin(function(){ applyCouponCode(code); });
+    setTimeout(function(){
+      var msg = document.getElementById("ql-msg");
+      if(msg) msg.innerHTML = '<span style="color:#1a5fa8">🆕 "'+esc(code)+'" is for new customers — verify your phone with OTP to apply it.</span>';
+    }, 50);
     return;
   }
   var raw = found.type === "flat" ? found.value : Math.round(priceResult.total * found.value / 100);

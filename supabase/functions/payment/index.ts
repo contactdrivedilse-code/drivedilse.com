@@ -34,13 +34,25 @@ function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
   return { base, gst, total, discount, days };
 }
 
-async function applyCoupon(baseTotal: number, code: unknown): Promise<{ discount: number; code: string | null }> {
+// `verifiedUserId` must come from a real (non-guest) OTP-verified JWT — guest/demo bookings never pass one,
+// so "new customer only" coupons can only be applied once the customer completes phone+OTP signup.
+async function applyCoupon(
+  baseTotal: number,
+  code: unknown,
+  ctx: { verifiedUserId?: string } = {},
+): Promise<{ discount: number; code: string | null }> {
   if (typeof code !== "string" || !code.trim()) return { discount: 0, code: null };
   const { data } = await sb.from("coupons").select("*").eq("code", code.toUpperCase().trim()).eq("active", true).maybeSingle();
   const c = data as Record<string, unknown> | null;
   if (!c) return { discount: 0, code: null };
   const minAmount = (c.min_amount as number) ?? 0;
   if (baseTotal < minAmount) return { discount: 0, code: null };
+  if (c.new_customer_only) {
+    if (!ctx.verifiedUserId) return { discount: 0, code: null };
+    const { data: priorBooking } = await sb.from("bookings").select("id")
+      .eq("user_id", ctx.verifiedUserId).limit(1).maybeSingle();
+    if (priorBooking) return { discount: 0, code: null };
+  }
   const raw = c.type === "flat" ? (c.value as number) : Math.round(baseTotal * (c.value as number) / 100);
   const discount = Math.max(0, Math.min(raw, baseTotal));
   return { discount, code: c.code as string };
@@ -155,7 +167,7 @@ Deno.serve(async (req) => {
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof odc === "number" && odc > 0 ? odc : 0;
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
       const total = baseTotal + deliveryFee - couponDiscount;
 
       const order = await razorpayCreate({ amount: total * 100, currency: "INR", receipt: makeBookingId(), notes: { carId, phone: user.phone } });
@@ -186,7 +198,7 @@ Deno.serve(async (req) => {
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string });
       const total = baseTotal + deliveryFee - couponDiscount;
       const bookingId = makeBookingId();
 
@@ -233,7 +245,7 @@ Deno.serve(async (req) => {
 
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string });
       const total = baseTotal + deliveryFee - couponDiscount;
       const bookingId = makeBookingId();
 

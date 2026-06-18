@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       return json((data ?? []).map((c: Record<string, unknown>) => ({
         code: c.code, title: c.title, description: c.description ?? "",
         type: c.type, value: c.value, minAmount: c.min_amount ?? 0,
+        newCustomerOnly: c.new_customer_only ?? false,
       })));
     }
 

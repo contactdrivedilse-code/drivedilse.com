@@ -391,6 +391,10 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         <input type="checkbox" id="cpm-active" style="width:18px;height:18px" checked>
         <label class="lbl" style="margin:0" for="cpm-active">Active (visible to customers)</label>
       </div>
+      <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="cpm-new-customer" style="width:18px;height:18px">
+        <label class="lbl" style="margin:0" for="cpm-new-customer">New customers only (requires phone + OTP verification to apply)</label>
+      </div>
     </div>
 
     <div class="modal-footer" style="margin-top:16px">
@@ -1406,6 +1410,7 @@ async function renderCoupons(isLocal, c){
         '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
           '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">🏷️ '+valueLbl+'</span>' +
           (cp.minAmount ? '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">Min ₹'+cp.minAmount+'</span>' : '') +
+          (cp.newCustomerOnly ? '<span style="font-size:.7rem;background:#eaf2ff;border:1px solid #b9d3f5;color:#1a5fa8;padding:3px 9px;border-radius:20px">🆕 New customers only</span>' : '') +
         '</div>' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
           '<button class="btn '+(cp.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCouponActive(\''+cp._id+'\','+(!cp.active)+')">'+(cp.active?"Deactivate":"Activate")+'</button>' +
@@ -1435,6 +1440,7 @@ function openAddCouponModal(){
   document.getElementById("cpm-value").value  = "";
   document.getElementById("cpm-min").value    = "";
   document.getElementById("cpm-active").checked = true;
+  document.getElementById("cpm-new-customer").checked = false;
   document.getElementById("coupon-modal").classList.add("open");
 }
 
@@ -1448,6 +1454,7 @@ function openEditCouponModal(cp){
   document.getElementById("cpm-value").value  = cp.value || "";
   document.getElementById("cpm-min").value    = cp.minAmount || "";
   document.getElementById("cpm-active").checked = !!cp.active;
+  document.getElementById("cpm-new-customer").checked = !!cp.newCustomerOnly;
   document.getElementById("coupon-modal").classList.add("open");
 }
 
@@ -1462,6 +1469,7 @@ async function submitCouponForm(){
   var value  = parseFloat(document.getElementById("cpm-value").value);
   var min    = parseFloat(document.getElementById("cpm-min").value) || 0;
   var active = document.getElementById("cpm-active").checked;
+  var newCustomerOnly = document.getElementById("cpm-new-customer").checked;
 
   if(!code)  { toast("Coupon code is required.", "error"); return; }
   if(!title) { toast("Title is required.", "error"); return; }
@@ -1470,7 +1478,7 @@ async function submitCouponForm(){
   var btn = document.getElementById("cpm-submit-btn");
   btn.textContent = "Saving..."; btn.disabled = true;
   try {
-    var body = JSON.stringify({ code, title, description: desc, type, value, minAmount: min, active });
+    var body = JSON.stringify({ code, title, description: desc, type, value, minAmount: min, active, newCustomerOnly });
     if(id){
       await adminFetch("/admin/coupons/"+id, { method:"PUT", headers:{"Content-Type":"application/json"}, body });
     } else {

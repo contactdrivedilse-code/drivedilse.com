@@ -35,20 +35,20 @@ function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
 }
 
 // `verifiedUserId` must come from a real (non-guest) OTP-verified JWT — guest/demo bookings never pass one,
-// so "new customer only" coupons can only be applied once the customer completes phone+OTP signup.
+// so ANY coupon now requires the customer to complete phone+OTP signup/login before it can be applied.
 async function applyCoupon(
   baseTotal: number,
   code: unknown,
   ctx: { verifiedUserId?: string } = {},
 ): Promise<{ discount: number; code: string | null }> {
   if (typeof code !== "string" || !code.trim()) return { discount: 0, code: null };
+  if (!ctx.verifiedUserId) return { discount: 0, code: null };
   const { data } = await sb.from("coupons").select("*").eq("code", code.toUpperCase().trim()).eq("active", true).maybeSingle();
   const c = data as Record<string, unknown> | null;
   if (!c) return { discount: 0, code: null };
   const minAmount = (c.min_amount as number) ?? 0;
   if (baseTotal < minAmount) return { discount: 0, code: null };
   if (c.new_customer_only) {
-    if (!ctx.verifiedUserId) return { discount: 0, code: null };
     const { data: priorBooking } = await sb.from("bookings").select("id")
       .eq("user_id", ctx.verifiedUserId).limit(1).maybeSingle();
     if (priorBooking) return { discount: 0, code: null };

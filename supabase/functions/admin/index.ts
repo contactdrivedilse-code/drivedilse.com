@@ -61,10 +61,13 @@ function mapBooking(b: Record<string, unknown>) {
     },
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
+    source: b.source ?? "website", pickupDone: b.pickup_done ?? false, dropDone: b.drop_done ?? false,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: [],
   };
 }
+
+function makeBookingId(): string { return "DS" + Date.now().toString(36).toUpperCase(); }
 
 async function getAdmin(req: Request, requireAdmin = false) {
   const url = new URL(req.url);
@@ -352,6 +355,81 @@ Deno.serve(async (req) => {
       const { error } = await sb.from("car_pauses").delete().eq("id", deletePauseMatch[2]).eq("car_id", deletePauseMatch[1]);
       if (error) throw error;
       return json({ success: true });
+    }
+
+    // POST /fleet/:id/manual-booking — record a booking made elsewhere (e.g. Zoomcar)
+    // so the car shows as unavailable here and it appears on the daily schedule.
+    const manualBkMatch = path.match(/^\/fleet\/([^/]+)\/manual-booking$/);
+    if (req.method === "POST" && manualBkMatch) {
+      const carId = manualBkMatch[1];
+      const { source, customer, phone, pickupDate, dropDate, pickupLocation, dropLocation, notes } = await req.json();
+      if (!pickupDate || !dropDate) return json({ error: "pickupDate and dropDate required" }, 400);
+
+      const { data: car } = await sb.from("cars").select("id, name, price_per_day").eq("id", carId).maybeSingle();
+      if (!car) return json({ error: "Car not found" }, 404);
+      const c = car as Record<string, unknown>;
+
+      const pickup = new Date(pickupDate), drop = new Date(dropDate);
+      if (!(drop > pickup)) return json({ error: "Drop date must be after pickup date" }, 400);
+      const pISO = pickup.toISOString(), dISO = drop.toISOString();
+
+      const { data: conflict } = await sb.from("bookings").select("id").eq("car_id", carId)
+        .in("status", ["confirmed", "active", "completed", "pending_kyc"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
+      if (conflict) return json({ error: "Car is already booked for these dates" }, 400);
+
+      const days = Math.max(1, Math.ceil((drop.getTime() - pickup.getTime()) / (24 * 3600000)));
+      const { data: booking, error } = await sb.from("bookings").insert({
+        id: crypto.randomUUID(), booking_id: makeBookingId(),
+        car_id: c.id, car_name: c.name,
+        customer: customer || (source || "External"), phone: phone || "",
+        pickup_date: pISO, pickup_location: pickupLocation || "",
+        drop_date: dISO, drop_location: dropLocation || "",
+        days, price_per_day: c.price_per_day, total: 0,
+        deposit: 0, discount: 0, delivery_fee: 0,
+        payment_status: "external", status: "confirmed",
+        source: source || "Manual", notes: notes || "",
+      }).select("*").maybeSingle();
+      if (error) throw error;
+      return json(mapBooking(booking as Record<string, unknown>), 201);
+    }
+
+    // GET /schedule/today — today's pickups & drop-offs for the checklist
+    if (req.method === "GET" && path === "/schedule/today") {
+      const now = new Date();
+      const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
+      const dayEnd   = new Date(now); dayEnd.setHours(23, 59, 59, 999);
+      const [{ data: pickups }, { data: drops }] = await Promise.all([
+        sb.from("bookings").select("*").neq("status", "cancelled")
+          .gte("pickup_date", dayStart.toISOString()).lte("pickup_date", dayEnd.toISOString()),
+        sb.from("bookings").select("*").neq("status", "cancelled")
+          .gte("drop_date", dayStart.toISOString()).lte("drop_date", dayEnd.toISOString()),
+      ]);
+      const items = [
+        ...(pickups ?? []).map((b: Record<string, unknown>) => ({
+          id: b.id, bookingId: b.booking_id, type: "pickup", time: b.pickup_date,
+          carName: b.car_name, customer: b.customer, phone: b.phone, location: b.pickup_location,
+          source: b.source ?? "website", done: !!b.pickup_done,
+        })),
+        ...(drops ?? []).map((b: Record<string, unknown>) => ({
+          id: b.id, bookingId: b.booking_id, type: "drop", time: b.drop_date,
+          carName: b.car_name, customer: b.customer, phone: b.phone, location: b.drop_location,
+          source: b.source ?? "website", done: !!b.drop_done,
+        })),
+      ];
+      items.sort((a, b) => new Date(a.time as string).getTime() - new Date(b.time as string).getTime());
+      return json(items);
+    }
+
+    // PUT /bookings/:id/checklist — tick off a pickup or drop on the daily schedule
+    const checklistMatch = path.match(/^\/bookings\/([^/]+)\/checklist$/);
+    if (req.method === "PUT" && checklistMatch) {
+      const { type, done } = await req.json();
+      if (type !== "pickup" && type !== "drop") return json({ error: "type must be pickup or drop" }, 400);
+      const col = type === "pickup" ? "pickup_done" : "drop_done";
+      const { data, error } = await sb.from("bookings").update({ [col]: !!done }).eq("id", checklistMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Booking not found" }, 404);
+      return json(mapBooking(data as Record<string, unknown>));
     }
 
     // GET /coupons — list all coupons (admin only)

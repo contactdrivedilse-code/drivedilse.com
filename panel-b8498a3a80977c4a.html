@@ -276,6 +276,38 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<!-- Manual / External Booking Modal (e.g. Zoomcar) -->
+<div class="modal-overlay" id="manual-bk-modal">
+  <div class="modal-box" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-title">Book Car Elsewhere — <span id="mb-car-name"></span></div>
+    <div style="margin-bottom:12px">
+      <label class="lbl">Booked Via</label>
+      <select class="inp" id="mb-source">
+        <option value="Zoomcar">Zoomcar</option>
+        <option value="Manual">Manual / Walk-in</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:12px">
+      <div style="flex:1"><label class="lbl">Pickup Date &amp; Time</label><input class="inp" type="datetime-local" id="mb-pickup"></div>
+      <div style="flex:1"><label class="lbl">Drop Date &amp; Time</label><input class="inp" type="datetime-local" id="mb-drop"></div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:12px">
+      <div style="flex:1"><label class="lbl">Pickup Location</label><input class="inp" type="text" id="mb-pickup-loc" placeholder="Optional"></div>
+      <div style="flex:1"><label class="lbl">Drop Location</label><input class="inp" type="text" id="mb-drop-loc" placeholder="Optional"></div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:12px">
+      <div style="flex:1"><label class="lbl">Customer Name</label><input class="inp" type="text" id="mb-customer" placeholder="Optional"></div>
+      <div style="flex:1"><label class="lbl">Phone</label><input class="inp" type="text" id="mb-phone" placeholder="Optional"></div>
+    </div>
+    <div><label class="lbl">Note (optional)</label><input class="inp" type="text" id="mb-note" placeholder="e.g. Zoomcar trip ref #12345"></div>
+    <div class="modal-footer">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="closeManualBookingModal()">Cancel</button>
+      <button class="btn btn-y btn-sm" style="flex:1" onclick="submitManualBooking()">Block Car</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ── ADD / EDIT CAR MODAL ── -->
@@ -665,11 +697,13 @@ async function renderTab(tab){
 
 async function renderDashboard(isLocal, c){
   var stats = [];
+  var todaySchedule = [];
   if(!isLocal){
     try {
       var dash = await adminFetch("/admin/dashboard");
       allBookings = await adminFetch("/admin/bookings");
       updateBadges();
+      try { todaySchedule = await adminFetch("/admin/schedule/today"); } catch(e){}
       var paidBks = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
       var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);
       var gst = Math.round(rev * 18 / 118);
@@ -730,7 +764,52 @@ async function renderDashboard(isLocal, c){
       : '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#15803d;display:flex;align-items:center;gap:8px">✅ <strong>Live Backend Connected</strong> — showing real data from database.</div>'
     ) +
     '<div class="stat-grid">' + statHtml + '</div>' +
+    renderScheduleCard(todaySchedule, isLocal) +
     recentHtml;
+}
+
+function renderScheduleCard(items, isLocal){
+  if(isLocal) return "";
+  var todayLbl = new Date().toLocaleDateString("en-IN",{weekday:"long",day:"2-digit",month:"long"});
+  if(!items.length){
+    return '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">📅 Today\'s Schedule — '+todayLbl+'</span></div>' +
+      '<div class="empty" style="padding:24px"><div class="empty-icon">✅</div><div class="empty-msg">No pickups or drop-offs scheduled for today.</div></div></div>';
+  }
+  var rows = items.map(function(it){
+    var time = new Date(it.time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+    var label = (it.type==="pickup" ? "🚗 Pickup" : "🏁 Drop-off") + " of <strong>" + esc(it.carName) + "</strong> at " + time;
+    var sub = [it.customer, it.phone, it.location].filter(Boolean).map(esc).join(" · ");
+    var srcBadge = it.source && it.source!=="website" ? ' <span style="font-size:.68rem;background:#eef2ff;color:#3730a3;border-radius:20px;padding:2px 8px;margin-left:4px">'+esc(it.source)+'</span>' : '';
+    return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 4px;border-bottom:1px solid var(--b)">' +
+      '<input type="checkbox" '+(it.done?"checked":"")+' onchange="toggleScheduleItem(\''+it.id+'\',\''+it.type+'\',this.checked,this)" style="width:20px;height:20px;margin-top:2px;cursor:pointer">' +
+      '<div style="flex:1'+(it.done?";opacity:.5;text-decoration:line-through":"")+'">' +
+        '<div style="font-size:.88rem">'+label+srcBadge+'</div>' +
+        (sub ? '<div style="font-size:.76rem;color:var(--ts);margin-top:2px">'+sub+'</div>' : '') +
+      '</div>' +
+    '</div>';
+  }).join("");
+  var doneCount = items.filter(function(it){ return it.done; }).length;
+  return '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">📅 Today\'s Schedule — '+todayLbl+'</span><span style="font-size:.78rem;color:var(--ts)">'+doneCount+' / '+items.length+' done</span></div>' +
+    '<div>'+rows+'</div></div>';
+}
+
+async function toggleScheduleItem(bookingId, type, done, checkboxEl){
+  var row = checkboxEl.parentElement.querySelector("div");
+  try {
+    await adminFetch("/admin/bookings/"+bookingId+"/checklist", {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ type: type, done: done })
+    });
+    if(row){
+      row.style.opacity = done ? .5 : 1;
+      row.style.textDecoration = done ? "line-through" : "none";
+    }
+    toast(done ? "Marked done." : "Marked pending.", "success");
+  } catch(e){
+    checkboxEl.checked = !done;
+    toast("Failed: "+e.message, "error");
+  }
 }
 
 async function renderBookings(statusFilter, isLocal, c){
@@ -1243,6 +1322,7 @@ async function renderFleet(isLocal, c){
           '<button class="btn '+(car.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCar(\''+car._id+'\')">'+(car.active?"Deactivate":"Activate")+'</button>' +
           '<button class="btn btn-g btn-sm" style="flex:1" onclick="openPauseModal(\''+car._id+'\',\''+car.name+'\')">⏸ Pause</button>' +
         '</div>' +
+        '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick="openManualBookingModal(\''+car._id+'\',\''+car.name+'\')">📋 Book Elsewhere (Zoomcar etc.)</button>' +
         '<button class="btn btn-y btn-sm" style="width:100%" onclick=\'openEditCarModal('+JSON.stringify(car)+')\'>✏️ Edit / Photos</button>' +
       '</div>' +
     '</div>';
@@ -1304,6 +1384,55 @@ async function submitPause(){
     });
     toast("Pause added.", "success");
     closePauseModal();
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+// ── MANUAL / EXTERNAL BOOKING (e.g. Zoomcar) ──
+var manualBkCarId = null;
+function openManualBookingModal(carId, carName){
+  manualBkCarId = carId;
+  document.getElementById("mb-car-name").textContent  = carName;
+  document.getElementById("mb-source").value     = "Zoomcar";
+  document.getElementById("mb-pickup").value     = "";
+  document.getElementById("mb-drop").value       = "";
+  document.getElementById("mb-pickup-loc").value = "";
+  document.getElementById("mb-drop-loc").value   = "";
+  document.getElementById("mb-customer").value   = "";
+  document.getElementById("mb-phone").value      = "";
+  document.getElementById("mb-note").value       = "";
+  document.getElementById("manual-bk-modal").classList.add("open");
+}
+function closeManualBookingModal(){ document.getElementById("manual-bk-modal").classList.remove("open"); }
+
+async function submitManualBooking(){
+  var source     = document.getElementById("mb-source").value;
+  var pickup     = document.getElementById("mb-pickup").value;
+  var drop       = document.getElementById("mb-drop").value;
+  var pickupLoc  = document.getElementById("mb-pickup-loc").value;
+  var dropLoc    = document.getElementById("mb-drop-loc").value;
+  var customer   = document.getElementById("mb-customer").value;
+  var phone      = document.getElementById("mb-phone").value;
+  var note       = document.getElementById("mb-note").value;
+  if(!pickup||!drop){ toast("Select pickup and drop date/time.", "error"); return; }
+  if(new Date(drop) <= new Date(pickup)){ toast("Drop must be after pickup.", "error"); return; }
+  if(adminToken === "local"){
+    toast("Demo mode — manual bookings need the live backend.", "error");
+    return;
+  }
+  try {
+    await adminFetch("/admin/fleet/"+manualBkCarId+"/manual-booking", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        source: source, customer: customer, phone: phone,
+        pickupDate: pickup, dropDate: drop,
+        pickupLocation: pickupLoc, dropLocation: dropLoc, notes: note
+      })
+    });
+    toast("Car blocked for "+source+".", "success");
+    closeManualBookingModal();
+    allBookings = [];
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }

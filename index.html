@@ -4187,6 +4187,14 @@ function haversineKm(lat1,lon1,lat2,lon2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+// Straight-line (haversine) distance always undercounts actual road travel —
+// e.g. Hub→Pune Airport is ~15.8km as-the-crow-flies but ~18km by road.
+// Apply a fixed correction factor so delivery fee quotes match real driving distance.
+var ROAD_DISTANCE_FACTOR = 1.15;
+function roadKm(lat1,lon1,lat2,lon2){
+  return haversineKm(lat1,lon1,lat2,lon2) * ROAD_DISTANCE_FACTOR;
+}
+
 function calcDeliveryFee(km){
   // ₹700 covers the first 7 km of total delivery+pickup travel, ₹20/km beyond
   if(km <= 7) return 700;
@@ -4247,7 +4255,7 @@ function initHeroDropMap(){
 }
 
 function reverseAndUpdateFee(ll, which, hintId){
-  var dist = haversineKm(HUB_LAT, HUB_LON, ll.lat, ll.lng);
+  var dist = roadKm(HUB_LAT, HUB_LON, ll.lat, ll.lng);
   if(which==="pickup"){ pickupDist=dist; } else { dropDist=dist; }
   fetch("https://nominatim.openstreetmap.org/reverse?lat="+ll.lat+"&lon="+ll.lng+"&format=json&zoom=17",
         {headers:{"User-Agent":"DriveDilSe/1.0"}})
@@ -4278,7 +4286,7 @@ function calcAndShowDeliveryTotal(){
     var dest = deliveryMode === "airport"
       ? {lat:AIRPORT_LAT, lon:AIRPORT_LON, label:AIRPORT_LABEL}
       : {lat:STATION_LAT, lon:STATION_LON, label:STATION_LABEL};
-    var oneWayKm = haversineKm(HUB_LAT, HUB_LON, dest.lat, dest.lon);
+    var oneWayKm = roadKm(HUB_LAT, HUB_LON, dest.lat, dest.lon);
     var roundTripKm3 = oneWayKm * 2;
     deliveryAddress = dest.label;
     pickupDist = oneWayKm; dropDist = 0; dropAddress = "";
@@ -4333,7 +4341,7 @@ async function calcDeliveryCharge(which, ctx){
     var data = await r.json();
     if(!data.length) throw new Error("Address not found. Try a more specific address in Pune.");
     var lat  = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
-    var dist = haversineKm(HUB_LAT, HUB_LON, lat, lon);
+    var dist = roadKm(HUB_LAT, HUB_LON, lat, lon);
     if(which==="drop"){
       dropDist=dist; dropAddress=addr;
       if(heroDropMarker&&heroDropMap){ heroDropMarker.setLatLng([lat,lon]); heroDropMap.setView([lat,lon],15); }

@@ -2014,12 +2014,24 @@ async function renderTickets(isLocal, c){
 
   var cards = tickets.map(function(t){
     var isResolved = t.status === "resolved";
-    return '<div class="card" style="margin-bottom:10px'+(isResolved?';opacity:.6':'')+'">' +
+    var replyBlock = t.replyMessage
+      ? '<div style="font-size:.82rem;margin-top:10px;background:#fff8e1;border:1px solid var(--y);border-radius:8px;padding:10px 12px">' +
+          '<div style="font-weight:700;font-size:.74rem;color:var(--ts);margin-bottom:4px">YOUR REPLY</div>' + esc(t.replyMessage) +
+          (t.replyImageUrl ? '<div style="margin-top:8px"><img src="'+t.replyImageUrl+'" style="max-width:160px;border-radius:8px;display:block" /></div>' : '') +
+        '</div>'
+      : '';
+    return '<div class="card" style="margin-bottom:10px'+(isResolved?';opacity:.7':'')+'">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
-        '<div>' +
+        '<div style="flex:1">' +
           '<div style="font-weight:800;font-size:.92rem">'+esc(t.name)+' <span class="sbadge '+(isResolved?"sb-act":"sb-pend")+'" style="margin-left:8px">'+(isResolved?"Resolved":"Open")+'</span></div>' +
           '<div style="font-size:.78rem;color:var(--ts);margin-top:2px">📞 '+esc(t.phone)+(t.email?' &nbsp;·&nbsp; ✉️ '+esc(t.email):'')+' &nbsp;·&nbsp; '+new Date(t.createdAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})+'</div>' +
           '<div style="font-size:.85rem;margin-top:10px;background:var(--wg);border-radius:8px;padding:10px 12px">'+esc(t.message)+'</div>' +
+          replyBlock +
+          '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+            '<input type="text" class="inp" id="reply-msg-'+t._id+'" placeholder="Type a reply..." style="flex:1;min-width:160px;font-size:.8rem;padding:8px 10px" />' +
+            '<input type="file" id="reply-img-'+t._id+'" accept="image/*" style="font-size:.74rem;max-width:140px" />' +
+            '<button class="btn btn-g btn-sm" onclick="replyToTicket(\''+t._id+'\')">Send Reply</button>' +
+          '</div>' +
         '</div>' +
         '<button class="btn '+(isResolved?"btn-g":"btn-y")+' btn-sm" style="white-space:nowrap" onclick="toggleTicketResolved(\''+t._id+'\','+(!isResolved)+')">'+(isResolved?"Reopen":"Mark Resolved")+'</button>' +
       '</div>' +
@@ -2033,6 +2045,21 @@ async function renderTickets(isLocal, c){
     '<div style="margin-top:16px">' +
     (cards || '<div class="empty"><div class="empty-icon">🎫</div><div class="empty-msg">No support tickets yet.</div></div>') +
     '</div>';
+}
+
+async function replyToTicket(id){
+  var msgEl = document.getElementById("reply-msg-"+id);
+  var imgEl = document.getElementById("reply-img-"+id);
+  var message = msgEl.value.trim();
+  if(!message){ toast("Type a reply first.", "error"); return; }
+  try {
+    var fd = new FormData();
+    fd.append("message", message);
+    if(imgEl.files[0]) fd.append("image", imgEl.files[0]);
+    await adminFetch("/admin/tickets/"+id+"/reply", { method:"PUT", body:fd });
+    toast("Reply sent to customer.", "success");
+    navTo("tickets", document.querySelector('[data-tab="tickets"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
 async function toggleTicketResolved(id, resolved){

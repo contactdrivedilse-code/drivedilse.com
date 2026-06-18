@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
+import { sendEmail } from "../_shared/email.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -495,6 +496,7 @@ Deno.serve(async (req) => {
       return json((data ?? []).map((t: Record<string, unknown>) => ({
         _id: t.id, id: t.id, name: t.name, phone: t.phone, email: t.email ?? "",
         message: t.message, status: t.status, createdAt: t.created_at,
+        replyMessage: t.reply_message ?? "", replyImageUrl: t.reply_image_url ?? "", repliedAt: t.replied_at,
       })));
     }
 
@@ -502,11 +504,71 @@ Deno.serve(async (req) => {
     const ticketResolveMatch = path.match(/^\/tickets\/([^/]+)\/resolve$/);
     if (req.method === "PUT" && ticketResolveMatch) {
       const { resolved } = await req.json();
-      const { error } = await sb.from("support_tickets")
-        .update({ status: resolved ? "resolved" : "open" })
-        .eq("id", ticketResolveMatch[1]);
+      const { data: ticket, error } = await sb.from("support_tickets")
+        .update({ status: resolved ? "resolved" : "open", resolved_at: resolved ? new Date().toISOString() : null })
+        .eq("id", ticketResolveMatch[1])
+        .select()
+        .single();
       if (error) throw error;
+
+      if (resolved && ticket.email) {
+        await sendEmail(
+          ticket.email,
+          "Your support ticket has been resolved — DriveDilSe",
+          `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+            <h2 style="color:#161616">DriveDilSe</h2>
+            <p>Hi ${ticket.name}, your support ticket has been marked as resolved.</p>
+            <p style="background:#f6f6f6;border-radius:8px;padding:12px"><strong>Your message:</strong><br/>${ticket.message}</p>
+            ${ticket.reply_message ? `<p style="background:#fff8e1;border-radius:8px;padding:12px"><strong>Our response:</strong><br/>${ticket.reply_message}</p>` : ""}
+            <p>If this didn't resolve your issue, just raise a new ticket and we'll take another look.</p>
+          </div>`,
+        ).catch((e) => console.error("Resolve email failed:", e));
+      }
+
       return json({ success: true });
+    }
+
+    // PUT /tickets/:id/reply — admin/fleet reply to a ticket, optionally with an image
+    const ticketReplyMatch = path.match(/^\/tickets\/([^/]+)\/reply$/);
+    if (req.method === "PUT" && ticketReplyMatch) {
+      const ticketId = ticketReplyMatch[1];
+      const fd = await req.formData();
+      const message = (fd.get("message") as string | null)?.trim() || "";
+      const image = fd.get("image") as File | null;
+      if (!message) return json({ error: "Reply message is required" }, 400);
+
+      let imageUrl = "";
+      if (image) {
+        const ext = image.type.includes("png") ? "png" : image.type.includes("webp") ? "webp" : "jpg";
+        const storagePath = `${ticketId}/${Date.now()}.${ext}`;
+        const buf = new Uint8Array(await image.arrayBuffer());
+        const { error: upErr } = await sb.storage.from("tickets").upload(storagePath, buf, { contentType: image.type, upsert: false });
+        if (upErr) throw upErr;
+        imageUrl = sb.storage.from("tickets").getPublicUrl(storagePath).data.publicUrl;
+      }
+
+      const { data: ticket, error } = await sb.from("support_tickets")
+        .update({ reply_message: message, reply_image_url: imageUrl || null, replied_at: new Date().toISOString() })
+        .eq("id", ticketId)
+        .select()
+        .single();
+      if (error) throw error;
+
+      if (ticket.email) {
+        await sendEmail(
+          ticket.email,
+          "We've replied to your support ticket — DriveDilSe",
+          `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+            <h2 style="color:#161616">DriveDilSe</h2>
+            <p>Hi ${ticket.name}, our team has replied to your ticket:</p>
+            <p style="background:#fff8e1;border-radius:8px;padding:12px">${message}</p>
+            ${imageUrl ? `<p><img src="${imageUrl}" style="max-width:100%;border-radius:8px" /></p>` : ""}
+            <p style="color:#666;font-size:13px">Original message: ${ticket.message}</p>
+          </div>`,
+        ).catch((e) => console.error("Reply email failed:", e));
+      }
+
+      return json({ success: true, replyImageUrl: imageUrl });
     }
 
     return json({ error: "Not found" }, 404);

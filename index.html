@@ -1160,9 +1160,11 @@ function csTick(){
   </div>
   <div class="chat-body">
     <div class="chat-pane on" id="chat-pane-faq">
-      <p class="chat-pane-intro">Tap a question for an instant answer, or raise a ticket if you need more help.</p>
-      <div id="chat-faq-list"></div>
+      <p class="chat-pane-intro">Type your question, or tap one below for an instant answer.</p>
+      <input class="chat-input" id="chat-ask-input" placeholder="Ask anything... e.g. airport delivery charge" onkeydown="if(event.key==='Enter')askChatBot()" />
+      <button class="btn btn-y btn-sm" style="width:100%;margin-bottom:12px" onclick="askChatBot()">Ask</button>
       <div class="chat-answer-box" id="chat-faq-answer" style="display:none"></div>
+      <div id="chat-faq-list"></div>
     </div>
     <div class="chat-pane" id="chat-pane-ticket">
       <p class="chat-pane-intro">Tell us what's up — our team will get back to you shortly.</p>
@@ -1208,14 +1210,48 @@ function toggleFaq(btn){
 
 // ── HELP CHAT WIDGET ──
 var CHAT_PRESET_FAQS = [
-  {q:"What documents do I need to book a car?", a:"You need a valid Aadhaar Card and a Driving Licence. These are uploaded once during profile verification and carry over to all future bookings."},
-  {q:"What is the minimum booking duration?", a:"The minimum booking duration is 6 hours. Pricing is calculated proportionally, so you only pay for the time you actually use."},
-  {q:"Are there any hidden charges?", a:"No. All prices shown are GST-inclusive with no hidden fees. The only additional liability is the Rs 2,000 damage deductible, charged only if a new damage occurs during your trip."},
-  {q:"Do I get a better rate for longer trips?", a:"Yes! Rates improve automatically: 5% off for 2–3 days, 8% for 4–5 days, 10% for 6–7 days, 15% for up to 14 days, 20% for up to 21 days, and 25% for longer trips."},
-  {q:"How does the OTP handover work?", a:"After booking and KYC verification, our representative meets you at handover and gives you a Check-In OTP. At return, a Check-Out OTP closes the trip."},
-  {q:"Can I cancel or extend my booking?", a:"Confirmed bookings can be cancelled from your profile. Extensions can be booked and paid for in-app while your trip is active."},
-  {q:"How much is delivery to the airport/railway station?", a:"Delivery to/from the airport is a flat ₹1,600 round trip, and ₹1,200 round trip for the railway station — no hidden distance charges."}
+  {q:"What documents do I need to book a car?", kw:"documents aadhaar driving licence dl id proof kyc verification papers required", a:"You need a valid Aadhaar Card and a Driving Licence. These are uploaded once during profile verification and carry over to all future bookings."},
+  {q:"What is the minimum booking duration?", kw:"minimum booking duration hours shortest least time how long", a:"The minimum booking duration is 6 hours. Pricing is calculated proportionally, so you only pay for the time you actually use."},
+  {q:"Are there any hidden charges?", kw:"hidden charges extra fees gst included damage deductible deposit price transparent", a:"No. All prices shown are GST-inclusive with no hidden fees. The only additional liability is the Rs 2,000 damage deductible, charged only if a new damage occurs during your trip."},
+  {q:"Do I get a better rate for longer trips?", kw:"discount longer trips days rate cheaper weekly multi day offer", a:"Yes! Rates improve automatically: 5% off for 2–3 days, 8% for 4–5 days, 10% for 6–7 days, 15% for up to 14 days, 20% for up to 21 days, and 25% for longer trips."},
+  {q:"How does the OTP handover work?", a:"After booking and KYC verification, our representative meets you at handover and gives you a Check-In OTP. At return, a Check-Out OTP closes the trip.", kw:"otp handover checkin checkout pickup return process how works verification code"},
+  {q:"Can I cancel or extend my booking?", kw:"cancel cancellation extend extension change booking modify reschedule", a:"Confirmed bookings can be cancelled from your profile. Extensions can be booked and paid for in-app while your trip is active."},
+  {q:"How much is delivery to the airport/railway station?", kw:"airport railway station delivery charge fee flat price pickup drop", a:"Delivery to/from the airport is a flat ₹1,600 round trip, and ₹1,200 round trip for the railway station — no hidden distance charges."},
+  {q:"How much does home delivery cost?", kw:"home delivery charge fee cost km distance address doorstep", a:"Home/doorstep delivery is ₹700 flat for up to 7km, plus ₹20/km beyond that — calculated from our hub to your address."},
+  {q:"What happens if the car gets damaged?", kw:"damage accident dent scratch deductible insurance liability claim", a:"You're liable only for a flat ₹2,000 damage deductible per trip if new damage occurs — covering everything from minor dents to major repairs. No surprise bills."},
+  {q:"What fuel policy do you follow?", kw:"fuel petrol diesel full tank policy refill", a:"Cars are handed over with a certain fuel level — please return with the same level, or refuelling charges plus a small convenience fee will apply."},
+  {q:"Which areas/cities do you operate in?", kw:"city location area pune where operate available", a:"We currently operate in Pune and can deliver anywhere within the permitted territory of India — just choose your delivery mode while booking."},
+  {q:"What payment methods do you accept?", kw:"payment pay method upi card netbanking razorpay online", a:"We accept UPI, debit/credit cards, and net banking through our secure Razorpay checkout. Full payment is collected at the time of booking confirmation."},
+  {q:"Can I drive outside Pune / for a long trip?", kw:"outstation long trip outside pune highway travel permitted territory", a:"Yes, you can travel anywhere within the permitted territory of India. Just make sure to return the car to the agreed location on time."},
+  {q:"What if I'm late returning the car?", kw:"late return delay extra hours overtime charge", a:"Late returns are charged proportionally for the extra time used. If you know you'll be late, extend your booking in-app to avoid any confusion."},
+  {q:"Is there an age limit to rent a car?", kw:"age limit minimum eligibility eligible years old", a:"You must be at least 21 years old with a valid driving licence held for a minimum period to book a car with us."}
 ];
+
+function chatScoreMatch(query, item){
+  var qWords = query.toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(function(w){return w.length>2;});
+  var hay = (item.q + " " + (item.kw||"")).toLowerCase();
+  var score = 0;
+  qWords.forEach(function(w){ if(hay.indexOf(w) !== -1) score++; });
+  return score;
+}
+
+function askChatBot(){
+  var input = document.getElementById("chat-ask-input");
+  var query = input.value.trim();
+  var box = document.getElementById("chat-faq-answer");
+  if(!query) return;
+  var best = null, bestScore = 0;
+  CHAT_PRESET_FAQS.forEach(function(item){
+    var s = chatScoreMatch(query, item);
+    if(s > bestScore){ bestScore = s; best = item; }
+  });
+  box.style.display = "block";
+  if(best && bestScore > 0){
+    box.innerHTML = '<div style="font-weight:700;margin-bottom:6px">'+best.q+'</div>'+best.a;
+  } else {
+    box.innerHTML = "I couldn't find an exact answer for that. Tap <b>🎫 Raise Ticket</b> above and our team will personally help you out.";
+  }
+}
 
 function toggleChatWidget(){
   var w = document.getElementById("chatWidget");
@@ -1231,7 +1267,7 @@ function toggleChatWidget(){
 function showChatAnswer(i){
   var box = document.getElementById("chat-faq-answer");
   box.style.display = "block";
-  box.textContent = CHAT_PRESET_FAQS[i].a;
+  box.innerHTML = '<div style="font-weight:700;margin-bottom:6px">'+CHAT_PRESET_FAQS[i].q+'</div>'+CHAT_PRESET_FAQS[i].a;
 }
 
 function setChatPane(pane, btn){

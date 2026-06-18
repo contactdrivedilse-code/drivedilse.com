@@ -115,7 +115,9 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 
 /* ---- HEADER ---- */
 .hdr{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #ede9db;padding:0 48px;height:80px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(200,160,0,.08)}
-.logo-img{height:60px;width:auto;cursor:pointer;filter:brightness(1.1)}
+.logo-img{height:60px;width:auto;cursor:pointer;filter:brightness(1.1);animation:logoSpinIn 1s cubic-bezier(.2,.7,.3,1)}
+.logo-spin-cs{animation:logoSpinIn 1s cubic-bezier(.2,.7,.3,1)}
+@keyframes logoSpinIn{0%{transform:rotate(-340deg) scale(.4);opacity:0}65%{opacity:1}100%{transform:rotate(0) scale(1);opacity:1}}
 .logo-text{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:var(--y);letter-spacing:-.5px}
 .logo-wrap{display:flex;align-items:center;gap:10px;cursor:pointer}
 .logo-brand{font-family:'Montserrat',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:-.3px;color:var(--t)}
@@ -621,7 +623,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 <!-- ======== COMING SOON GATE ======== -->
 <div id="comingSoonOverlay" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#15110a,#241c0d 60%,#15110a);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:'Inter',sans-serif">
   <div style="max-width:480px;width:100%">
-    <img src="assets/logo.png" alt="DriveDilSe" style="height:64px;margin-bottom:28px">
+    <img src="assets/logo.png" alt="DriveDilSe" class="logo-spin-cs" style="height:64px;margin-bottom:28px">
     <div style="font-family:'Playfair Display',serif;font-weight:900;font-size:clamp(1.8rem,6vw,2.6rem);color:#fff;line-height:1.15;margin-bottom:10px">
       We're <span style="color:#f5c518">Launching Soon</span>
     </div>

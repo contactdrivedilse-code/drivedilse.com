@@ -686,14 +686,6 @@ function csTick(){
       <span class="nav-link" onclick="goTo('how-sec')">How It Works</span>
       <span class="nav-link" onclick="goTo('faq-sec')">FAQ</span>
       <a class="nav-link" href="policy.html" style="text-decoration:none">Policies</a>
-      <div class="nav-dropdown">
-        <button class="nav-dropdown-btn" onclick="toggleNavDropdown(event,this)">Admin</button>
-        <div class="nav-dropdown-menu">
-          <a class="nav-dropdown-item" href="admin.html?role=admin" target="_blank"><span>🔑</span>Admin Login</a>
-          <hr class="nav-dropdown-divider">
-          <a class="nav-dropdown-item" href="admin.html?role=fleet" target="_blank"><span>🚗</span>Fleet Manager</a>
-        </div>
-      </div>
       <button class="btn btn-g btn-sm" onclick="showProfile()">&#128100; My Profile</button>
       <button class="btn btn-y btn-sm" onclick="goTo('search-sec')">Book Now</button>
     </nav>
@@ -972,7 +964,6 @@ function csTick(){
         <a onclick="goTo('how-sec')">About Us</a>
         <a href="mailto:info@drivedilse.com">Contact Us</a>
         <a href="https://wa.me/917709209765" target="_blank">WhatsApp Support</a>
-        <a href="admin.html">Fleet Manager</a>
       </div>
       <div class="ftr2-col">
         <div class="ftr2-h">Policies</div>
@@ -1532,19 +1523,6 @@ window.addEventListener('scroll',function(){
   </div>
 </div>
 
-<!-- ══════════ ADMIN LOGIN MODAL ══════════ -->
-<div class="modal-bg" id="admin-login-modal">
-  <div class="modal" style="width:380px;text-align:center">
-    <button class="modal-close" onclick="closeModal('admin-login-modal')">✕</button>
-    <img src="assets/logo-icon.png" style="height:60px;margin-bottom:18px" alt="DriveDilSe">
-    <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:4px">Admin Login</div>
-    <div style="font-size:.8rem;color:var(--ts);margin-bottom:22px">DriveDilSe Management Panel</div>
-    <div style="text-align:left;margin-bottom:12px"><label class="lbl">Password</label><input type="password" id="adm-pass" class="inp" placeholder="Enter password" onkeydown="if(event.key==='Enter')doAdminLogin()"></div>
-    <div style="font-size:.72rem;color:#aaa;margin-bottom:14px">Demo: <strong>drivedilse2024</strong></div>
-    <button class="btn btn-y btn-lg" onclick="doAdminLogin()">Login →</button>
-  </div>
-</div>
-
 <!-- ══════════ PAUSE CALENDAR MODAL ══════════ -->
 <!-- ══════════ QUICK OTP LOGIN MODAL ══════════ -->
 <div class="modal-bg" id="quick-login-modal">
@@ -1913,29 +1891,6 @@ window.addEventListener('scroll',function(){
       <button class="btn btn-g btn-md" onclick="closeModal('pause-modal')" style="flex:1">Cancel</button>
     </div>
   </div>
-</div>
-
-<!-- ══════════ ADMIN PANEL ══════════ -->
-<div id="pg-admin" class="page">
-  <div class="admin-hdr">
-    <div style="display:flex;align-items:center;gap:14px">
-      <div style="width:32px;height:32px;background:var(--y);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900">D</div>
-      <span style="color:var(--y);font-size:.78rem;font-weight:700;letter-spacing:2px;text-transform:uppercase">DriveDilSe Admin</span>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button onclick="goHome()" style="background:transparent;border:1px solid #555;color:#ccc;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:'Inter',sans-serif">← Site</button>
-      <button onclick="goHome()" style="background:transparent;border:1px solid #555;color:#ccc;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:'Inter',sans-serif">Logout</button>
-    </div>
-  </div>
-  <div class="admin-tabs">
-    <button class="atab on" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
-    <button class="atab" onclick="switchTab('ongoing',this)">🟢 Ongoing</button>
-    <button class="atab" onclick="switchTab('upcoming',this)">🟡 Upcoming</button>
-    <button class="atab" onclick="switchTab('completed',this)">✅ Completed</button>
-    <button class="atab" onclick="switchTab('vehicles',this)">🚗 Vehicles</button>
-    <button class="atab" onclick="switchTab('customers',this)">👥 Customers</button>
-  </div>
-  <div class="admin-body" id="admin-content"></div>
 </div>
 
 <script>
@@ -3073,194 +3028,6 @@ async function vmSubmit(){
   window._lastVerifyMsg = "Profile Verification - DriveDilSe\n\nName: "+name+"\nPhone: "+phone+"\nDOB: "+dob+"\nAadhaar: Uploaded\nDriving Licence: Verified (18+)\n\nPlease verify and send Check-In OTP.";
   document.getElementById("vm-form-wrap").style.display = "none";
   document.getElementById("vm-done-wrap").style.display = "block";
-}
-// ── ADMIN ──
-function showAdminLogin(){ openModal("admin-login-modal"); }
-async function doAdminLogin(){
-  var pass = document.getElementById("adm-pass").value;
-  try {
-    var resp = await fetch(API + "/admin/login", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ password: pass })
-    });
-    var data = await resp.json();
-    if(!resp.ok) throw new Error(data.error||"Invalid password");
-    adminToken = data.token;
-    localStorage.setItem("dds_admin_token", adminToken);
-    closeModal("admin-login-modal");
-    showPage("pg-admin");
-    renderTab("dashboard");
-  } catch(e){
-    // Fallback to local check for demo
-    if(pass === "drivedilse2024"){
-      adminToken = "local-admin";
-      closeModal("admin-login-modal");
-      showPage("pg-admin");
-      renderTab("dashboard");
-    } else {
-      alert("Incorrect password.");
-    }
-  }
-}
-function switchTab(tab, btn){
-  document.querySelectorAll(".atab").forEach(function(b){ b.classList.remove("on"); });
-  btn.classList.add("on");
-  renderTab(tab);
-}
-function badge(s){
-  var m = {ongoing:"sb-on",upcoming:"sb-up",completed:"sb-done",active:"sb-act",confirmed:"sb-up",cancelled:"sb-done",pending:"sb-pend"};
-  return '<span class="sbadge ' + (m[s]||"sb-done") + '">' + s + '</span>';
-}
-function bkTable(bks, showActions){
-  if(!bks.length) return '<div style="padding:32px;text-align:center;color:var(--ts)">No bookings</div>';
-  var rows = bks.map(function(b){
-    var carName  = b.carName || (b.car && b.car.name) || "—";
-    var custName = b.customer || (b.user && b.user.name) || "—";
-    var phone    = b.phone    || (b.user && b.user.phone) || "—";
-    var pickup   = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
-    var drop     = b.drop   && b.drop.date   ? b.drop.date   : b.drop;
-    var actCell  = showActions ?
-      '<td><select onchange="updateBookingStatus(\''+b._id+'\',this.value)" style="font-size:.75rem;border:1px solid var(--b);border-radius:6px;padding:2px 6px">' +
-        ['pending','confirmed','active','completed','cancelled'].map(function(s){ return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>'; }).join('') +
-      '</select></td>' : '';
-    return '<tr>' +
-      '<td style="font-weight:700;color:var(--yd)">' + (b.bookingId||b._id||"—") + '</td>' +
-      '<td>' + carName + '</td>' +
-      '<td>' + custName + '</td>' +
-      '<td>' + phone + '</td>' +
-      '<td style="color:var(--ts);font-size:.77rem;white-space:nowrap">' + new Date(pickup).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) + '</td>' +
-      '<td style="color:var(--ts);font-size:.77rem;white-space:nowrap">' + new Date(drop).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) + '</td>' +
-      '<td style="font-weight:700">' + inr(b.total) + '</td>' +
-      '<td>' + badge(b.status) + '</td>' +
-      actCell +
-    '</tr>';
-  }).join("");
-  var actHdr = showActions ? '<th>Action</th>' : '';
-  return '<div style="overflow-x:auto"><table class="adm-table"><thead><tr>' +
-    '<th>ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th><th>Total</th><th>Status</th>' + actHdr +
-    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
-}
-async function updateBookingStatus(id, status){
-  try {
-    await fetch(API + "/admin/bookings/" + id + "/status", {
-      method: "PUT",
-      headers: {"Content-Type":"application/json","Authorization":"Bearer "+adminToken},
-      body: JSON.stringify({ status: status })
-    });
-  } catch(e){ alert("Failed to update: " + e.message); }
-}
-async function renderTab(tab){
-  var c = document.getElementById("admin-content");
-  c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ts)">Loading...</div>';
-  var isLocal = adminToken === "local-admin";
-
-  if(tab === "dashboard"){
-    var stats, ongoing=[], upcoming=[], completed=[];
-    if(!isLocal){
-      try {
-        var dash = await fetch(API+"/admin/dashboard",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
-        var bks  = await fetch(API+"/admin/bookings", {headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
-        ongoing   = bks.filter(function(b){ return b.status==="active"; });
-        upcoming  = bks.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; });
-        completed = bks.filter(function(b){ return b.status==="completed"; });
-        stats = [
-          [dash.totalCars,   "Total Vehicles", "🚗"],
-          [dash.totalBookings, "Total Bookings", "📋"],
-          [ongoing.length,   "Active Drives",  "🟢"],
-          [upcoming.length,  "Upcoming",       "🟡"],
-          [completed.length, "Completed",      "✅"],
-          [inr(dash.revenue), "Revenue",       "💰"]
-        ];
-      } catch(e){ isLocal = true; }
-    }
-    if(isLocal){
-      stats = [[FLEET.length,"Total Vehicles","🚗"],[0,"Bookings","📋"],[0,"Active","🟢"],[0,"Upcoming","🟡"],[0,"Completed","✅"],[inr(0),"Revenue","💰"]];
-    }
-    c.innerHTML =
-      '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">Overview</div>' +
-      '<div class="stat-grid">' +
-        stats.map(function(s){ return '<div class="card stat-card"><div style="font-size:1.4rem;margin-bottom:6px">'+s[2]+'</div><div class="stat-num">'+s[0]+'</div><div style="font-size:.72rem;color:var(--ts)">'+s[1]+'</div></div>'; }).join("") +
-      '</div>' +
-      (ongoing.length  ? '<div style="font-family:Georgia,serif;font-size:1.05rem;font-weight:900;margin-bottom:12px">🟢 Active Drives</div><div class="card" style="margin-bottom:24px;overflow:hidden">'+bkTable(ongoing,true)+'</div>' : '') +
-      (upcoming.length ? '<div style="font-family:Georgia,serif;font-size:1.05rem;font-weight:900;margin-bottom:12px">🟡 Upcoming Bookings</div><div class="card" style="overflow:hidden">'+bkTable(upcoming,true)+'</div>' : '');
-  } else if(tab === "ongoing"||tab === "upcoming"||tab === "completed"){
-    if(!isLocal){
-      try {
-        var bks2 = await fetch(API+"/admin/bookings",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
-        var statusFilter = {ongoing:"active",upcoming:["confirmed","pending"],completed:"completed"};
-        var filtered = bks2.filter(function(b){
-          var sf = statusFilter[tab];
-          return Array.isArray(sf) ? sf.indexOf(b.status)>-1 : b.status===sf;
-        });
-        var titles = {ongoing:"Active Drives",upcoming:"Upcoming Bookings",completed:"Completed Bookings"};
-        c.innerHTML = '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">'+titles[tab]+'</div><div class="card" style="overflow:hidden">'+bkTable(filtered,true)+'</div>';
-      } catch(e){ c.innerHTML = '<div style="padding:40px;text-align:center;color:#c0392b">Error loading bookings: '+esc(e.message)+'</div>'; }
-    } else {
-      c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ts)">Connect backend to view live bookings.</div>';
-    }
-  } else if(tab === "vehicles"){
-    var carsData = FLEET;
-    if(!isLocal){
-      try {
-        var apiCars = await fetch(API+"/admin/fleet",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
-        carsData = apiCars.map(mapApiCar).map(function(c,i){ c._id=apiCars[i]._id; return c; });
-      } catch(e){}
-    }
-    var cards = carsData.map(function(car){
-      return '<div class="v-card">' +
-        '<div class="v-img" style="background:linear-gradient(135deg,'+car.color+','+car.color+'66)">' +
-          '<span style="font-size:3rem">'+car.emoji+'</span>' +
-          '<div style="position:absolute;top:10px;right:10px"><span class="sbadge '+(car.active?"sb-act":"sb-pend")+'">'+(car.active?"Active":"Inactive")+'</span></div>' +
-        '</div>' +
-        '<div class="v-body">' +
-          '<div style="font-size:.9rem;font-weight:800;margin-bottom:4px">'+car.name+'</div>' +
-          '<div style="font-size:.82rem;color:var(--yd);font-weight:700;margin-bottom:8px">'+inr(Math.round(car.rate/24))+'/hr</div>' +
-          '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">' +
-            '<span class="pill">⚙️ '+car.tm+'</span><span class="pill">⛽ '+car.fuel+'</span><span class="pill">💺 '+car.seats+'</span>' +
-          '</div>' +
-          '<div style="display:flex;gap:8px">' +
-            '<button class="btn btn-g btn-sm" style="flex:1;font-size:.75rem" onclick="adminToggleCar(\''+car.id+'\')">'+(car.active?"Deactivate":"Activate")+'</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    }).join("");
-    c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900">Fleet Management</div></div><div class="v-grid">'+cards+'</div>';
-  } else if(tab === "customers"){
-    if(!isLocal){
-      try {
-        var custs = await fetch(API+"/admin/customers",{headers:{"Authorization":"Bearer "+adminToken}}).then(r=>r.json());
-        var rows = custs.map(function(u){
-          return '<tr>' +
-            '<td><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:var(--y);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0">'+(u.name?u.name[0]:"?")+'</div><span style="font-weight:700">'+(u.name||"—")+'</span></div></td>' +
-            '<td>'+u.phone+'</td>' +
-            '<td style="color:var(--ts)">'+(u.email||"—")+'</td>' +
-            '<td>'+(u.kyc&&u.kyc.status?u.kyc.status:"pending")+'</td>' +
-            '<td>' + (u.kyc&&u.kyc.status==="uploaded" ?
-              '<button class="btn btn-y btn-sm" onclick="approveKyc(\''+u._id+'\')">Approve KYC</button>' :
-              (u.kyc&&u.kyc.status==="verified"?'<span class="sbadge sb-act">Verified</span>':'<span class="sbadge sb-pend">Pending</span>')) + '</td>' +
-          '</tr>';
-        }).join("");
-        c.innerHTML = '<div style="font-family:Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:20px">Customers ('+custs.length+')</div><div class="card" style="overflow:hidden"><table class="adm-table"><thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>KYC Status</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
-      } catch(e){ c.innerHTML = '<div style="padding:40px;text-align:center;color:#c0392b">Error: '+esc(e.message)+'</div>'; }
-    } else {
-      c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ts)">Connect backend to view customers.</div>';
-    }
-  }
-}
-async function adminToggleCar(id){
-  if(adminToken !== "local-admin"){
-    try { await fetch(API+"/admin/fleet/"+id+"/toggle",{method:"PUT",headers:{"Authorization":"Bearer "+adminToken}}); } catch(e){}
-  } else {
-    for(var i=0;i<FLEET.length;i++){ if(FLEET[i].id===id){ FLEET[i].active=!FLEET[i].active; break; } }
-  }
-  renderTab("vehicles");
-}
-async function approveKyc(userId){
-  try {
-    await fetch(API+"/admin/customers/"+userId+"/kyc",{method:"PUT",headers:{"Content-Type":"application/json","Authorization":"Bearer "+adminToken},body:JSON.stringify({status:"verified"})});
-    renderTab("customers");
-  } catch(e){ alert("Failed: "+e.message); }
 }
 // ── PAUSE CALENDAR ──
 var pauseCarId = null;

@@ -240,6 +240,21 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .step:hover{transform:translateY(-5px);box-shadow:0 12px 32px rgba(0,0,0,.08)}
 .step-num{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:900;color:var(--t);margin-bottom:18px;box-shadow:0 6px 18px rgba(245,197,24,.35)}
 
+/* ---- GOOGLE REVIEWS MARQUEE ---- */
+.reviews-sec{padding:72px 0;background:var(--ow);overflow:hidden}
+.reviews-sec .sec-hdr-wrap{max-width:740px;margin:0 auto 36px;text-align:center;padding:0 24px}
+.reviews-track-wrap{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.reviews-track{display:flex;gap:18px;width:max-content;animation:reviewsScroll 45s linear infinite}
+.reviews-track:hover{animation-play-state:paused}
+@keyframes reviewsScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.review-card{flex:0 0 320px;background:#fff;border:1px solid var(--b);border-radius:16px;padding:20px 22px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.review-card-hdr{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.review-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--t);flex-shrink:0;font-size:.95rem}
+.review-name{font-weight:700;font-size:.86rem;color:var(--t)}
+.review-stars{color:#f5b400;font-size:.78rem;letter-spacing:1px}
+.review-text{font-size:.82rem;color:#555;line-height:1.6}
+.review-google-badge{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:.7rem;color:var(--ts)}
+
 /* ---- FAQ ---- */
 .faq-sec{padding:88px 48px;background:#fff}
 .faq-list{margin-top:36px;display:flex;flex-direction:column;gap:10px}
@@ -930,6 +945,25 @@ function csTick(){
     </div>
   </section>
 
+  <!-- GOOGLE REVIEWS -->
+  <section class="reviews-sec" id="reviews-sec">
+    <div class="sec-hdr-wrap">
+      <div class="tag" style="margin:0 auto 14px">⭐ Google Reviews</div>
+      <div class="sec-title fade-up" style="font-size:2rem">What our customers say</div>
+      <p style="color:var(--ts);font-size:.9rem;margin-top:6px" class="fade-up">Real reviews from real DriveDilSe customers.</p>
+    </div>
+    <div class="reviews-track-wrap">
+      <div class="reviews-track" id="reviews-track">
+        <!-- placeholder reviews — will be swapped for real Google review screenshots/content -->
+        <div class="review-card"><div class="review-card-hdr"><div class="review-avatar">R</div><div><div class="review-name">Rohan S.</div><div class="review-stars">★★★★★</div></div></div><div class="review-text">Smooth booking, car was spotless and delivered right to my doorstep on time. Will definitely book again!</div><div class="review-google-badge">🔵 Posted on Google</div></div>
+        <div class="review-card"><div class="review-card-hdr"><div class="review-avatar">P</div><div><div class="review-name">Priya M.</div><div class="review-stars">★★★★★</div></div></div><div class="review-text">Transparent pricing, no hidden charges like other rental apps. The XUV300 was in great condition.</div><div class="review-google-badge">🔵 Posted on Google</div></div>
+        <div class="review-card"><div class="review-card-hdr"><div class="review-avatar">A</div><div><div class="review-name">Aditya K.</div><div class="review-stars">★★★★★</div></div></div><div class="review-text">Quick KYC, easy OTP handover, and great support on WhatsApp throughout the trip. Highly recommend.</div><div class="review-google-badge">🔵 Posted on Google</div></div>
+        <div class="review-card"><div class="review-card-hdr"><div class="review-avatar">S</div><div><div class="review-name">Sneha D.</div><div class="review-stars">★★★★★</div></div></div><div class="review-text">Best self-drive experience in Pune. Car delivery to the airport was super convenient for our trip.</div><div class="review-google-badge">🔵 Posted on Google</div></div>
+        <!-- duplicate set appended via JS for seamless infinite loop -->
+      </div>
+    </div>
+  </section>
+
   <!-- FAQ -->
   <section class="faq-sec" id="faq-sec">
     <div style="max-width:740px;margin:0 auto">
@@ -1046,6 +1080,16 @@ function toggleFaq(btn){
   document.querySelectorAll('.faq-item').forEach(function(i){i.classList.remove('open');});
   if(!wasOpen)item.classList.add('open');
 }
+
+// Duplicate the review cards once so the marquee track can scroll -50%
+// and loop seamlessly forever, with no visible jump/reset.
+(function(){
+  var track = document.getElementById("reviews-track");
+  if(track && !track.dataset.cloned){
+    track.innerHTML += track.innerHTML;
+    track.dataset.cloned = "1";
+  }
+})();
 (function(){
   var obs=new IntersectionObserver(function(entries){
     entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});

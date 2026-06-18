@@ -249,6 +249,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="sidebar-section">Finance</div>
       <div class="nav-item" data-tab="revenue"   onclick="navTo('revenue',this)">  <span class="nav-icon">💰</span>Revenue</div>
       <div class="sidebar-section">Manage</div>
+      <div class="nav-item" data-tab="schedule"  onclick="navTo('schedule',this)"> <span class="nav-icon">📅</span>Today's Schedule</div>
       <div class="nav-item" data-tab="fleet"     onclick="navTo('fleet',this)">    <span class="nav-icon">🚗</span>Fleet</div>
       <div class="nav-item" data-tab="coupons"   onclick="navTo('coupons',this)">  <span class="nav-icon">🎁</span>Coupons</div>
       <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
@@ -280,6 +281,10 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 <div class="modal-overlay" id="manual-bk-modal">
   <div class="modal-box" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title">Book Car Elsewhere — <span id="mb-car-name"></span></div>
+    <div id="mb-car-select-wrap" style="margin-bottom:12px;display:none">
+      <label class="lbl">Car</label>
+      <select class="inp" id="mb-car-select"></select>
+    </div>
     <div style="margin-bottom:12px">
       <label class="lbl">Booked Via</label>
       <select class="inp" id="mb-source">
@@ -686,6 +691,8 @@ async function renderTab(tab){
     renderFaceVerify(c);
   } else if(tab === "revenue"){
     await renderRevenue(isLocal, c);
+  } else if(tab === "schedule"){
+    await renderSchedule(isLocal, c);
   } else if(tab === "fleet"){
     await renderFleet(isLocal, c);
   } else if(tab === "coupons"){
@@ -770,30 +777,38 @@ async function renderDashboard(isLocal, c){
 
 function renderScheduleCard(items, isLocal){
   if(isLocal) return "";
+  var isFleet = currentRole === "fleet";
   var todayLbl = new Date().toLocaleDateString("en-IN",{weekday:"long",day:"2-digit",month:"long"});
+  var viewAllBtn = '<button class="btn btn-g btn-sm" onclick="navTo(\'schedule\',document.querySelector(\'[data-tab=schedule]\'))">Open Full Schedule →</button>';
   if(!items.length){
-    return '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">📅 Today\'s Schedule — '+todayLbl+'</span></div>' +
+    return '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">📅 Today\'s Schedule — '+todayLbl+'</span>'+viewAllBtn+'</div>' +
       '<div class="empty" style="padding:24px"><div class="empty-icon">✅</div><div class="empty-msg">No pickups or drop-offs scheduled for today.</div></div></div>';
   }
-  var rows = items.map(function(it){
-    var time = new Date(it.time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
-    var label = (it.type==="pickup" ? "🚗 Pickup" : "🏁 Drop-off") + " of <strong>" + esc(it.carName) + "</strong> at " + time;
-    var sub = [it.customer, it.phone, it.location].filter(Boolean).map(esc).join(" · ");
-    var srcBadge = it.source && it.source!=="website" ? ' <span style="font-size:.68rem;background:#eef2ff;color:#3730a3;border-radius:20px;padding:2px 8px;margin-left:4px">'+esc(it.source)+'</span>' : '';
-    return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 4px;border-bottom:1px solid var(--b)">' +
-      '<input type="checkbox" '+(it.done?"checked":"")+' onchange="toggleScheduleItem(\''+it.id+'\',\''+it.type+'\',this.checked,this)" style="width:20px;height:20px;margin-top:2px;cursor:pointer">' +
-      '<div style="flex:1'+(it.done?";opacity:.5;text-decoration:line-through":"")+'">' +
-        '<div style="font-size:.88rem">'+label+srcBadge+'</div>' +
-        (sub ? '<div style="font-size:.76rem;color:var(--ts);margin-top:2px">'+sub+'</div>' : '') +
-      '</div>' +
-    '</div>';
-  }).join("");
+  var rows = items.map(function(it){ return scheduleRowHtml(it, isFleet); }).join("");
   var doneCount = items.filter(function(it){ return it.done; }).length;
-  return '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">📅 Today\'s Schedule — '+todayLbl+'</span><span style="font-size:.78rem;color:var(--ts)">'+doneCount+' / '+items.length+' done</span></div>' +
+  return '<div class="card" style="margin-top:8px"><div class="card-hdr"><span class="card-title">📅 Today\'s Schedule — '+todayLbl+'</span><span style="display:flex;align-items:center;gap:10px"><span style="font-size:.78rem;color:var(--ts)">'+doneCount+' / '+items.length+' done</span>'+viewAllBtn+'</span></div>' +
     '<div>'+rows+'</div></div>';
 }
 
+function scheduleRowHtml(it, isFleet){
+  var time = new Date(it.time).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+  var label = (it.type==="pickup" ? "🚗 Pickup" : "🏁 Drop-off") + " of <strong>" + esc(it.carName) + "</strong> at " + time;
+  var sub = [it.customer, it.phone, it.location].filter(Boolean).map(esc).join(" · ");
+  var srcBadge = it.source && it.source!=="website" ? ' <span style="font-size:.68rem;background:#eef2ff;color:#3730a3;border-radius:20px;padding:2px 8px;margin-left:4px">'+esc(it.source)+'</span>' : '';
+  var checkboxHtml = isFleet
+    ? '<input type="checkbox" '+(it.done?"checked":"")+' onchange="toggleScheduleItem(\''+it.id+'\',\''+it.type+'\',this.checked,this)" style="width:20px;height:20px;margin-top:2px;cursor:pointer">'
+    : '<span style="font-size:1.1rem;margin-top:1px" title="View only — Fleet Manager updates this">'+(it.done?"✅":"⏳")+'</span>';
+  return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 4px;border-bottom:1px solid var(--b)">' +
+    checkboxHtml +
+    '<div style="flex:1'+(it.done?";opacity:.5;text-decoration:line-through":"")+'">' +
+      '<div style="font-size:.88rem">'+label+srcBadge+'</div>' +
+      (sub ? '<div style="font-size:.76rem;color:var(--ts);margin-top:2px">'+sub+'</div>' : '') +
+    '</div>' +
+  '</div>';
+}
+
 async function toggleScheduleItem(bookingId, type, done, checkboxEl){
+  if(currentRole !== "fleet"){ toast("Admin view is read-only — Fleet Manager updates the schedule.", "error"); checkboxEl.checked = !done; return; }
   var row = checkboxEl.parentElement.querySelector("div");
   try {
     await adminFetch("/admin/bookings/"+bookingId+"/checklist", {
@@ -810,6 +825,142 @@ async function toggleScheduleItem(bookingId, type, done, checkboxEl){
     checkboxEl.checked = !done;
     toast("Failed: "+e.message, "error");
   }
+}
+
+var scheduleViewMonth = null;   // Date (1st of month being viewed)
+var scheduleSelDate   = null;   // "YYYY-MM-DD" selected day
+
+function fmtYmd(d){
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+async function renderSchedule(isLocal, c){
+  var isFleet = currentRole === "fleet";
+  var bookings = [];
+  var cars = [];
+  if(!isLocal){
+    try {
+      bookings = await adminFetch("/admin/bookings");
+      allBookings = bookings;
+      cars = await adminFetch("/admin/fleet");
+      allCars = cars;
+    } catch(e){ isLocal = true; }
+  }
+  if(isLocal){
+    bookings = DEMO_BOOKINGS.slice();
+    cars     = DEMO_FLEET.slice();
+  }
+
+  var today = new Date();
+  if(!scheduleViewMonth) scheduleViewMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  if(!scheduleSelDate)   scheduleSelDate   = fmtYmd(today);
+
+  // Build a map of "YYYY-MM-DD" -> {pickups, drops, pauses}
+  var dayMap = {};
+  function ensureDay(k){ if(!dayMap[k]) dayMap[k] = {pickup:0, drop:0, pause:0}; return dayMap[k]; }
+  bookings.forEach(function(b){
+    if(b.status === "cancelled") return;
+    if(b.pickupDate){ ensureDay(fmtYmd(new Date(b.pickupDate))).pickup++; }
+    if(b.dropDate){ ensureDay(fmtYmd(new Date(b.dropDate))).drop++; }
+  });
+  cars.forEach(function(car){
+    (car.pauses||[]).forEach(function(p){
+      var from = new Date(p.from), to = new Date(p.to);
+      for(var d = new Date(from.getFullYear(),from.getMonth(),from.getDate()); d <= to; d.setDate(d.getDate()+1)){
+        ensureDay(fmtYmd(d)).pause++;
+      }
+    });
+  });
+
+  // ── Calendar grid for scheduleViewMonth ──
+  var y = scheduleViewMonth.getFullYear(), m = scheduleViewMonth.getMonth();
+  var first = new Date(y, m, 1);
+  var startOffset = first.getDay(); // 0=Sun
+  var daysInMonth = new Date(y, m+1, 0).getDate();
+  var monthLbl = scheduleViewMonth.toLocaleDateString("en-IN",{month:"long",year:"numeric"});
+  var todayKey = fmtYmd(today);
+
+  var cells = "";
+  for(var i=0;i<startOffset;i++){ cells += '<div></div>'; }
+  for(var dnum=1; dnum<=daysInMonth; dnum++){
+    var key = y+"-"+String(m+1).padStart(2,"0")+"-"+String(dnum).padStart(2,"0");
+    var info = dayMap[key];
+    var dots = '';
+    if(info){
+      if(info.pickup) dots += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2563eb;margin:0 1px"></span>';
+      if(info.drop)   dots += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#16a34a;margin:0 1px"></span>';
+      if(info.pause)  dots += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ea580c;margin:0 1px"></span>';
+    }
+    var isToday = key === todayKey;
+    var isSel   = key === scheduleSelDate;
+    cells += '<div onclick="selectScheduleDay(\''+key+'\')" style="cursor:pointer;border-radius:8px;padding:8px 4px;text-align:center;border:1px solid '+(isSel?'var(--yd)':'var(--b)')+';background:'+(isSel?'#fff7e0':(isToday?'#f0f9ff':'#fff'))+'">' +
+      '<div style="font-size:.82rem;font-weight:'+(isToday?'800':'500')+'">'+dnum+'</div>' +
+      '<div style="height:8px;margin-top:2px">'+dots+'</div>' +
+    '</div>';
+  }
+  var weekHdr = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(function(w){
+    return '<div style="font-size:.7rem;color:var(--ts);text-align:center;font-weight:700">'+w+'</div>';
+  }).join("");
+
+  // ── Day detail list for scheduleSelDate ──
+  var selItems = [];
+  bookings.forEach(function(b){
+    if(b.status === "cancelled") return;
+    if(b.pickupDate && fmtYmd(new Date(b.pickupDate)) === scheduleSelDate){
+      selItems.push({id:b._id||b.id, type:"pickup", time:b.pickupDate, carName:b.carName, customer:b.customer, phone:b.phone, location:b.pickupLocation, source:b.source, done:b.pickupDone});
+    }
+    if(b.dropDate && fmtYmd(new Date(b.dropDate)) === scheduleSelDate){
+      selItems.push({id:b._id||b.id, type:"drop", time:b.dropDate, carName:b.carName, customer:b.customer, phone:b.phone, location:b.dropLocation, source:b.source, done:b.dropDone});
+    }
+  });
+  selItems.sort(function(a,b){ return new Date(a.time) - new Date(b.time); });
+  var pausesOnDay = [];
+  cars.forEach(function(car){
+    (car.pauses||[]).forEach(function(p){
+      var from = fmtYmd(new Date(p.from)), to = fmtYmd(new Date(p.to));
+      if(scheduleSelDate >= from && scheduleSelDate <= to){
+        pausesOnDay.push('<div style="font-size:.82rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 10px;margin-bottom:6px">⏸ <strong>'+esc(car.name)+'</strong> paused'+(p.note?' — '+esc(p.note):'')+'</div>');
+      }
+    });
+  });
+  var selLbl = new Date(scheduleSelDate+"T00:00:00").toLocaleDateString("en-IN",{weekday:"long",day:"2-digit",month:"long",year:"numeric"});
+  var addBtn = (isFleet && !isLocal) ? '<button class="btn btn-y btn-sm" onclick="openManualBookingModal(null,null,\''+scheduleSelDate+'\')">+ Add Booking</button>' : '';
+  var detailBody = (selItems.length || pausesOnDay.length)
+    ? pausesOnDay.join("") + selItems.map(function(it){ return scheduleRowHtml(it, isFleet); }).join("")
+    : '<div class="empty" style="padding:20px"><div class="empty-icon">📭</div><div class="empty-msg">Nothing scheduled for this day.</div></div>';
+
+  c.innerHTML =
+    '<div class="page-title">Today\'s Schedule</div>' +
+    '<div class="page-sub">'+(isFleet ? "Manage pickups, drop-offs and pauses." : "View-only — Fleet Manager updates the schedule.")+'</div>' +
+    (isLocal ? '<div style="background:#fff3cd;border:1px solid #e8b800;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#856404">⚠️ Demo mode — backend unreachable. Showing sample data.</div>' : '') +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">' +
+      '<div class="card" style="flex:1;min-width:300px;max-width:420px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+          '<button class="btn btn-g btn-sm" onclick="shiftScheduleMonth(-1)">←</button>' +
+          '<span style="font-weight:800;font-size:.92rem">'+monthLbl+'</span>' +
+          '<button class="btn btn-g btn-sm" onclick="shiftScheduleMonth(1)">→</button>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">'+weekHdr+'</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+cells+'</div>' +
+        '<div style="display:flex;gap:10px;margin-top:12px;font-size:.7rem;color:var(--ts)">' +
+          '<span>🔵 Pickup</span><span>🟢 Drop-off</span><span>🟠 Pause</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card" style="flex:1.2;min-width:320px">' +
+        '<div class="card-hdr"><span class="card-title">'+selLbl+'</span>'+addBtn+'</div>' +
+        '<div>'+detailBody+'</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function shiftScheduleMonth(delta){
+  scheduleViewMonth = new Date(scheduleViewMonth.getFullYear(), scheduleViewMonth.getMonth()+delta, 1);
+  renderTab("schedule");
+}
+
+function selectScheduleDay(key){
+  scheduleSelDate = key;
+  renderTab("schedule");
 }
 
 async function renderBookings(statusFilter, isLocal, c){
@@ -1299,6 +1450,7 @@ async function renderFleet(isLocal, c){
   var emojiMap={Hatchback:"🚗",Sedan:"🚙",SUV:"🛻",MPV:"🚐"};
   var colorMap={Hatchback:"#f5c518",Sedan:"#e8b800",SUV:"#ffd700",MPV:"#f5c518"};
 
+  var isFleetRole = currentRole === "fleet";
   var cards = cars.map(function(car){
     var emoji = emojiMap[car.category]||"🚗";
     var color = colorMap[car.category]||"#f5c518";
@@ -1316,13 +1468,13 @@ async function renderFleet(isLocal, c){
           '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">⛽ '+car.fuel+'</span>' +
           '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">💺 '+car.seats+' Seats</span>' +
         '</div>' +
-        (car.pauses&&car.pauses.length ? '<div style="margin-bottom:10px;font-size:.75rem;color:var(--ts)">'+car.pauses.map(function(p,i){return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">⏸ '+new Date(p.from).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+ ' → '+new Date(p.to).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+(p.note?' — '+p.note:'')+' <button onclick="removePause(\''+car._id+'\',\''+p._id+'\')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:700;font-size:.85rem">✕</button></div>';}).join('')+'</div>' : '') +
+        (car.pauses&&car.pauses.length ? '<div style="margin-bottom:10px;font-size:.75rem;color:var(--ts)">'+car.pauses.map(function(p,i){return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">⏸ '+new Date(p.from).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+ ' → '+new Date(p.to).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+(p.note?' — '+p.note:'')+(isFleetRole?' <button onclick="removePause(\''+car._id+'\',\''+p._id+'\')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:700;font-size:.85rem">✕</button>':'')+'</div>';}).join('')+'</div>' : '') +
         (car.imageUrl ? '<img src="'+car.imageUrl+'" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.style.display=\'none\'">' : '') +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
           '<button class="btn '+(car.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCar(\''+car._id+'\')">'+(car.active?"Deactivate":"Activate")+'</button>' +
-          '<button class="btn btn-g btn-sm" style="flex:1" onclick="openPauseModal(\''+car._id+'\',\''+car.name+'\')">⏸ Pause</button>' +
+          (isFleetRole ? '<button class="btn btn-g btn-sm" style="flex:1" onclick="openPauseModal(\''+car._id+'\',\''+car.name+'\')">⏸ Pause</button>' : '') +
         '</div>' +
-        '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick="openManualBookingModal(\''+car._id+'\',\''+car.name+'\')">📋 Book Elsewhere (Zoomcar etc.)</button>' +
+        (isFleetRole ? '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick="openManualBookingModal(\''+car._id+'\',\''+car.name+'\')">📋 Book Elsewhere (Zoomcar etc.)</button>' : '') +
         '<button class="btn btn-y btn-sm" style="width:100%" onclick=\'openEditCarModal('+JSON.stringify(car)+')\'>✏️ Edit / Photos</button>' +
       '</div>' +
     '</div>';
@@ -1390,11 +1542,25 @@ async function submitPause(){
 
 // ── MANUAL / EXTERNAL BOOKING (e.g. Zoomcar) ──
 var manualBkCarId = null;
-function openManualBookingModal(carId, carName){
-  manualBkCarId = carId;
-  document.getElementById("mb-car-name").textContent  = carName;
+var manualBkReturnTab = "fleet";
+function openManualBookingModal(carId, carName, prefillDate){
+  manualBkCarId = carId || null;
+  manualBkReturnTab = carId ? "fleet" : "schedule";
+  var selectWrap = document.getElementById("mb-car-select-wrap");
+  var nameSpan   = document.getElementById("mb-car-name");
+  if(carId){
+    selectWrap.style.display = "none";
+    nameSpan.textContent = carName;
+  } else {
+    selectWrap.style.display = "block";
+    nameSpan.textContent = "";
+    var sel = document.getElementById("mb-car-select");
+    sel.innerHTML = (allCars.length ? allCars : DEMO_FLEET).map(function(c){
+      return '<option value="'+c._id+'">'+esc(c.name)+'</option>';
+    }).join("");
+  }
   document.getElementById("mb-source").value     = "Zoomcar";
-  document.getElementById("mb-pickup").value     = "";
+  document.getElementById("mb-pickup").value     = prefillDate ? (prefillDate+"T10:00") : "";
   document.getElementById("mb-drop").value       = "";
   document.getElementById("mb-pickup-loc").value = "";
   document.getElementById("mb-drop-loc").value   = "";
@@ -1406,6 +1572,7 @@ function openManualBookingModal(carId, carName){
 function closeManualBookingModal(){ document.getElementById("manual-bk-modal").classList.remove("open"); }
 
 async function submitManualBooking(){
+  var carId      = manualBkCarId || document.getElementById("mb-car-select").value;
   var source     = document.getElementById("mb-source").value;
   var pickup     = document.getElementById("mb-pickup").value;
   var drop       = document.getElementById("mb-drop").value;
@@ -1414,6 +1581,7 @@ async function submitManualBooking(){
   var customer   = document.getElementById("mb-customer").value;
   var phone      = document.getElementById("mb-phone").value;
   var note       = document.getElementById("mb-note").value;
+  if(!carId){ toast("Select a car.", "error"); return; }
   if(!pickup||!drop){ toast("Select pickup and drop date/time.", "error"); return; }
   if(new Date(drop) <= new Date(pickup)){ toast("Drop must be after pickup.", "error"); return; }
   if(adminToken === "local"){
@@ -1421,7 +1589,7 @@ async function submitManualBooking(){
     return;
   }
   try {
-    await adminFetch("/admin/fleet/"+manualBkCarId+"/manual-booking", {
+    await adminFetch("/admin/fleet/"+carId+"/manual-booking", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({
@@ -1433,7 +1601,7 @@ async function submitManualBooking(){
     toast("Car blocked for "+source+".", "success");
     closeManualBookingModal();
     allBookings = [];
-    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    navTo(manualBkReturnTab, document.querySelector('[data-tab="'+manualBkReturnTab+'"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 

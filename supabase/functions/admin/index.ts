@@ -335,9 +335,10 @@ Deno.serve(async (req) => {
       return json(mapCar(data as Record<string, unknown>));
     }
 
-    // POST /fleet/:id/pause
+    // POST /fleet/:id/pause — Fleet Manager only; Admin is read-only on the schedule
     const pauseMatch = path.match(/^\/fleet\/([^/]+)\/pause$/);
     if (req.method === "POST" && pauseMatch) {
+      if (isAdmin) return json({ error: "Admin has view-only access to the schedule. Use a Fleet Manager account to add a pause." }, 403);
       const { from, to, note } = await req.json();
       const { data: car } = await sb.from("cars").select("id").eq("id", pauseMatch[1]).maybeSingle();
       if (!car) return json({ error: "Car not found" }, 404);
@@ -349,18 +350,21 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    // DELETE /fleet/:id/pause/:pauseId
+    // DELETE /fleet/:id/pause/:pauseId — Fleet Manager only
     const deletePauseMatch = path.match(/^\/fleet\/([^/]+)\/pause\/([^/]+)$/);
     if (req.method === "DELETE" && deletePauseMatch) {
+      if (isAdmin) return json({ error: "Admin has view-only access to the schedule. Use a Fleet Manager account to remove a pause." }, 403);
       const { error } = await sb.from("car_pauses").delete().eq("id", deletePauseMatch[2]).eq("car_id", deletePauseMatch[1]);
       if (error) throw error;
       return json({ success: true });
     }
 
-    // POST /fleet/:id/manual-booking — record a booking made elsewhere (e.g. Zoomcar)
-    // so the car shows as unavailable here and it appears on the daily schedule.
+    // POST /fleet/:id/manual-booking — Fleet Manager only. Records a booking made
+    // elsewhere (e.g. Zoomcar) so the car shows as unavailable here and it appears
+    // on the daily schedule.
     const manualBkMatch = path.match(/^\/fleet\/([^/]+)\/manual-booking$/);
     if (req.method === "POST" && manualBkMatch) {
+      if (isAdmin) return json({ error: "Admin has view-only access to the schedule. Use a Fleet Manager account to add a booking." }, 403);
       const carId = manualBkMatch[1];
       const { source, customer, phone, pickupDate, dropDate, pickupLocation, dropLocation, notes } = await req.json();
       if (!pickupDate || !dropDate) return json({ error: "pickupDate and dropDate required" }, 400);
@@ -420,9 +424,10 @@ Deno.serve(async (req) => {
       return json(items);
     }
 
-    // PUT /bookings/:id/checklist — tick off a pickup or drop on the daily schedule
+    // PUT /bookings/:id/checklist — Fleet Manager only; ticks off a pickup or drop
     const checklistMatch = path.match(/^\/bookings\/([^/]+)\/checklist$/);
     if (req.method === "PUT" && checklistMatch) {
+      if (isAdmin) return json({ error: "Admin has view-only access to the schedule. Use a Fleet Manager account to update it." }, 403);
       const { type, done } = await req.json();
       if (type !== "pickup" && type !== "drop") return json({ error: "type must be pickup or drop" }, 400);
       const col = type === "pickup" ? "pickup_done" : "drop_done";

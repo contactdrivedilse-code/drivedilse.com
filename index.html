@@ -5078,7 +5078,8 @@ var _pbEmail = "";
 function showPostBookingOtp(phone, email){
   _pbPhone = phone || userProfile.phone || "";
   _pbEmail = email || userProfile.email || "";
-  if(!_pbEmail || userProfile.phoneVerified) return;
+  var alreadyVerified = userProfile.emailVerified && userProfile.email && userProfile.email.toLowerCase() === _pbEmail.toLowerCase();
+  if(!_pbEmail || userProfile.phoneVerified || alreadyVerified) return;
   resetOtpResend("pb");
   document.getElementById("pb-otp-send-row").style.display   = "block";
   document.getElementById("pb-otp-verify-row").style.display = "none";

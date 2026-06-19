@@ -14,3 +14,14 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
 }
 
 export const SUPPORT_INBOX = "info@drivedilse.com";
+
+// Escape user-supplied text before interpolating into email HTML —
+// ticket name/message/reply text all originate from public, unauthenticated input.
+export function escapeHtml(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

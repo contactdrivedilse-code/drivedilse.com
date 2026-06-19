@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
-import { sendEmail } from "../_shared/email.ts";
+import { sendEmail, escapeHtml } from "../_shared/email.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -69,6 +69,14 @@ function mapBooking(b: Record<string, unknown>) {
 }
 
 function makeBookingId(): string { return "DS" + Date.now().toString(36).toUpperCase(); }
+
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+function validateImage(file: File): string | null {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) return "Only JPEG, PNG or WEBP images are allowed";
+  if (file.size > MAX_IMAGE_BYTES) return "Image must be smaller than 5MB";
+  return null;
+}
 
 async function getAdmin(req: Request, requireAdmin = false) {
   const url = new URL(req.url);
@@ -281,6 +289,8 @@ Deno.serve(async (req) => {
       const fd = await req.formData();
       const file = fd.get("photo") as File | null;
       if (!file) return json({ error: "photo field required" }, 400);
+      const imgErr = validateImage(file);
+      if (imgErr) return json({ error: imgErr }, 400);
       const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
       const storagePath = `${carId}/${Date.now()}.${ext}`;
       const buf = new Uint8Array(await file.arrayBuffer());
@@ -517,9 +527,9 @@ Deno.serve(async (req) => {
           "Your support ticket has been resolved — DriveDilSe",
           `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2 style="color:#161616">DriveDilSe</h2>
-            <p>Hi ${ticket.name}, your support ticket has been marked as resolved.</p>
-            <p style="background:#f6f6f6;border-radius:8px;padding:12px"><strong>Your message:</strong><br/>${ticket.message}</p>
-            ${ticket.reply_message ? `<p style="background:#fff8e1;border-radius:8px;padding:12px"><strong>Our response:</strong><br/>${ticket.reply_message}</p>` : ""}
+            <p>Hi ${escapeHtml(ticket.name)}, your support ticket has been marked as resolved.</p>
+            <p style="background:#f6f6f6;border-radius:8px;padding:12px"><strong>Your message:</strong><br/>${escapeHtml(ticket.message)}</p>
+            ${ticket.reply_message ? `<p style="background:#fff8e1;border-radius:8px;padding:12px"><strong>Our response:</strong><br/>${escapeHtml(ticket.reply_message)}</p>` : ""}
             <p>If this didn't resolve your issue, just raise a new ticket and we'll take another look.</p>
           </div>`,
         ).catch((e) => console.error("Resolve email failed:", e));
@@ -539,6 +549,8 @@ Deno.serve(async (req) => {
 
       let imageUrl = "";
       if (image) {
+        const imgErr = validateImage(image);
+        if (imgErr) return json({ error: imgErr }, 400);
         const ext = image.type.includes("png") ? "png" : image.type.includes("webp") ? "webp" : "jpg";
         const storagePath = `${ticketId}/${Date.now()}.${ext}`;
         const buf = new Uint8Array(await image.arrayBuffer());
@@ -560,10 +572,10 @@ Deno.serve(async (req) => {
           "We've replied to your support ticket — DriveDilSe",
           `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2 style="color:#161616">DriveDilSe</h2>
-            <p>Hi ${ticket.name}, our team has replied to your ticket:</p>
-            <p style="background:#fff8e1;border-radius:8px;padding:12px">${message}</p>
+            <p>Hi ${escapeHtml(ticket.name)}, our team has replied to your ticket:</p>
+            <p style="background:#fff8e1;border-radius:8px;padding:12px">${escapeHtml(message)}</p>
             ${imageUrl ? `<p><img src="${imageUrl}" style="max-width:100%;border-radius:8px" /></p>` : ""}
-            <p style="color:#666;font-size:13px">Original message: ${ticket.message}</p>
+            <p style="color:#666;font-size:13px">Original message: ${escapeHtml(ticket.message)}</p>
           </div>`,
         ).catch((e) => console.error("Reply email failed:", e));
       }

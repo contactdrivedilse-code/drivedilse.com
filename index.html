@@ -710,6 +710,15 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 @media(max-width:480px){.delivery-mode-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+<style>
+.flatpickr-calendar{box-shadow:0 8px 28px rgba(0,0,0,.18);border-radius:12px;font-family:inherit}
+.flatpickr-current-month .flatpickr-monthDropdown-months{font-weight:700}
+.flatpickr-day.selected,.flatpickr-day.selected:hover{background:var(--yd);border-color:var(--yd)}
+.flatpickr-months .flatpickr-prev-month,.flatpickr-months .flatpickr-next-month{padding:8px}
+.numInputWrapper:hover{background:#f4f4f4}
+</style>
 </head>
 <body>
 <!-- ======== COOKIE CONSENT BANNER ======== -->
@@ -1328,6 +1337,36 @@ window.addEventListener('scroll',function(){
 </script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+(function(){
+  function initDatePickers(){
+    document.querySelectorAll('input[type="date"]').forEach(function(el){
+      if(el._flatpickr) return;
+      var opts = {
+        altInput: true,
+        altFormat: "d M Y",
+        dateFormat: "Y-m-d",
+        disableMobile: true,
+        allowInput: true
+      };
+      if(el.id === "vm-dob"){
+        opts.maxDate = new Date();
+        opts.minDate = new Date(1940,0,1);
+        opts.defaultDate = el.value || "2000-01-01";
+      }
+      flatpickr(el, opts);
+    });
+  }
+  if(document.readyState === "complete" || document.readyState === "interactive") initDatePickers();
+  else document.addEventListener("DOMContentLoaded", initDatePickers);
+  // Re-scan after page switches, since some date inputs live inside
+  // pages/modals that may be (re)rendered after initial load.
+  window.refreshDatePickers = initDatePickers;
+  var mo = new MutationObserver(function(){ initDatePickers(); });
+  mo.observe(document.body, {childList:true, subtree:true});
+})();
+</script>
 
 
 <!-- ======== CUSTOMER PROFILE ======== -->
@@ -1988,8 +2027,8 @@ window.addEventListener('scroll',function(){
       <div id="ci-damage-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
       <button class="btn btn-g btn-sm" onclick="addCiDamageSlot()" style="margin-bottom:14px;width:100%">+ Add Damage Photo</button>
       <div style="display:flex;gap:10px">
-        <button class="btn btn-y btn-lg" style="flex:1" onclick="submitCiDamageAndProceed()">Upload & Continue →</button>
-        <button class="btn btn-g btn-lg" style="flex:0 0 auto;padding:14px 20px" onclick="skipCiDamage()">Skip →</button>
+        <button class="btn btn-y btn-lg" style="flex:1;width:auto" onclick="submitCiDamageAndProceed()">Upload & Continue →</button>
+        <button class="btn btn-g btn-lg" style="flex:0 0 auto;width:auto;padding:14px 20px" onclick="skipCiDamage()">Skip →</button>
       </div>
     </div>
 
@@ -2159,8 +2198,8 @@ window.addEventListener('scroll',function(){
       <div id="co-damage-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
       <button class="btn btn-g btn-sm" onclick="addCoDamageSlot()" style="margin-bottom:14px;width:100%">+ Add Damage Photo</button>
       <div style="display:flex;gap:10px">
-        <button class="btn btn-y btn-lg" style="flex:1" onclick="submitCoDamageAndProceed()">Upload & Continue →</button>
-        <button class="btn btn-g btn-lg" style="flex:0 0 auto;padding:14px 20px" onclick="skipCoDamage()">Skip →</button>
+        <button class="btn btn-y btn-lg" style="flex:1;width:auto" onclick="submitCoDamageAndProceed()">Upload & Continue →</button>
+        <button class="btn btn-g btn-lg" style="flex:0 0 auto;width:auto;padding:14px 20px" onclick="skipCoDamage()">Skip →</button>
       </div>
     </div>
 

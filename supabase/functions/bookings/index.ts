@@ -179,7 +179,9 @@ Deno.serve(async (req) => {
         urls[s] = sb.storage.from("checkin").getPublicUrl(path).data.publicUrl;
       }));
 
-      const otp = generateOtp();
+      // Check-in OTP is generated when the booking is confirmed, not here —
+      // only fall back to generating one if an older booking somehow lacks it.
+      const otp = (b.checkin_otp as string) || generateOtp();
       await sb.from("bookings").update({
         checkin_front: urls.front, checkin_rear: urls.rear,
         checkin_passenger_side: urls.passengerSide, checkin_driver_side: urls.driverSide,
@@ -209,7 +211,7 @@ Deno.serve(async (req) => {
       if (!front || !rear || !passengerSide || !driverSide)
         return json({ error: "Missing photo URLs" }, 400);
 
-      const otp = generateOtp();
+      const otp = (b.checkin_otp as string) || generateOtp();
       await sb.from("bookings").update({
         checkin_front: front, checkin_rear: rear,
         checkin_passenger_side: passengerSide, checkin_driver_side: driverSide,
@@ -247,7 +249,7 @@ Deno.serve(async (req) => {
         })
       );
 
-      const otp = generateOtp();
+      const otp = (b.checkin_otp as string) || generateOtp();
       await sb.from("bookings").update({
         checkin_front: front, checkin_rear: rear,
         checkin_passenger_side: passengerSide, checkin_driver_side: driverSide,

@@ -9,6 +9,8 @@ const sb = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
+
 // Sign the check-in photo URLs on a mapped booking (private bucket support).
 async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<string, unknown>> {
   const ci = (b.checkin ?? {}) as Record<string, unknown>;
@@ -172,8 +174,13 @@ Deno.serve(async (req) => {
     const bkStatusMatch = path.match(/^\/bookings\/([^/]+)\/status$/);
     if (req.method === "PUT" && bkStatusMatch) {
       const { status } = await req.json();
+      const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+      if (status === "confirmed") {
+        const { data: cur } = await sb.from("bookings").select("checkin_otp").eq("id", bkStatusMatch[1]).maybeSingle();
+        if (!(cur as Record<string, unknown> | null)?.checkin_otp) updates.checkin_otp = generateOtp();
+      }
       const { data, error } = await sb.from("bookings")
-        .update({ status, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq("id", bkStatusMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);
@@ -233,13 +240,16 @@ Deno.serve(async (req) => {
       // When KYC is verified, confirm all pending_kyc bookings for this user
       // Match by BOTH user_id AND phone to handle profile recreations
       if (status === "verified") {
-        await sb.from("bookings")
-          .update({ status: "confirmed", updated_at: new Date().toISOString() })
-          .eq("user_id", kycMatch[1]).eq("status", "pending_kyc");
-        // Also match by phone in case user_id changed after profile recreation
-        await sb.from("bookings")
-          .update({ status: "confirmed", updated_at: new Date().toISOString() })
-          .eq("phone", p2.phone as string).eq("status", "pending_kyc");
+        const { data: toConfirm } = await sb.from("bookings").select("id")
+          .or(`user_id.eq.${kycMatch[1]},phone.eq.${p2.phone as string}`)
+          .eq("status", "pending_kyc");
+        // Each booking gets its own OTP — generated now so the fleet manager
+        // has it ready as soon as the booking is confirmed, not after photos.
+        await Promise.all(((toConfirm ?? []) as Record<string, unknown>[]).map((row) =>
+          sb.from("bookings").update({
+            status: "confirmed", checkin_otp: generateOtp(), updated_at: new Date().toISOString(),
+          }).eq("id", row.id as string)
+        ));
       }
       const p = data as Record<string, unknown>;
       return json({

@@ -8,6 +8,7 @@ const sb = createClient(
 );
 
 function makeBookingId(): string { return "DS" + Date.now().toString(36).toUpperCase(); }
+function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
 
 function calcMultiplier(hours: number): number {
   const days = hours / 24;
@@ -201,6 +202,7 @@ Deno.serve(async (req) => {
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string });
       const total = baseTotal + deliveryFee - couponDiscount;
       const bookingId = makeBookingId();
+      const isConfirmed = p.kyc_status === "verified";
 
       const { data: booking, error } = await sb.from("bookings").insert({
         id: crypto.randomUUID(), booking_id: bookingId,
@@ -214,7 +216,10 @@ Deno.serve(async (req) => {
         razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
         razorpay_signature: razorpaySignature, payment_status: "paid",
         paid_at: new Date().toISOString(),
-        status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
+        status: isConfirmed ? "confirmed" : "pending_kyc",
+        // Check-in OTP is generated as soon as the booking is confirmed,
+        // so the fleet manager has it ready before the customer even uploads photos.
+        checkin_otp: isConfirmed ? generateOtp() : null,
       }).select("*").maybeSingle();
       if (error) throw error;
 
@@ -248,6 +253,7 @@ Deno.serve(async (req) => {
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string });
       const total = baseTotal + deliveryFee - couponDiscount;
       const bookingId = makeBookingId();
+      const isConfirmedDirect = p.kyc_status === "verified";
 
       const { data: booking, error } = await sb.from("bookings").insert({
         id: crypto.randomUUID(), booking_id: bookingId,
@@ -260,7 +266,8 @@ Deno.serve(async (req) => {
         coupon_code: appliedCoupon, coupon_discount: couponDiscount,
         payment_status: "demo",
         // Auto-confirm if KYC already verified
-        status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
+        status: isConfirmedDirect ? "confirmed" : "pending_kyc",
+        checkin_otp: isConfirmedDirect ? generateOtp() : null,
       }).select("*").maybeSingle();
       if (error) throw error;
 
@@ -299,6 +306,7 @@ Deno.serve(async (req) => {
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal2, couponCode);
       const total = baseTotal2 + deliveryFee2 - couponDiscount;
       const bookingId = makeBookingId();
+      const isConfirmedGuest = p.kyc_status === "verified";
 
       const { data: booking, error } = await sb.from("bookings").insert({
         id: crypto.randomUUID(), booking_id: bookingId,
@@ -310,7 +318,8 @@ Deno.serve(async (req) => {
         deposit: 0, discount, delivery_fee: deliveryFee2,
         coupon_code: appliedCoupon, coupon_discount: couponDiscount,
         payment_status: "demo",
-        status: (p.kyc_status === "verified") ? "confirmed" : "pending_kyc",
+        status: isConfirmedGuest ? "confirmed" : "pending_kyc",
+        checkin_otp: isConfirmedGuest ? generateOtp() : null,
       }).select("*").maybeSingle();
       if (error) throw error;
 

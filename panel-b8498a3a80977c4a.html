@@ -1058,24 +1058,28 @@ function buildTable(bks, showActions){
       ? '<span class="sbadge sb-act">Paid</span>'
       : '<span class="sbadge sb-pend">Pending</span>';
 
-    // Check-in OTP column — shown when customer has uploaded photos
+    // Check-in OTP column — OTP is generated as soon as the booking is
+    // confirmed, so it's shown to the fleet manager right away; photo links
+    // are added on top once the customer has uploaded them.
     var otpCell = "";
     var ci = b.checkin;
-    if(ci && ci.photosUploadedAt && !ci.otpVerified){
+    if(ci && ci.otp && !ci.otpVerified){
       otpCell = '<td>' +
         '<div style="display:flex;align-items:center;gap:8px">' +
           '<span style="font-family:monospace;font-size:1rem;font-weight:900;background:#fff8d0;border:2px solid var(--yd);padding:5px 12px;border-radius:10px;letter-spacing:3px;color:var(--yd)">'+ci.otp+'</span>' +
           '<span style="font-size:.68rem;color:var(--ts);line-height:1.3">Check-In OTP<br><strong style="color:#c0392b">Share with rep only</strong></span>' +
         '</div>' +
+        (ci.photosUploadedAt ? (
         '<div style="margin-top:6px"><a href="'+ci.photos.front+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Front ↗</a>' +
         '<a href="'+ci.photos.rear+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Rear ↗</a>' +
         '<a href="'+ci.photos.passengerSide+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Psgr ↗</a>' +
-        '<a href="'+ci.photos.driverSide+'" target="_blank" style="font-size:.7rem;color:var(--yd)">Driver ↗</a></div>' +
+        '<a href="'+ci.photos.driverSide+'" target="_blank" style="font-size:.7rem;color:var(--yd)">Driver ↗</a></div>'
+        ) : '<div style="margin-top:6px;font-size:.68rem;color:var(--ts)">Photos not uploaded yet</div>') +
       '</td>';
     } else if(ci && ci.otpVerified){
       otpCell = '<td><span class="sbadge sb-act">✅ Checked In</span><div style="font-size:.7rem;color:var(--ts);margin-top:4px">'+new Date(ci.checkedInAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div></td>';
     } else {
-      otpCell = '<td><span style="font-size:.75rem;color:var(--ts)">Awaiting photos</span></td>';
+      otpCell = '<td><span style="font-size:.75rem;color:var(--ts)">Not confirmed yet</span></td>';
     }
 
     // Check-out OTP column — shown for active bookings

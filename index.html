@@ -1558,7 +1558,21 @@ window.addEventListener('scroll',function(){
         </div>
         <div style="margin-bottom:14px">
           <div class="dt-pair-label">📧 Email (for OTP verification)</div>
-          <input type="email" class="inp" id="bf-email" placeholder="you@example.com" style="width:100%">
+          <input type="email" class="inp" id="bf-email" placeholder="you@example.com" style="width:100%" oninput="bfEmailEdited()">
+        </div>
+        <div id="bf-otp-box" style="display:none;text-align:left;background:#f4f8ff;border:1.5px solid #b9d3f5;border-radius:10px;padding:14px;margin-bottom:14px">
+          <div style="font-weight:700;font-size:.84rem;margin-bottom:6px">📧 Verify your email to continue</div>
+          <div style="font-size:.74rem;color:#555;margin-bottom:10px">We need to confirm this email is really yours before calculating your price.</div>
+          <div id="bf-otp-send-row">
+            <button class="btn btn-y btn-sm" onclick="bfSendOtp()" style="width:100%">Send OTP to verify →</button>
+          </div>
+          <div id="bf-otp-verify-row" style="display:none">
+            <div style="font-size:.76rem;color:#555;margin-bottom:6px">Code sent to <strong id="bf-otp-email-lbl"></strong> &middot; <a onclick="bfChangeEmail()" style="color:var(--yd);font-weight:700;cursor:pointer">Change email</a></div>
+            <input type="text" id="bf-otp-code" class="inp" placeholder="Enter OTP" maxlength="6" style="width:100%;margin-bottom:8px">
+            <button class="btn btn-y btn-sm" onclick="bfVerifyOtp()" style="width:100%;margin-bottom:8px">Verify →</button>
+            <button class="btn btn-g btn-sm" id="bf-otp-resend-btn" onclick="bfSendOtp()" style="width:100%" disabled>Resend OTP</button>
+          </div>
+          <div id="bf-otp-msg" style="font-size:.74rem;margin-top:8px"></div>
         </div>
         <button class="btn btn-y btn-lg" onclick="calcPrice()">Calculate Price →</button>
         <div id="price-section" style="display:none">
@@ -3003,8 +3017,75 @@ function openCar(id){
   showPage("pg-detail");
 }
 
+// ── PRE-BOOKING EMAIL OTP VERIFICATION ──
+var bfEmailVerified = false;
+var bfVerifiedEmailValue = "";
+function bfEmailEdited(){
+  var v = document.getElementById("bf-email").value.trim().toLowerCase();
+  if(v !== bfVerifiedEmailValue) bfEmailVerified = false;
+}
+function bfChangeEmail(){
+  resetOtpResend("bf");
+  document.getElementById("bf-otp-send-row").style.display   = "block";
+  document.getElementById("bf-otp-verify-row").style.display = "none";
+  document.getElementById("bf-otp-msg").textContent = "";
+  document.getElementById("bf-email").focus();
+}
+async function bfSendOtp(){
+  var email = document.getElementById("bf-email").value.trim();
+  var phone = document.getElementById("bf-phone").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#c0392b">Enter a valid email address.</span>';
+    return;
+  }
+  var resendBtn = document.getElementById("bf-otp-resend-btn");
+  try {
+    await apiFetch("/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone,email:email})});
+    document.getElementById("bf-otp-send-row").style.display   = "none";
+    document.getElementById("bf-otp-verify-row").style.display = "block";
+    document.getElementById("bf-otp-email-lbl").textContent    = email;
+    document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#1a5fa8">OTP sent to ' + esc(email) + '</span>';
+    armOtpResend("bf", resendBtn);
+  } catch(e){
+    document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not send OTP") + '</span>';
+  }
+}
+async function bfVerifyOtp(){
+  var email = document.getElementById("bf-email").value.trim();
+  var phone = document.getElementById("bf-phone").value.trim();
+  var otp   = document.getElementById("bf-otp-code").value.trim();
+  if(!otp){ document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#c0392b">Enter the OTP.</span>'; return; }
+  try {
+    var resp = await apiFetch("/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone,otp:otp,name:document.getElementById("bf-name").value.trim(),email:email})});
+    if(resp.token) setAuthToken(resp.token);
+    bfEmailVerified = true;
+    bfVerifiedEmailValue = email.toLowerCase();
+    userProfile.email = email; userProfile.emailVerified = true;
+    document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#1a7a3c">✅ Email verified.</span>';
+    setTimeout(function(){ document.getElementById("bf-otp-box").style.display = "none"; calcPrice(); }, 700);
+  } catch(e){
+    document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not verify OTP") + '</span>';
+  }
+}
+
 // ── PRICE ──
 function calcPrice(){
+  var emailVal = document.getElementById("bf-email").value.trim();
+  var alreadyVerified = bfEmailVerified && emailVal.toLowerCase() === bfVerifiedEmailValue;
+  var loginVerified = userProfile.emailVerified && userProfile.email && userProfile.email.toLowerCase() === emailVal.toLowerCase();
+  if(!alreadyVerified && !loginVerified){
+    if(!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
+      alert("Please enter a valid email address — we need to verify it before calculating your price.");
+      return;
+    }
+    resetOtpResend("bf");
+    document.getElementById("bf-otp-send-row").style.display   = "block";
+    document.getElementById("bf-otp-verify-row").style.display = "none";
+    document.getElementById("bf-otp-msg").textContent = "";
+    document.getElementById("bf-otp-box").style.display = "block";
+    document.getElementById("bf-otp-box").scrollIntoView({behavior:"smooth", block:"center"});
+    return;
+  }
   var pv = getDt("d-pickup");
   var dv = getDt("d-drop");
   if(!pv || !dv){ alert("Select pickup and drop dates."); return; }

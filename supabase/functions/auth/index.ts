@@ -100,18 +100,22 @@ Deno.serve(async (req) => {
 
       // Look up by email first (the identity key for OTP); fall back to phone
       // so an existing phone-only profile (e.g. from a guest booking) gets merged.
-      let { data: existing } = await sb.from("profiles").select("id").eq("email", emailLc).maybeSingle();
+      let { data: existing, error: lookupErr } = await sb.from("profiles").select("id").ilike("email", emailLc).maybeSingle();
+      if (lookupErr) throw lookupErr;
       if (!existing && phone) {
         const byPhone = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
+        if (byPhone.error) throw byPhone.error;
         existing = byPhone.data;
       }
 
       if (existing) {
         const updates: Record<string, unknown> = { otp, otp_expiry: otpExpiry, email: emailLc };
         if (phone) updates.phone = phone;
-        await sb.from("profiles").update(updates).eq("id", (existing as Record<string, string>).id);
+        const { error: updErr } = await sb.from("profiles").update(updates).eq("id", (existing as Record<string, string>).id);
+        if (updErr) throw updErr;
       } else {
-        await sb.from("profiles").insert({ id: crypto.randomUUID(), phone: phone || null, email: emailLc, otp, otp_expiry: otpExpiry });
+        const { error: insErr } = await sb.from("profiles").insert({ id: crypto.randomUUID(), phone: phone || null, email: emailLc, otp, otp_expiry: otpExpiry });
+        if (insErr) throw insErr;
       }
 
       await sendEmailOtp(emailLc, otp);
@@ -125,7 +129,8 @@ Deno.serve(async (req) => {
         return json({ error: "Invalid email address" }, 400);
       const emailLc = String(email).trim().toLowerCase();
 
-      const { data: user } = await sb.from("profiles").select("*").eq("email", emailLc).maybeSingle();
+      const { data: user, error: userErr } = await sb.from("profiles").select("*").ilike("email", emailLc).maybeSingle();
+      if (userErr) throw userErr;
       const u = user as Record<string, unknown> | null;
       // Test-OTP bypass is OFF unless explicitly enabled. Previously it
       // defaulted to "1234" for ANY identity, allowing account takeover.
@@ -194,7 +199,7 @@ Deno.serve(async (req) => {
       const email = formData.get("email") as string | null;
       if (name)  updates.name  = name;
       if (dob)   updates.dob   = dob;
-      if (email) updates.email = email;
+      if (email) updates.email = String(email).trim().toLowerCase();
 
       const aadhaarFile = formData.get("aadhaar") as File | null;
       if (aadhaarFile) {

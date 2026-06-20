@@ -4409,7 +4409,7 @@ function openBookingDetails(id, showExtend) {
     {label:"Passenger Side", url:ciP.passengerSide}, {label:"Driver Side", url:ciP.driverSide}
   ].filter(function(p){ return p.url; });
   var photosSection = document.getElementById("bkd-photos-section");
-  if(ciPhotoList.length){
+  if(ciPhotoList.length && !showExtend){
     photosSection.style.display = "block";
     document.getElementById("bkd-photos-body").innerHTML =
       (ciInfo.checkedInAt ? '<div style="font-size:.72rem;color:var(--ts);margin-bottom:10px">Checked in '+new Date(ciInfo.checkedInAt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})+'</div>' : '') +

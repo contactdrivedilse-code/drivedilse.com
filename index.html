@@ -2114,6 +2114,12 @@ window.addEventListener('scroll',function(){
       <div style="padding:12px 16px" id="bkd-payment-rows"></div>
     </div>
 
+    <!-- Check-in photos -->
+    <div id="bkd-photos-section" style="display:none;border:1px solid #ede9db;border-radius:14px;overflow:hidden;margin-bottom:14px">
+      <div style="background:#faf9f6;padding:9px 16px;font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);border-bottom:1px solid #ede9db">📸 Check-In Photos</div>
+      <div style="padding:12px 16px" id="bkd-photos-body"></div>
+    </div>
+
     <!-- Reschedule section (confirmed only) -->
     <div id="bkd-reschedule-section" style="display:none;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -4391,6 +4397,30 @@ function openBookingDetails(id) {
   }
   rows += '<div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:4px;border-top:1.5px solid var(--b);font-weight:800;font-size:.9rem"><span>Total Paid</span><span style="color:var(--yd)">₹'+(b.total||0).toLocaleString("en-IN")+'</span></div>';
   document.getElementById("bkd-payment-rows").innerHTML = rows;
+
+  // Check-in photos
+  var ciInfo = b.checkin || {};
+  var ciP    = ciInfo.photos || {};
+  var ciPhotoList = [
+    {label:"Front", url:ciP.front}, {label:"Rear", url:ciP.rear},
+    {label:"Passenger Side", url:ciP.passengerSide}, {label:"Driver Side", url:ciP.driverSide}
+  ].filter(function(p){ return p.url; });
+  var photosSection = document.getElementById("bkd-photos-section");
+  if(ciPhotoList.length){
+    photosSection.style.display = "block";
+    document.getElementById("bkd-photos-body").innerHTML =
+      (ciInfo.checkedInAt ? '<div style="font-size:.72rem;color:var(--ts);margin-bottom:10px">Checked in '+new Date(ciInfo.checkedInAt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})+'</div>' : '') +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        ciPhotoList.map(function(p){
+          return '<a href="'+p.url+'" target="_blank" style="text-decoration:none">' +
+            '<img src="'+p.url+'" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1.5px solid var(--b);display:block">' +
+            '<div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:4px;font-weight:600">'+p.label+'</div>' +
+          '</a>';
+        }).join("") +
+      '</div>';
+  } else {
+    photosSection.style.display = "none";
+  }
 
   // Reset drop card to original values when modal opens
   document.getElementById("bkd-drop").innerHTML =

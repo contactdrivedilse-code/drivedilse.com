@@ -443,6 +443,16 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<div class="modal-overlay" id="bk-details-modal">
+  <div class="modal-box" style="max-width:640px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-title">Booking Details — <span id="bkdm-id" style="color:var(--yd);font-family:monospace"></span></div>
+    <div id="bkdm-body"></div>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="closeBkDetailsModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var API         = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
 var ANON_KEY    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
@@ -1046,9 +1056,11 @@ function filterBookingTable(){
   document.getElementById("bk-table-wrap").innerHTML = buildTable(filtered, true);
 }
 
+window._bkDetailsMap = window._bkDetailsMap || {};
 function buildTable(bks, showActions){
   if(!bks.length) return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">No bookings found.</div></div>';
   var rows = bks.map(function(b){
+    window._bkDetailsMap[b._id||b.bookingId] = b;
     var carName  = b.carName || (b.car&&b.car.name) || "—";
     var custName = b.customer || (b.user&&b.user.name) || "—";
     var phone    = b.phone    || (b.user&&b.user.phone) || "—";
@@ -1106,7 +1118,7 @@ function buildTable(bks, showActions){
       : '';
     var isFleet = currentRole === "fleet";
     return '<tr>' +
-      '<td style="font-weight:700;color:var(--yd);font-family:monospace">'+(b.bookingId||b._id||"—")+'</td>' +
+      '<td style="font-weight:700;color:var(--yd);font-family:monospace;cursor:pointer;text-decoration:underline" onclick="openBkDetailsModal(\''+(b._id||b.bookingId)+'\')">'+(b.bookingId||b._id||"—")+'</td>' +
       '<td style="font-weight:600">'+carName+'</td>' +
       '<td>'+custName+'</td>' +
       '<td style="color:var(--ts)">'+phone+'</td>' +
@@ -1754,6 +1766,66 @@ function openEditCouponModal(cp){
 }
 
 function closeCouponModal(){ document.getElementById("coupon-modal").classList.remove("open"); }
+
+function parseDamagePhotos(notes, key){
+  if(!notes) return [];
+  var urls = [];
+  notes.split("\n").forEach(function(line){
+    if(line.indexOf(key+":") === 0){
+      line.slice(key.length+1).split(",").forEach(function(u){ u=u.trim(); if(u) urls.push(u); });
+    }
+  });
+  return urls;
+}
+function bkdmPhotoGrid(urls, emptyMsg){
+  if(!urls.length) return '<div style="font-size:.78rem;color:var(--ts);padding:8px 0">'+emptyMsg+'</div>';
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:8px">' +
+    urls.map(function(u){
+      return '<a href="'+u+'" target="_blank"><img src="'+u+'" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:1.5px solid var(--b)"></a>';
+    }).join("") +
+  '</div>';
+}
+function openBkDetailsModal(id){
+  var b = window._bkDetailsMap[id];
+  if(!b){ toast("Booking data not found.", "error"); return; }
+  document.getElementById("bkdm-id").textContent = b.bookingId || id;
+
+  var carName  = b.carName || (b.car&&b.car.name) || "—";
+  var custName = b.customer || (b.user&&b.user.name) || "—";
+  var phone    = b.phone    || (b.user&&b.user.phone) || "—";
+  var pickup   = (b.pickup&&b.pickup.date) || b.pickup;
+  var drop     = (b.drop&&b.drop.date)     || b.drop;
+
+  var ci = b.checkin || {};
+  var ciPhotos = [ci.photos&&ci.photos.front, ci.photos&&ci.photos.rear, ci.photos&&ci.photos.passengerSide, ci.photos&&ci.photos.driverSide].filter(Boolean);
+  var co = b.checkout || {};
+  var preExistingCi = parseDamagePhotos(b.notes, "damage_checkin");
+  var preExistingCo = parseDamagePhotos(b.notes, "damage_checkout");
+
+  var html =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;font-size:.85rem">' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Car</div><div style="font-weight:700">'+carName+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Status</div><div>'+badge(b.status)+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Customer</div><div style="font-weight:700">'+custName+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Phone</div><div>'+phone+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Pickup</div><div>'+(pickup?new Date(pickup).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Drop</div><div>'+(drop?new Date(drop).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
+      (b.total!=null ? '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Total</div><div style="font-weight:700">'+inr(b.total)+'</div></div>' : '') +
+    '</div>' +
+    '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
+    '<div style="font-weight:700;font-size:.88rem;margin-bottom:4px">📸 Check-In Photos</div>' +
+    (ci.checkedInAt ? '<div style="font-size:.72rem;color:var(--ts)">Checked in '+new Date(ci.checkedInAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div>' : '') +
+    bkdmPhotoGrid(ciPhotos, "No check-in photos uploaded yet.") +
+    (preExistingCi.length ? '<div style="font-size:.78rem;font-weight:700;margin-top:10px">Pre-existing damage (noted at check-in)</div>'+bkdmPhotoGrid(preExistingCi,"") : '') +
+    '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
+    '<div style="font-weight:700;font-size:.88rem;margin-bottom:4px">📸 Check-Out Photos</div>' +
+    (co.checkedOutAt ? '<div style="font-size:.72rem;color:var(--ts)">Checked out '+new Date(co.checkedOutAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div>' : '') +
+    bkdmPhotoGrid(preExistingCo, "No check-out photos uploaded yet.");
+
+  document.getElementById("bkdm-body").innerHTML = html;
+  document.getElementById("bk-details-modal").classList.add("open");
+}
+function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
 
 async function submitCouponForm(){
   var id     = document.getElementById("cpm-id").value.trim();

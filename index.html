@@ -148,15 +148,19 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .btn-lg{padding:15px;font-size:.96rem;width:100%;display:block}
 
 /* ---- PAGES ---- */
-.page{display:none}.page.active{display:block}
+.page{display:none}
+.page.active{display:block;animation:pageFadeIn .32s ease both}
+@keyframes pageFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* ---- TYPOGRAPHY ---- */
 .tag{font-size:.65rem;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:var(--yd);margin-bottom:10px}
 .sec-title{font-family:'Playfair Display',Georgia,serif;font-weight:900;letter-spacing:-.5px;margin-bottom:10px;line-height:1.1}
 
 /* ---- MODALS ---- */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(58,44,0,.55);z-index:400;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
-.modal-bg.open{display:flex}
+.modal-bg{display:flex;position:fixed;inset:0;background:rgba(58,44,0,0);z-index:400;align-items:center;justify-content:center;backdrop-filter:blur(0px);transition:background .25s ease,backdrop-filter .25s ease,visibility .25s;visibility:hidden;pointer-events:none}
+.modal-bg.open{background:rgba(58,44,0,.55);backdrop-filter:blur(4px);visibility:visible;pointer-events:auto}
+.modal-bg .modal{transform:translateY(18px) scale(.97);opacity:0;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .28s ease}
+.modal-bg.open .modal{transform:translateY(0) scale(1);opacity:1}
 .modal{background:var(--w);border-radius:22px;padding:36px 32px;width:500px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 30px 80px rgba(58,44,0,.18)}
 .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--ts);transition:color .15s}
 .modal-close:hover{color:var(--t)}
@@ -800,8 +804,10 @@ function csTick(){
       <span class="nav-link" onclick="goTo('fleet-sec')">Fleet</span>
       <span class="nav-link" onclick="goTo('how-sec')">How It Works</span>
       <span class="nav-link" onclick="goTo('faq-sec')">FAQ</span>
+      <span class="nav-link" onclick="showTrips()">My Trips</span>
       <a class="nav-link" href="policy.html" style="text-decoration:none">Policies</a>
-      <button class="btn btn-g btn-sm" onclick="showProfile()">&#128100; My Profile</button>
+      <button class="btn btn-y btn-sm" id="hdr-signin-btn" onclick="openQuickLogin(renderProfile)" style="display:none">&#128274; Sign In</button>
+      <button class="btn btn-g btn-sm" id="hdr-profile-btn" onclick="showProfile()" style="display:none">&#128100; My Profile</button>
       <button class="btn btn-y btn-sm" onclick="goTo('search-sec')">Book Now</button>
     </nav>
   </header>
@@ -1445,7 +1451,7 @@ window.addEventListener('scroll',function(){
 
     <div class="profile-card">
       <div class="profile-card-hdr">My Bookings</div>
-      <div class="profile-card-body" id="prof-bookings-body">
+      <div class="profile-card-body bk-list-target" id="prof-bookings-body">
         <div class="profile-empty">No bookings yet. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet &#8594;</span></div>
       </div>
     </div>
@@ -1462,6 +1468,27 @@ window.addEventListener('scroll',function(){
       </div>
     </div>
 
+  </div>
+</div>
+<!-- ══════════ MY TRIPS ══════════ -->
+<div id="pg-trips" class="page">
+  <header class="hdr">
+    <div class="logo-wrap" onclick="goHome()">
+      <img src="assets/logo-icon.png" class="logo-img" alt="DriveDilSe">
+      <span class="logo-brand">Drive<span class="gold">DilSe</span></span>
+    </div>
+    <nav style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-g btn-sm" onclick="goHome()">&#8592; Back</button>
+    </nav>
+  </header>
+
+  <div class="profile-body" style="max-width:680px;margin:0 auto;padding:28px 20px">
+    <div class="profile-card">
+      <div class="profile-card-hdr">My Trips</div>
+      <div class="profile-card-body bk-list-target" id="trips-body">
+        <div class="profile-empty">No bookings yet. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet &#8594;</span></div>
+      </div>
+    </div>
   </div>
 </div>
 <!-- ══════════ CAR DETAIL ══════════ -->
@@ -1603,12 +1630,12 @@ window.addEventListener('scroll',function(){
           <div style="font-weight:700;font-size:.84rem;margin-bottom:6px">📧 Verify your email to continue</div>
           <div style="font-size:.74rem;color:#555;margin-bottom:10px">We need to confirm this email is really yours before calculating your price.</div>
           <div id="bf-otp-send-row">
-            <button class="btn btn-y btn-sm" onclick="bfSendOtp()" style="width:100%">Send OTP to verify →</button>
+            <button class="btn btn-y btn-sm" onclick="bfSendOtp(this)" style="width:100%">Send OTP to verify →</button>
           </div>
           <div id="bf-otp-verify-row" style="display:none">
             <div style="font-size:.76rem;color:#555;margin-bottom:6px">Code sent to <strong id="bf-otp-email-lbl"></strong> &middot; <a onclick="bfChangeEmail()" style="color:var(--yd);font-weight:700;cursor:pointer">Change email</a></div>
             <input type="text" id="bf-otp-code" class="inp" placeholder="Enter OTP" maxlength="6" style="width:100%;margin-bottom:8px">
-            <button class="btn btn-y btn-sm" onclick="bfVerifyOtp()" style="width:100%;margin-bottom:8px">Verify →</button>
+            <button class="btn btn-y btn-sm" onclick="bfVerifyOtp(this)" style="width:100%;margin-bottom:8px">Verify →</button>
             <button class="btn btn-g btn-sm" id="bf-otp-resend-btn" onclick="bfSendOtp()" style="width:100%" disabled>Resend OTP</button>
           </div>
           <div id="bf-otp-msg" style="font-size:.74rem;margin-top:8px"></div>
@@ -1742,12 +1769,12 @@ window.addEventListener('scroll',function(){
             <div style="font-weight:700;font-size:.84rem;margin-bottom:6px">📧 Verify your email</div>
             <div style="font-size:.74rem;color:#555;margin-bottom:10px">Helps us confirm your booking is genuine. Takes 10 seconds.</div>
             <div id="pb-otp-send-row">
-              <button class="btn btn-y btn-sm" onclick="pbSendOtp()" style="width:100%">Send OTP to verify →</button>
+              <button class="btn btn-y btn-sm" onclick="pbSendOtp(this)" style="width:100%">Send OTP to verify →</button>
             </div>
             <div id="pb-otp-verify-row" style="display:none">
               <div style="font-size:.76rem;color:#555;margin-bottom:6px">Code sent to <strong id="pb-otp-phone-lbl"></strong> &middot; <a onclick="pbChangeNumber()" style="color:var(--yd);font-weight:700;cursor:pointer">Change email</a></div>
               <input type="text" id="pb-otp-code" class="inp" placeholder="Enter OTP" maxlength="6" style="width:100%;margin-bottom:8px">
-              <button class="btn btn-y btn-sm" onclick="pbVerifyOtp()" style="width:100%;margin-bottom:8px">Verify →</button>
+              <button class="btn btn-y btn-sm" onclick="pbVerifyOtp(this)" style="width:100%;margin-bottom:8px">Verify →</button>
               <button class="btn btn-g btn-sm" id="pb-otp-resend-btn" onclick="pbSendOtp()" style="width:100%" disabled>Resend OTP</button>
             </div>
             <div id="pb-otp-msg" style="font-size:.74rem;margin-top:8px"></div>
@@ -1843,7 +1870,7 @@ window.addEventListener('scroll',function(){
       <div id="vm-otp-row" style="display:none;margin-top:10px;margin-bottom:4px">
         <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
           <div><label class="lbl">Enter OTP</label><input id="vm-otp" class="inp" placeholder="6-digit OTP" maxlength="6"></div>
-          <button class="btn btn-y btn-sm" onclick="vmVerifyOtp()">Verify</button>
+          <button class="btn btn-y btn-sm" onclick="vmVerifyOtp(this)">Verify</button>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
           <a onclick="vmChangeNumber()" style="font-size:.72rem;color:var(--yd);font-weight:700;cursor:pointer">Change email</a>
@@ -1858,7 +1885,6 @@ window.addEventListener('scroll',function(){
           <div><div style="font-size:.84rem;font-weight:500" id="aadhaar-txt">Upload Aadhaar Card</div><div style="font-size:.7rem;color:var(--ts)">JPG, PNG or PDF · Front side</div></div>
           <input id="aadhaar-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="setAadhaar(this)" style="display:none">
         </label>
-        <div style="margin-top:5px;text-align:right"><span onclick="useDemoAadhaar()" style="font-size:.7rem;color:var(--yd);cursor:pointer;font-weight:600">⚡ Use demo document (for testing)</span></div>
       </div>
       <div style="margin-bottom:6px">
         <label class="lbl">Driving Licence <span id="dl-lbl-badge" style="font-weight:500;text-transform:none;letter-spacing:0;font-size:.7rem"></span></label>
@@ -1867,7 +1893,6 @@ window.addEventListener('scroll',function(){
           <div><div style="font-size:.84rem;font-weight:500" id="dl-txt">Upload Driving Licence</div><div style="font-size:.7rem;color:var(--ts)">Age auto-verified from your licence · JPG, PNG or PDF</div></div>
           <input id="dl-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="vmVerifyDL(this)" style="display:none">
         </label>
-        <div style="margin-top:5px;text-align:right"><span onclick="useDemoDL()" style="font-size:.7rem;color:var(--yd);cursor:pointer;font-weight:600">⚡ Use demo document (for testing)</span></div>
         <div class="dl-bar" id="dl-bar"></div>
       </div>
       <div id="vm-err" style="display:none;background:#fde8e8;color:#c0392b;font-size:.78rem;border-radius:8px;padding:10px 14px;margin-top:12px"></div>
@@ -1966,7 +1991,6 @@ window.addEventListener('scroll',function(){
     <div id="ci-photo-step" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts)">Step 1 — Photograph the car</div>
-        <span onclick="ciAllDemoPhotos()" style="font-size:.72rem;color:var(--yd);cursor:pointer;font-weight:700;background:#fffbe6;border:1px solid rgba(200,160,0,.3);padding:4px 10px;border-radius:20px">⚡ Use all demo photos</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div class="ci-photo-box" id="ci-front-box">
@@ -1978,7 +2002,6 @@ window.addEventListener('scroll',function(){
             <label for="ci-front" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
             <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('front')">📷 Camera</button>
           </div>
-          <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('front')">⚡ Use demo photo</div>
         </div>
         <div class="ci-photo-box" id="ci-rear-box">
           <input type="file" accept="image/*" id="ci-rear" onchange="ciPhotoSet('rear',this)" style="display:none">
@@ -1989,7 +2012,6 @@ window.addEventListener('scroll',function(){
             <label for="ci-rear" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
             <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('rear')">📷 Camera</button>
           </div>
-          <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('rear')">⚡ Use demo photo</div>
         </div>
         <div class="ci-photo-box" id="ci-passengerSide-box">
           <input type="file" accept="image/*" id="ci-passengerSide" onchange="ciPhotoSet('passengerSide',this)" style="display:none">
@@ -2000,7 +2022,6 @@ window.addEventListener('scroll',function(){
             <label for="ci-passengerSide" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
             <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('passengerSide')">📷 Camera</button>
           </div>
-          <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('passengerSide')">⚡ Use demo photo</div>
         </div>
         <div class="ci-photo-box" id="ci-driverSide-box">
           <input type="file" accept="image/*" id="ci-driverSide" onchange="ciPhotoSet('driverSide',this)" style="display:none">
@@ -2011,7 +2032,6 @@ window.addEventListener('scroll',function(){
             <label for="ci-driverSide" class="btn btn-g btn-sm" style="cursor:pointer;text-align:center;font-size:.72rem;padding:7px 4px">📁 Gallery</label>
             <button class="btn btn-g btn-sm" style="font-size:.72rem;padding:7px 4px" onclick="openCiCamera('driverSide')">📷 Camera</button>
           </div>
-          <div style="margin-top:6px;font-size:.65rem;color:var(--yd);cursor:pointer;font-weight:600;text-align:center" onclick="ciDemoPhoto('driverSide')">⚡ Use demo photo</div>
         </div>
       </div>
       <div id="ci-photo-err" style="color:#c0392b;font-size:.82rem;display:none;margin-bottom:12px"></div>
@@ -2315,6 +2335,15 @@ function setAuthToken(token){
   authToken = token;
   localStorage.setItem("dds_token", token);
   if(hasCookieConsent()) setCookie("dds_token", token, 90);
+  updateHeaderAuthUI();
+}
+function updateHeaderAuthUI(){
+  var signinBtn = document.getElementById("hdr-signin-btn");
+  var profileBtn = document.getElementById("hdr-profile-btn");
+  if(!signinBtn || !profileBtn) return;
+  var loggedIn = !!authToken;
+  signinBtn.style.display  = loggedIn ? "none" : "";
+  profileBtn.style.display = loggedIn ? "" : "none";
 }
 function initCookieConsent(){
   if(hasCookieConsent()){
@@ -2412,7 +2441,7 @@ function goTo(id){
 function showPage(id){
   document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
   document.getElementById(id).classList.add("active");
-  window.scrollTo(0,0);
+  window.scrollTo({top:0,left:0,behavior:"smooth"});
 }
 function openModal(id){ document.getElementById(id).classList.add("open"); }
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }
@@ -2430,6 +2459,10 @@ function clearMyProfile(){
   setTimeout(function(){ location.reload(); }, 100);
 }
 function showProfile(){ renderProfile(); showPage("pg-profile"); window.scrollTo(0,0); }
+function showTrips(){ showPage("pg-trips"); window.scrollTo(0,0); renderProfile(); }
+function setBkListHtml(html){
+  document.querySelectorAll(".bk-list-target").forEach(function(el){ el.innerHTML = html; });
+}
 async function renderProfile(){
   var p = userProfile, v = userVerified;
 
@@ -2462,9 +2495,8 @@ async function renderProfile(){
       v = apiUser.phoneVerified;
       userProfile = p; userVerified = v;
       // Render bookings from API
-      var bb = document.getElementById("prof-bookings-body");
       if(apiBookings.length){
-        bb.innerHTML = apiBookings.map(function(b){
+        setBkListHtml(apiBookings.map(function(b){
           var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up",pending_kyc:"sb-up"};
           var statusLabels={confirmed:"Confirmed",active:"Active",completed:"Completed",cancelled:"Cancelled",pending:"Pending","pending_kyc":"Paid · KYC Pending"};
           var pickupTime  = new Date(b.pickup.date).getTime();
@@ -2523,18 +2555,17 @@ async function renderProfile(){
             cancelBtn +
             detailBtn +
           '</div>';
-        }).join("");
+        }).join(""));
       } else {
-        bb.innerHTML = '<div class="profile-empty">No bookings yet. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>';
+        setBkListHtml('<div class="profile-empty">No bookings yet. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>');
       }
     } catch(e){
       console.warn("Profile API error:", e.message);
       // Backend unreachable — show cached bookings
-      var bb3 = document.getElementById("prof-bookings-body");
       var cached3 = getCachedBookings();
       if(cached3.length){
         var statusMap3={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up",pending_sync:"sb-up"};
-        bb3.innerHTML = cached3.map(function(b){
+        setBkListHtml(cached3.map(function(b){
           var pickupDate = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
           var dropDate   = b.drop   && b.drop.date   ? b.drop.date   : b.drop;
           var isConf3   = b.status === "confirmed" || b.status === "pending" || b.status === "pending_sync";
@@ -2561,9 +2592,9 @@ async function renderProfile(){
             detailBtn3 +
           '</div>';
         }).join("") +
-        '<div style="font-size:.72rem;color:#e67e22;margin-top:8px;text-align:center">⚠️ Showing locally saved data — server unreachable</div>';
+        '<div style="font-size:.72rem;color:#e67e22;margin-top:8px;text-align:center">⚠️ Showing locally saved data — server unreachable</div>');
       } else {
-        bb3.innerHTML = '<div class="profile-empty">Could not connect to server. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="renderProfile()">Retry →</span></div>';
+        setBkListHtml('<div class="profile-empty">Could not connect to server. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="renderProfile()">Retry →</span></div>');
       }
     }
   }
@@ -2636,10 +2667,9 @@ async function renderProfile(){
 
   // Bookings fallback — show locally-cached bookings when no API connection / no token
   if(!authToken){
-    var bb2 = document.getElementById("prof-bookings-body");
     var cached = getCachedBookings();
     if(cached.length){
-      bb2.innerHTML = cached.map(function(b){
+      setBkListHtml(cached.map(function(b){
         var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up",pending_sync:"sb-up"};
         var pickupDate = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
         var dropDate   = b.drop   && b.drop.date   ? b.drop.date   : b.drop;
@@ -2665,15 +2695,15 @@ async function renderProfile(){
           '</div>' + syncNote + checkinBtn2 + cancelBtn2 + detailBtn2 +
         '</div>';
       }).join("") +
-      '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin(renderProfile)">Log in →</span></div>';
+      '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin(renderProfile)">Log in →</span></div>');
     } else {
-      bb2.innerHTML =
+      setBkListHtml(
         '<div style="text-align:center;padding:24px 0">' +
           '<div style="font-size:.9rem;font-weight:700;margin-bottom:6px">Log in to see your bookings</div>' +
           '<div style="font-size:.8rem;color:var(--ts);margin-bottom:16px">Enter your phone number to fetch your booking history.</div>' +
           '<button class="btn btn-y btn-md" style="width:100%;max-width:260px" onclick="openQuickLogin(renderProfile)">Log in with Phone →</button>' +
           '<div style="margin-top:14px;font-size:.75rem;color:var(--ts)">New here? <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet →</span></div>' +
-        '</div>';
+        '</div>');
     }
   }
 }
@@ -2707,6 +2737,7 @@ function setDt(base, d){
   buildHourOpts(document.getElementById("h-drop-hour"),drop.getHours());
   buildHourOpts(document.getElementById("d-pickup-hour"),now.getHours());
   buildHourOpts(document.getElementById("d-drop-hour"),drop.getHours());
+  updateHeaderAuthUI();
 })();
 // ── HERO TRIP FIELDS ──
 var MONTH_NAMES=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -3070,7 +3101,7 @@ function bfChangeEmail(){
   document.getElementById("bf-otp-msg").textContent = "";
   document.getElementById("bf-email").focus();
 }
-async function bfSendOtp(){
+async function bfSendOtp(btn){
   var email = document.getElementById("bf-email").value.trim();
   var phone = document.getElementById("bf-phone").value.trim();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
@@ -3078,6 +3109,8 @@ async function bfSendOtp(){
     return;
   }
   var resendBtn = document.getElementById("bf-otp-resend-btn");
+  var orig = btn && btn.textContent;
+  if(btn){ btn.disabled = true; btn.textContent = "Sending…"; }
   try {
     await apiFetch("/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone,email:email})});
     document.getElementById("bf-otp-send-row").style.display   = "none";
@@ -3087,13 +3120,17 @@ async function bfSendOtp(){
     armOtpResend("bf", resendBtn);
   } catch(e){
     document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not send OTP") + '</span>';
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = orig; }
   }
 }
-async function bfVerifyOtp(){
+async function bfVerifyOtp(btn){
   var email = document.getElementById("bf-email").value.trim();
   var phone = document.getElementById("bf-phone").value.trim();
   var otp   = document.getElementById("bf-otp-code").value.trim();
   if(!otp){ document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#c0392b">Enter the OTP.</span>'; return; }
+  var orig = btn && btn.textContent;
+  if(btn){ btn.disabled = true; btn.textContent = "Verifying…"; }
   try {
     var resp = await apiFetch("/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone,otp:otp,name:document.getElementById("bf-name").value.trim(),email:email})});
     if(resp.token) setAuthToken(resp.token);
@@ -3101,9 +3138,11 @@ async function bfVerifyOtp(){
     bfVerifiedEmailValue = email.toLowerCase();
     userProfile.email = email; userProfile.emailVerified = true;
     document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#1a7a3c">✅ Email verified.</span>';
+    if(btn) btn.textContent = "✅ Verified";
     setTimeout(function(){ document.getElementById("bf-otp-box").style.display = "none"; calcPrice(); }, 700);
   } catch(e){
     document.getElementById("bf-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not verify OTP") + '</span>';
+    if(btn){ btn.disabled = false; btn.textContent = orig; }
   }
 }
 
@@ -3385,11 +3424,13 @@ function vmChangeNumber(){
   btn.textContent = "Send OTP"; btn.disabled = false; btn.className = "btn btn-y btn-sm";
   document.getElementById("vm-email").focus();
 }
-async function vmVerifyOtp(){
+async function vmVerifyOtp(btn){
   var ph  = document.getElementById("vm-phone").value.trim();
   var em  = document.getElementById("vm-email").value.trim();
   var otp = document.getElementById("vm-otp").value.trim();
   if(!otp){ alert("Enter the OTP."); return; }
+  var orig = btn && btn.textContent;
+  if(btn){ btn.disabled = true; btn.textContent = "Verifying…"; }
 
   function markVerified(name, phone, email){
     vmOtpVerified = true;
@@ -3412,15 +3453,18 @@ async function vmVerifyOtp(){
     });
     authToken = resp.token;
     localStorage.setItem("dds_token", authToken);
+    updateHeaderAuthUI();
     markVerified(resp.user && resp.user.name, resp.user && resp.user.phone, resp.user && resp.user.email);
   } catch(e){
     // Accept 1234 as offline test OTP fallback
     if(otp === "1234"){
       if(!authToken) authToken = "demo_" + ph + "_" + Date.now();
       localStorage.setItem("dds_token", authToken);
+      updateHeaderAuthUI();
       markVerified("", ph, em);
     } else {
       document.getElementById("vm-otp-msg").innerHTML = '<span style="color:#c0392b">❌ ' + esc(e.message || "Could not verify OTP") + '</span>';
+      if(btn){ btn.disabled = false; btn.textContent = orig; }
     }
   }
 }
@@ -3430,21 +3474,6 @@ function setAadhaar(input){
   document.getElementById("aadhaar-txt").textContent  = input.files[0].name;
   document.getElementById("aadhaar-icon").textContent = "✅";
   document.getElementById("aadhaar-drop").className   = "file-drop ok";
-}
-function useDemoAadhaar(){
-  aadhaarSet = true;
-  document.getElementById("aadhaar-txt").textContent  = "demo_aadhaar.jpg — Demo document";
-  document.getElementById("aadhaar-icon").textContent = "✅";
-  document.getElementById("aadhaar-drop").className   = "file-drop ok";
-}
-function useDemoDL(){
-  dlVerified = true;
-  document.getElementById("dl-txt").textContent       = "demo_licence.jpg — Age verified ✅";
-  document.getElementById("dl-icon").textContent      = "✅";
-  document.getElementById("dl-drop").className        = "file-drop ok";
-  document.getElementById("dl-lbl-badge").innerHTML   = '<span style="color:#1a7a3c">✅ 18+ confirmed (demo)</span>';
-  var bar = document.getElementById("dl-bar");
-  bar.className = "dl-bar dl-ok"; bar.textContent = "✅ Age verified — demo mode."; bar.style.display = "block";
 }
 function vmVerifyDL(input){
   if(!input.files || !input.files[0]) return;
@@ -3509,7 +3538,7 @@ async function vmSubmit(){
       if(!kycResp.ok){ var ke = await kycResp.json(); throw new Error(ke.error || "Upload failed"); }
       var kycData = await kycResp.json();
       if(kycData.user) userProfile = Object.assign(userProfile, kycData.user);
-      if(kycData.token){ authToken = kycData.token; localStorage.setItem("dds_token", authToken); }
+      if(kycData.token){ authToken = kycData.token; localStorage.setItem("dds_token", authToken); updateHeaderAuthUI(); }
     } catch(e){
       errEl.innerHTML = "⚠️ " + esc(e.message || "KYC upload failed. Check your connection.");
       errEl.style.display = "block";
@@ -4021,17 +4050,6 @@ function openCheckin(bookingId, carName, pickupStr) {
   if(pp) renderProfilePhoto(pp);
 
   openModal("checkin-modal");
-}
-
-function ciDemoPhoto(side) {
-  var labels = {front:"Front of Car",rear:"Rear of Car",passengerSide:"Passenger Side",driverSide:"Driver Side"};
-  ciPhotos[side] = new File(["demo"], "demo_" + side + ".jpg", {type:"image/jpeg"});
-  document.getElementById("ci-" + side + "-icon").textContent   = "✅";
-  document.getElementById("ci-" + side + "-status").textContent = "Demo photo ✓";
-  document.getElementById("ci-" + side + "-box").classList.add("ok");
-}
-function ciAllDemoPhotos() {
-  ["front","rear","passengerSide","driverSide"].forEach(function(s){ ciDemoPhoto(s); });
 }
 
 async function ciUploadPhotos() {
@@ -5175,9 +5193,11 @@ function pbChangeNumber(){
   document.getElementById("pb-otp-verify-row").style.display = "none";
   document.getElementById("pb-otp-msg").textContent = "";
 }
-async function pbSendOtp(){
+async function pbSendOtp(btn){
   if(!_pbEmail) return;
   var resendBtn = document.getElementById("pb-otp-resend-btn");
+  var orig = btn && btn.textContent;
+  if(btn){ btn.disabled = true; btn.textContent = "Sending…"; }
   try {
     await apiFetch("/auth/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:_pbPhone,email:_pbEmail})});
     document.getElementById("pb-otp-send-row").style.display   = "none";
@@ -5187,20 +5207,26 @@ async function pbSendOtp(){
     armOtpResend("pb", resendBtn);
   } catch(e){
     document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not send OTP") + '</span>';
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = orig; }
   }
 }
-async function pbVerifyOtp(){
+async function pbVerifyOtp(btn){
   var otp = document.getElementById("pb-otp-code").value.trim();
   if(!otp){ document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#c0392b">Enter the OTP.</span>'; return; }
+  var orig = btn && btn.textContent;
+  if(btn){ btn.disabled = true; btn.textContent = "Verifying…"; }
   try {
     var resp = await apiFetch("/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:_pbPhone,otp:otp,name:userProfile.name||"",email:_pbEmail})});
     if(resp.token) setAuthToken(resp.token);
     userProfile.phoneVerified = true;
     userProfile.emailVerified = true;
     document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#1a7a3c">✅ Email verified.</span>';
+    if(btn) btn.textContent = "✅ Verified";
     setTimeout(function(){ document.getElementById("pb-otp-box").style.display = "none"; }, 1500);
   } catch(e){
     document.getElementById("pb-otp-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not verify OTP") + '</span>';
+    if(btn){ btn.disabled = false; btn.textContent = orig; }
   }
 }
 
@@ -5293,6 +5319,7 @@ async function qlVerifyAndPay(){
     var resp = await apiFetch("/auth/verify-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:ph,otp:otp,name:nm,email:em})});
     authToken = resp.token;
     localStorage.setItem("dds_token", authToken);
+    updateHeaderAuthUI();
     userProfile.phone = ph;
     userProfile.email = em;
     userProfile.name  = resp.user && resp.user.name ? resp.user.name : (nm || userProfile.name);
@@ -5312,6 +5339,7 @@ function qlOfflineProceed(){
   var demoToken = "demo_" + ph + "_" + Date.now();
   authToken = demoToken;
   localStorage.setItem("dds_token", demoToken);
+  updateHeaderAuthUI();
   userProfile.name  = nm  || userProfile.name  || "Demo User";
   userProfile.phone = ph  || userProfile.phone || "";
   userProfile.email = em  || userProfile.email || "";

@@ -733,7 +733,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
     <div style="font-family:'Playfair Display',serif;font-weight:900;font-size:clamp(1.8rem,6vw,2.6rem);color:#fff;line-height:1.15;margin-bottom:10px">
       We're <span style="color:#f5c518">Launching Soon</span>
     </div>
-    <div style="color:#cbb98a;font-size:.95rem;margin-bottom:34px">DriveDilSe goes live on <strong style="color:#f5c518">22 June</strong>. Self-drive cars in Pune, booked your way.</div>
+    <div style="color:#cbb98a;font-size:.95rem;margin-bottom:34px">DriveDilSe goes live on <strong style="color:#f5c518">25 June, 1 PM</strong>. Self-drive cars in Pune, booked your way.</div>
     <div id="csCountdown" style="display:flex;gap:12px;justify-content:center;margin-bottom:36px">
       <div class="cs-unit"><div class="cs-num" id="csDays">00</div><div class="cs-label">Days</div></div>
       <div class="cs-unit"><div class="cs-num" id="csHrs">00</div><div class="cs-label">Hrs</div></div>
@@ -765,7 +765,7 @@ function csAdminLogin(){
   else { alert('Incorrect password'); }
 }
 function csTick(){
-  var LAUNCH = new Date("2026-06-22T00:00:00+05:30").getTime();
+  var LAUNCH = new Date("2026-06-25T13:00:00+05:30").getTime();
   var diff = LAUNCH - Date.now();
   if(diff <= 0){ csUnlock(); return; }
   var d = Math.floor(diff/86400000);
@@ -3239,32 +3239,71 @@ async function payNow(){
   var isSame    = deliveryMode === "same";
   var dropLoc   = (deliveryCharge > 0 && !isSame && dropAddress) ? dropAddress + " (Doorstep)" : pickupLoc;
 
-  async function bookDirect(){
-    var isGuest = !authToken || authToken.startsWith("demo_");
-    var endpoint, body;
-    if(isGuest){
-      var guestPhone = bfPhone || (authToken && authToken.split("_")[1]) || userProfile.phone || "";
-      endpoint = "/payment/guest-direct";
-      body = { phone: guestPhone, name: bfName || userProfile.name || "", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
-    } else {
-      endpoint = "/payment/direct";
-      body = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
-    }
-    var result = await apiFetch(endpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
+  function finishBooking(result){
     if(result.token){ authToken = result.token; setAuthToken(authToken); }
     myBookingIds.push(result.bookingId);
     cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup:{date:priceResult.pickup}, drop:{date:priceResult.drop}, total:priceResult.total, status:"pending_kyc" });
-    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+(depositFee?"\nRefundable Deposit (Paid Now): ₹"+depositFee : "")+(couponDiscount?"\nCoupon ("+appliedCoupon.code+"): -₹"+couponDiscount : "")+"\n\n✅ Booking confirmed. Payment collected at pickup.";
+    window._lastBookingMsg = "New Booking - DriveDilSe\n\nBooking ID: "+result.bookingId+"\nCar: "+selCar.name+"\nPickup: "+new Date(priceResult.pickup).toLocaleString("en-IN")+"\nDrop: "+new Date(priceResult.drop).toLocaleString("en-IN")+"\nTotal: "+inr(totalWithDelivery)+(deliveryCharge?"\nDelivery: ₹"+deliveryCharge+" ("+deliveryAddress+")" : "")+(tripProtectionFee?"\nTrip Protection: ₹"+tripProtectionFee : "")+(depositFee?"\nRefundable Deposit (Paid Now): ₹"+depositFee : "")+(couponDiscount?"\nCoupon ("+appliedCoupon.code+"): -₹"+couponDiscount : "")+"\n\n✅ Booking confirmed.";
     document.getElementById("booking-form").style.display    = "none";
     document.getElementById("success-section").style.display = "block";
     document.getElementById("sticky-total-bar").classList.remove("show");
-    showPostBookingOtp(guestPhone || userProfile.phone || "", bfEmail || userProfile.email || "");
+    showPostBookingOtp((bfPhone || userProfile.phone || ""), bfEmail || userProfile.email || "");
   }
 
-  // Razorpay integration is disabled for now — always book directly,
-  // payment is collected at pickup. Remove this early return to re-enable it.
-  try { await bookDirect(); }
-  catch(e){ if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;} alert("Booking failed: " + e.message); }
+  async function payViaRazorpay(){
+    var isGuest = !authToken || authToken.startsWith("demo_");
+    var orderEndpoint, orderBody;
+    if(isGuest){
+      var guestPhone = bfPhone || (authToken && authToken.split("_")[1]) || userProfile.phone || "";
+      orderEndpoint = "/payment/guest-order";
+      orderBody = { phone: guestPhone, name: bfName || userProfile.name || "", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
+    } else {
+      orderEndpoint = "/payment/order";
+      orderBody = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
+    }
+    var order = await apiFetch(orderEndpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(orderBody) });
+    if(order.guestToken){ authToken = order.guestToken; setAuthToken(authToken); }
+
+    var rzp = new Razorpay({
+      key: order.keyId,
+      amount: Math.round(order.amount * 100),
+      currency: order.currency || "INR",
+      name: "DriveDilSe",
+      description: selCar.name + " — " + (priceResult.days || order.days) + " day(s)",
+      order_id: order.orderId,
+      prefill: {
+        name: bfName || userProfile.name || "",
+        contact: bfPhone || userProfile.phone || "",
+        email: bfEmail || userProfile.email || "",
+      },
+      theme: { color: "#f5c518" },
+      handler: async function(resp){
+        try{
+          var verifyBody = {
+            razorpayOrderId: resp.razorpay_order_id, razorpayPaymentId: resp.razorpay_payment_id, razorpaySignature: resp.razorpay_signature,
+            carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc,
+            deliveryCharge: chargeDeliveryFee, couponCode: couponCode,
+          };
+          var result = await apiFetch("/payment/verify", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(verifyBody) });
+          finishBooking(result);
+        } catch(e){
+          if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;}
+          alert("Payment received but booking failed — contact support with your payment ID: " + resp.razorpay_payment_id + "\n" + e.message);
+        }
+      },
+      modal: {
+        ondismiss: function(){ if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;} },
+      },
+    });
+    rzp.on("payment.failed", function(resp){
+      if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;}
+      alert("Payment failed: " + (resp.error && resp.error.description || "Please try again."));
+    });
+    rzp.open();
+  }
+
+  try { await payViaRazorpay(); }
+  catch(e){ if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;} alert("Could not start payment: " + e.message); }
 }
 // ── VERIFY MODAL ──
 function openVerifyModal(){

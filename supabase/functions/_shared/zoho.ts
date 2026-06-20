@@ -1,18 +1,17 @@
 // Zoho Books integration — used to auto-raise an invoice when a trip ends.
-// All amounts are treated as already-final (GST + fees baked in); we do not
-// touch Zoho's own tax engine, we just list a readable breakdown of line
-// items whose sum equals the amount actually collected via Razorpay.
+// The main "Booking Fee" line carries the real GST18 tax group (CGST 9% +
+// SGST 9%), so Zoho's own tax columns show the actual 18% breakdown. Every
+// other line (delivery fee, coupon discount, extensions) is pinned to the
+// org's 0% tax group, since those amounts either aren't taxed by us or
+// already have their own GST baked into the figure — without pinning them
+// to 0%, Zoho silently applies the contact's default tax on top of them too
+// (confirmed live: a ₹118 charge came out as ₹132.16 before this was fixed).
 
 const ACCOUNTS_DOMAIN = Deno.env.get("ZOHO_ACCOUNTS_DOMAIN") || "https://accounts.zoho.in";
 const API_DOMAIN       = Deno.env.get("ZOHO_API_DOMAIN")      || "https://www.zohoapis.in";
 const ORG_ID           = Deno.env.get("ZOHO_ORG_ID")!;
-// Zoho silently applies the contact's default GST tax (e.g. 12%) on top of
-// any line item that doesn't specify a tax_id — even though our amounts
-// already have GST baked in as a plain line item. Explicitly pinning every
-// line item to the org's 0%/exempt tax group ("GST0") prevents that
-// double-taxation. Confirmed via live test: without this, a ₹118 invoice
-// came out as ₹132.16 (118 × 1.12).
-const ZERO_TAX_ID = Deno.env.get("ZOHO_ZERO_TAX_ID")!;
+const ZERO_TAX_ID  = Deno.env.get("ZOHO_ZERO_TAX_ID")!;
+const GST18_TAX_ID = Deno.env.get("ZOHO_GST18_TAX_ID")!;
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch(`${ACCOUNTS_DOMAIN}/oauth/v2/token`, {
@@ -65,7 +64,7 @@ export async function findOrCreateContact(name: string, phone: string, email: st
   return contact.contact_id as string;
 }
 
-export interface ZohoLineItem { name: string; rate: number; }
+export interface ZohoLineItem { name: string; rate: number; taxed?: boolean; }
 
 export async function createInvoice(
   contactId: string,
@@ -77,7 +76,10 @@ export async function createInvoice(
     body: JSON.stringify({
       customer_id: contactId,
       reference_number: referenceNumber,
-      line_items: lineItems.map((li) => ({ name: li.name, rate: li.rate, quantity: 1, tax_id: ZERO_TAX_ID })),
+      line_items: lineItems.map((li) => ({
+        name: li.name, rate: li.rate, quantity: 1,
+        tax_id: li.taxed ? GST18_TAX_ID : ZERO_TAX_ID,
+      })),
     }),
   });
   const invoice = created.invoice as Record<string, unknown>;
@@ -112,9 +114,10 @@ export async function raiseInvoiceForBooking(booking: {
 }): Promise<{ invoiceId: string }> {
   const contactId = await findOrCreateContact(booking.customer, booking.phone, booking.email);
 
+  // Single taxed line at the pre-tax amount — Zoho's GST18 tax group adds
+  // the real 18% (CGST 9% + SGST 9%) on top, landing at base + gst.
   const lineItems: ZohoLineItem[] = [
-    { name: `${booking.carName} rental — ${booking.days} day(s)`, rate: booking.base },
-    { name: "GST @ 18%", rate: booking.gst },
+    { name: "Booking Fee", rate: booking.base, taxed: true },
   ];
   if (booking.deliveryFee > 0) lineItems.push({ name: "Doorstep Delivery Fee", rate: booking.deliveryFee });
   if (booking.couponDiscount > 0) lineItems.push({ name: "Coupon Discount", rate: -booking.couponDiscount });

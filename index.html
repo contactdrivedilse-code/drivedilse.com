@@ -4336,13 +4336,13 @@ async function cancelBooking(id, displayId){
 
 // ── BOOKING DETAILS + EXTENSION ──
 function extendBookingQuick(id){
-  openBookingDetails(id);
+  openBookingDetails(id, true);
   setTimeout(function(){
     var el = document.getElementById("bkd-extend-section");
     if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
   }, 60);
 }
-function openBookingDetails(id) {
+function openBookingDetails(id, showExtend) {
   var b = window._bkdMap[id];
   // Fallback: search by bookingId if UUID lookup fails
   if(!b){
@@ -4428,7 +4428,7 @@ function openBookingDetails(id) {
     "<br><span style='font-size:.75rem;color:var(--ts)'>" + dropDate.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}) + "</span>";
   document.getElementById("bkd-dur").textContent = diffDays + (diffDays === 1 ? " day" : " days");
 
-  var canExtend     = b.status === "confirmed" || b.status === "active";
+  var canExtend     = showExtend && (b.status === "confirmed" || b.status === "active");
   var canReschedule = b.status === "confirmed";
   document.getElementById("bkd-extend-section").style.display    = canExtend     ? "block" : "none";
   document.getElementById("bkd-reschedule-section").style.display = canReschedule ? "block" : "none";

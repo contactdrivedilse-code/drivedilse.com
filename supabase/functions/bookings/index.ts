@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
+import { raiseInvoiceForBooking } from "../_shared/zoho.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -509,11 +510,36 @@ Deno.serve(async (req) => {
       // Car unavailable for 4 hours after completion (cleaning/inspection buffer)
       const availableAt  = new Date(Date.now() + 4 * 3600000).toISOString();
 
+      // Compute the original base/GST split before we overwrite drop_date below
+      const { base, gst, days } = calcPrice(b.price_per_day as number, new Date(b.pickup_date as string), new Date(b.drop_date as string));
+
       await sb.from("bookings").update({
         checkout_otp_verified: true, checked_out_at: checkedOutAt,
         drop_date: availableAt, // overwrite original drop — car free after 4h
         status: "completed", updated_at: checkedOutAt,
       }).eq("id", id);
+
+      // Best-effort: raise a Zoho Books invoice for the completed trip.
+      // Never blocks the customer's checkout response if Zoho is down/misconfigured.
+      try {
+        const { data: profile } = await sb.from("profiles").select("email").eq("id", b.user_id as string).maybeSingle();
+        const { data: exts } = await sb.from("extensions").select("hours, cost").eq("booking_id", id);
+        await raiseInvoiceForBooking({
+          bookingId: b.booking_id as string,
+          carName: b.car_name as string,
+          customer: b.customer as string,
+          phone: b.phone as string,
+          email: (profile as Record<string, unknown> | null)?.email as string || "",
+          base, gst, days,
+          deliveryFee: (b.delivery_fee as number) ?? 0,
+          couponDiscount: (b.coupon_discount as number) ?? 0,
+          total: b.total as number,
+          extensions: (exts ?? []) as { hours: number; cost: number }[],
+          checkedOutAt,
+        });
+      } catch (zErr) {
+        console.error("Zoho invoice failed for booking", id, (zErr as Error).message);
+      }
 
       return json({ success: true, message: "Booking closed. Thank you for driving with DriveDilSe!" });
     }

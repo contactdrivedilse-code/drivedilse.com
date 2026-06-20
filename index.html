@@ -2540,9 +2540,12 @@ async function renderProfile(){
             ? '<button onclick="cancelBooking(\''+b._id+'\',\''+(b.bookingId||"").replace(/'/g,"")+'\')" style="margin-top:8px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600;transition:all .15s" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
             : '';
           window._bkdMap[b._id] = b;
-          var detailBtn = '<button onclick="openBookingDetails(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
+          var detailBtn = '<button onclick="openBookingDetails(\''+b._id+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">📄 View Details</button>';
           var extendBtn = (isConfirmed || isActive)
-            ? '<button onclick="extendBookingQuick(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:var(--yd);background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⏱ Extend Booking →</button>'
+            ? '<button onclick="extendBookingQuick(\''+b._id+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:var(--yd);background:#fff;border:1.5px solid var(--yd);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fffbe6\'" onmouseout="this.style.background=\'#fff\'">⏱ Extend</button>'
+            : '';
+          var secondaryRow = (extendBtn || detailBtn)
+            ? '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn + detailBtn + '</div>'
             : '';
           var extBadge = (b.extensions && b.extensions.length)
             ? '<span style="background:#e8f4fd;color:#1a6fa8;border-radius:20px;padding:2px 8px;font-size:.65rem;font-weight:700;margin-left:6px">+' + b.extensions.length + ' extension' + (b.extensions.length>1?'s':'') + '</span>'
@@ -2555,9 +2558,8 @@ async function renderProfile(){
               '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + (statusLabels[b.status]||b.status) + '</span>' +
             '</div>' +
             checkinBtn +
-            extendBtn +
             cancelBtn +
-            detailBtn +
+            secondaryRow +
           '</div>';
         }).join(""));
       } else {
@@ -2583,10 +2585,11 @@ async function renderProfile(){
             ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
             : '';
           var bkd3key = b._id||b.bookingId; window._bkdMap[bkd3key] = b;
-          var detailBtn3 = '<button onclick="openBookingDetails(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
+          var detailBtn3 = '<button onclick="openBookingDetails(\''+bkd3key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">📄 View Details</button>';
           var extendBtn3 = (isConf3 || isActive3)
-            ? '<button onclick="extendBookingQuick(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:var(--yd);background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⏱ Extend Booking →</button>'
+            ? '<button onclick="extendBookingQuick(\''+bkd3key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:var(--yd);background:#fff;border:1.5px solid var(--yd);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fffbe6\'" onmouseout="this.style.background=\'#fff\'">⏱ Extend</button>'
             : '';
+          var secondaryRow3 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn3 + detailBtn3 + '</div>';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -2595,9 +2598,8 @@ async function renderProfile(){
               '<span class="sbadge ' + (statusMap3[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
             '</div>' +
             checkinBtn3 +
-            extendBtn3 +
             cancelBtn3 +
-            detailBtn3 +
+            secondaryRow3 +
           '</div>';
         }).join("") +
         '<div style="font-size:.72rem;color:#e67e22;margin-top:8px;text-align:center">⚠️ Showing locally saved data — server unreachable</div>');
@@ -2693,17 +2695,18 @@ async function renderProfile(){
           ? '<button onclick="cancelBooking(\''+(b._id||b.bookingId)+'\',\''+(b.bookingId||"").replace(/\'/g,"")+'\')" style="margin-top:6px;font-size:.73rem;color:#c0392b;background:none;border:1.5px solid #f0c0c0;border-radius:8px;padding:5px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;font-weight:600" onmouseover="this.style.background=\'#fde8e8\'" onmouseout="this.style.background=\'none\'">✕ Cancel Booking</button>'
           : '';
         var bkd2key = b._id||b.bookingId; window._bkdMap[bkd2key] = b;
-        var detailBtn2 = '<button onclick="openBookingDetails(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
+        var detailBtn2 = '<button onclick="openBookingDetails(\''+bkd2key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">📄 View Details</button>';
         var extendBtn2 = (isConf2 || isActive2)
-          ? '<button onclick="extendBookingQuick(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:var(--yd);background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⏱ Extend Booking →</button>'
+          ? '<button onclick="extendBookingQuick(\''+bkd2key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:var(--yd);background:#fff;border:1.5px solid var(--yd);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fffbe6\'" onmouseout="this.style.background=\'#fff\'">⏱ Extend</button>'
           : '';
+        var secondaryRow2 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn2 + detailBtn2 + '</div>';
         return '<div class="bk-row" style="display:block;padding:14px 0">' +
           '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
             '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
             '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
             '<div class="bk-date">' + new Date(pickupDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(dropDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
             '<span class="sbadge ' + (statusMap[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
-          '</div>' + syncNote + checkinBtn2 + extendBtn2 + cancelBtn2 + detailBtn2 +
+          '</div>' + syncNote + checkinBtn2 + cancelBtn2 + secondaryRow2 +
         '</div>';
       }).join("") +
       '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin(renderProfile)">Log in →</span></div>');

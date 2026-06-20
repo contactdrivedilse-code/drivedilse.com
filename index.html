@@ -5059,22 +5059,24 @@ async function payExtension(){
 
   try {
     if(authToken && authToken.startsWith("demo_")) throw new Error("demo");
-    var r = await fetch(API + "/bookings/" + id + "/extend/order", {
-      method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},
+    var order = await apiFetch("/bookings/" + id + "/extend/order", {
+      method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ hours: hours })
     });
-    var order = await r.json();
-    if(!r.ok) throw new Error(order.error || "Order failed");
     var rzp = new Razorpay({
       key: order.keyId, amount: order.amount*100, currency: order.currency,
       name: "DriveDilSe", description: "Booking Extension", order_id: order.orderId,
       handler: async function(resp){
-        var vr = await fetch(API + "/bookings/" + id + "/extend/verify", {
-          method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+authToken},
-          body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, hours:hours })
-        });
-        var vd = await vr.json();
-        if(!vr.ok){ alert("Payment verified but update failed. Contact support."); return; }
+        var vd;
+        try {
+          vd = await apiFetch("/bookings/" + id + "/extend/verify", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ razorpayOrderId:resp.razorpay_order_id, razorpayPaymentId:resp.razorpay_payment_id, razorpaySignature:resp.razorpay_signature, hours:hours })
+          });
+        } catch(ve){
+          alert("Payment verified but update failed. Contact support.");
+          return;
+        }
         // Update cache with new drop date and extensions
         var cache = getCachedBookings();
         var idx = cache.findIndex(function(x){ return x._id===id||x.bookingId===id; });
@@ -5102,13 +5104,11 @@ async function payExtension(){
     // Razorpay not configured — extend directly on backend
     btn.textContent = "Processing…"; btn.disabled = true;
     try {
-      var dr = await fetch(API + "/bookings/" + id + "/extend/direct", {
+      var dd = await apiFetch("/bookings/" + id + "/extend/direct", {
         method: "POST",
-        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+authToken },
+        headers: { "Content-Type":"application/json" },
         body: JSON.stringify({ hours: hours })
       });
-      var dd = await dr.json();
-      if(!dr.ok) throw new Error(dd.error || "Extension failed");
       // Update cache with fresh backend data
       if(dd.booking){
         var cache3 = getCachedBookings();

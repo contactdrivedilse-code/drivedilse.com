@@ -2178,6 +2178,9 @@ window.addEventListener('scroll',function(){
       <div style="padding:12px 16px" id="bkd-payment-rows"></div>
     </div>
 
+    <!-- Invoice (completed bookings only) -->
+    <button id="bkd-invoice-btn" style="display:none;width:100%;margin-bottom:14px;font-size:.82rem;font-weight:700;color:#fff;background:var(--t);border:none;border-radius:12px;padding:12px 16px;cursor:pointer;font-family:'Inter',sans-serif" onclick="viewInvoice()">📄 View Invoice</button>
+
     <!-- Check-in photos -->
     <div id="bkd-photos-section" style="display:none;border:1px solid #ede9db;border-radius:14px;overflow:hidden;margin-bottom:14px">
       <div style="background:#faf9f6;padding:9px 16px;font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);border-bottom:1px solid #ede9db">📸 Check-In Photos</div>
@@ -4402,6 +4405,26 @@ async function cancelBooking(id, displayId){
 }
 
 // ── BOOKING DETAILS + EXTENSION ──
+async function viewInvoice(){
+  var b = window._bkdCurrent;
+  if(!b) return;
+  var btn = document.getElementById("bkd-invoice-btn");
+  var orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "Loading…";
+  try {
+    var resp = await fetch(API + "/bookings/" + (b._id||b.bookingId) + "/invoice", {
+      headers: { "Authorization": "Bearer " + ANON_KEY, "x-user-token": authToken }
+    });
+    if(!resp.ok){ var e = await resp.json().catch(function(){return {};}); throw new Error(e.error || "Could not load invoice"); }
+    var blob = await resp.blob();
+    var url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  } catch(e){
+    alert("Could not open invoice: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
 function extendBookingQuick(id){
   openBookingDetails(id, true);
   setTimeout(function(){
@@ -4497,6 +4520,8 @@ function openBookingDetails(id, showExtend) {
 
   var canExtend     = showExtend && (b.status === "confirmed" || b.status === "active");
   var canReschedule = b.status === "confirmed";
+  var invoiceBtn = document.getElementById("bkd-invoice-btn");
+  invoiceBtn.style.display = (b.status === "completed" && b.invoiceId) ? "block" : "none";
   document.getElementById("bkd-extend-section").style.display    = canExtend     ? "block" : "none";
   document.getElementById("bkd-reschedule-section").style.display = canReschedule ? "block" : "none";
   document.getElementById("bkd-reschedule-form").style.display   = "none";

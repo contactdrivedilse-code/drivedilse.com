@@ -86,6 +86,14 @@ export async function createInvoice(
   return { invoiceId: invoice.invoice_id as string, total: invoice.total as number };
 }
 
+export async function fetchInvoicePdf(invoiceId: string): Promise<ArrayBuffer> {
+  const token = await getAccessToken();
+  const url = `${API_DOMAIN}/books/v3/invoices/${invoiceId}?organization_id=${ORG_ID}&accept=pdf`;
+  const res = await fetch(url, { headers: { "Authorization": `Zoho-oauthtoken ${token}` } });
+  if (!res.ok) throw new Error("Zoho PDF fetch failed: " + (await res.text()));
+  return await res.arrayBuffer();
+}
+
 export async function recordPayment(
   contactId: string,
   invoiceId: string,
@@ -111,7 +119,7 @@ export async function raiseInvoiceForBooking(booking: {
   bookingId: string; carName: string; customer: string; phone: string; email: string;
   base: number; gst: number; deliveryFee: number; couponDiscount: number; total: number;
   days: number; extensions: { hours: number; cost: number }[]; checkedOutAt: string;
-}): Promise<{ invoiceId: string }> {
+}): Promise<{ invoiceId: string; total: number }> {
   const contactId = await findOrCreateContact(booking.customer, booking.phone, booking.email);
 
   // Single taxed line at the pre-tax amount — Zoho's GST18 tax group adds
@@ -125,7 +133,7 @@ export async function raiseInvoiceForBooking(booking: {
     lineItems.push({ name: `Extension #${i + 1} (+${e.hours}hr, incl. GST)`, rate: e.cost });
   });
 
-  const { invoiceId } = await createInvoice(contactId, lineItems, booking.bookingId);
+  const { invoiceId, total } = await createInvoice(contactId, lineItems, booking.bookingId);
   await recordPayment(contactId, invoiceId, booking.total, booking.checkedOutAt);
-  return { invoiceId };
+  return { invoiceId, total };
 }

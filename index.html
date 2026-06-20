@@ -230,6 +230,11 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .hero-feature-icon{width:42px;height:42px;border-radius:11px;background:rgba(245,197,24,.12);border:1px solid rgba(201,160,16,.3);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
 .hero-feature-title{font-size:.9rem;font-weight:800;color:var(--t);margin-bottom:2px}
 .hero-feature-desc{font-size:.74rem;color:#777;line-height:1.45}
+.hero-stats-row{display:flex;gap:28px;margin-top:26px;padding-top:22px;border-top:1px solid rgba(0,0,0,.08)}
+.hero-stat-item{display:flex;align-items:center;gap:10px}
+.hero-stat-num{font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:1.5rem;color:var(--t);line-height:1}
+.hero-stat-lbl{font-size:.72rem;color:#777;font-weight:600;line-height:1.3}
+.hero-stat-stars{color:#f5b400;font-size:.7rem;letter-spacing:1px;margin-top:2px}
 
 /* ---- TRUST TICKER ---- */
 .ticker-wrap{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);border-bottom:1.5px solid rgba(201,160,16,.25);padding:13px 0;overflow:hidden;position:relative}
@@ -926,6 +931,19 @@ function csTick(){
           <div class="hero-feature-item">
             <div class="hero-feature-icon">✨</div>
             <div><div class="hero-feature-title">Well Maintained Cars</div><div class="hero-feature-desc">Clean, serviced &amp; ready before every trip</div></div>
+          </div>
+        </div>
+        <div class="hero-stats-row">
+          <div class="hero-stat-item">
+            <div>
+              <div class="hero-stat-num">5.0</div>
+              <div class="hero-stat-stars">★★★★★</div>
+            </div>
+            <div class="hero-stat-lbl">Average Rating<br>on Google Reviews</div>
+          </div>
+          <div class="hero-stat-item">
+            <div class="hero-stat-num">500+</div>
+            <div class="hero-stat-lbl">Bookings<br>Served</div>
           </div>
         </div>
       </div>

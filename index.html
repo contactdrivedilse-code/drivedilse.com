@@ -804,8 +804,8 @@ function csTick(){
       <span class="nav-link" onclick="goTo('fleet-sec')">Fleet</span>
       <span class="nav-link" onclick="goTo('how-sec')">How It Works</span>
       <span class="nav-link" onclick="goTo('faq-sec')">FAQ</span>
-      <span class="nav-link" onclick="showTrips()">My Trips</span>
       <a class="nav-link" href="policy.html" style="text-decoration:none">Policies</a>
+      <span class="nav-link" onclick="showTrips()">My Trips</span>
       <button class="btn btn-y btn-sm" id="hdr-signin-btn" onclick="openQuickLogin(renderProfile)" style="display:none">&#128274; Sign In</button>
       <button class="btn btn-g btn-sm" id="hdr-profile-btn" onclick="showProfile()" style="display:none">&#128100; My Profile</button>
       <button class="btn btn-y btn-sm" onclick="goTo('search-sec')">Book Now</button>
@@ -1450,17 +1450,11 @@ window.addEventListener('scroll',function(){
     </div>
 
     <div class="profile-card">
-      <div class="profile-card-hdr">My Bookings</div>
-      <div class="profile-card-body bk-list-target" id="prof-bookings-body">
-        <div class="profile-empty">No bookings yet. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="goHome()">Browse fleet &#8594;</span></div>
-      </div>
-    </div>
-
-    <div class="profile-card">
       <div class="profile-card-hdr">Quick Actions</div>
       <div class="profile-card-body">
         <div style="display:flex;flex-direction:column;gap:10px">
           <button class="btn btn-y btn-lg" id="prof-verify-btn" onclick="openVerifyModal()">Complete Profile Verification &#8594;</button>
+          <button class="btn btn-g btn-lg" onclick="showTrips()">&#128197; View My Trips &#8594;</button>
           <a class="btn btn-green btn-lg" href="https://wa.me/917709209765" target="_blank" style="text-decoration:none;display:block;text-align:center;padding:14px">&#128172; Contact Support on WhatsApp</a>
           <button class="btn btn-g btn-lg" onclick="goHome()">&#8592; Back to Fleet</button>
           <button class="btn btn-lg" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:12px;padding:14px 20px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif" onclick="clearMyProfile()">🗑 Clear My Data &amp; Start Fresh</button>
@@ -1781,7 +1775,7 @@ window.addEventListener('scroll',function(){
             <a onclick="document.getElementById('pb-otp-box').style.display='none'" style="display:block;text-align:center;font-size:.7rem;color:var(--ts);margin-top:8px;cursor:pointer">Skip for now</a>
           </div>
           <div style="font-size:.82rem;color:#555;margin-bottom:20px;background:#fff8d0;border:1.5px solid var(--yd);border-radius:10px;padding:12px">📋 <strong>One last step:</strong> Upload your Aadhaar &amp; Driving Licence below. Our representative needs this to hand over the car and give you the Check-In OTP.</div>
-          <button class="btn btn-y btn-lg" onclick="showProfile()" style="margin-bottom:10px">View My Bookings →</button>
+          <button class="btn btn-y btn-lg" onclick="showTrips()" style="margin-bottom:10px">View My Bookings →</button>
           <button class="btn btn-y btn-lg" onclick="openVerifyModal()" style="margin-bottom:10px;background:#fff;border:2px solid var(--yd);color:#333">Complete Profile Verification →</button>
           <button class="btn btn-g btn-sm" onclick="goHome()" style="width:100%">Back to Home</button>
           <div style="font-size:.7rem;color:var(--ts);margin-top:10px">⚠️ Check-In OTP is only given by our representative after profile is verified</div>
@@ -2075,7 +2069,7 @@ window.addEventListener('scroll',function(){
       <div style="font-size:3rem;margin-bottom:12px">🎉</div>
       <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:8px">Booking Activated!</div>
       <div style="color:var(--ts);font-size:.88rem;margin-bottom:24px">Your booking is now active. Drive safe and enjoy!</div>
-      <button class="btn btn-y btn-lg" onclick="closeModal('checkin-modal');showProfile()">View My Bookings</button>
+      <button class="btn btn-y btn-lg" onclick="closeModal('checkin-modal');showTrips()">View My Bookings</button>
     </div>
   </div>
 </div>
@@ -2244,7 +2238,7 @@ window.addEventListener('scroll',function(){
       <div style="font-size:3rem;margin-bottom:12px">✅</div>
       <div style="font-family:Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:8px">Booking Completed!</div>
       <div style="color:var(--ts);font-size:.88rem;margin-bottom:24px">Thank you for driving with DriveDilSe. See you again!</div>
-      <button class="btn btn-y btn-lg" onclick="closeModal('checkout-modal');showProfile()">View My Bookings</button>
+      <button class="btn btn-y btn-lg" onclick="closeModal('checkout-modal');showTrips()">View My Bookings</button>
     </div>
   </div>
 </div>
@@ -2541,6 +2535,9 @@ async function renderProfile(){
             : '';
           window._bkdMap[b._id] = b;
           var detailBtn = '<button onclick="openBookingDetails(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
+          var extendBtn = (isConfirmed || isActive)
+            ? '<button onclick="extendBookingQuick(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:var(--yd);background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⏱ Extend Booking →</button>'
+            : '';
           var extBadge = (b.extensions && b.extensions.length)
             ? '<span style="background:#e8f4fd;color:#1a6fa8;border-radius:20px;padding:2px 8px;font-size:.65rem;font-weight:700;margin-left:6px">+' + b.extensions.length + ' extension' + (b.extensions.length>1?'s':'') + '</span>'
             : '';
@@ -2552,6 +2549,7 @@ async function renderProfile(){
               '<span class="sbadge ' + (statusMap[b.status]||"sb-done") + '">' + (statusLabels[b.status]||b.status) + '</span>' +
             '</div>' +
             checkinBtn +
+            extendBtn +
             cancelBtn +
             detailBtn +
           '</div>';
@@ -2580,6 +2578,9 @@ async function renderProfile(){
             : '';
           var bkd3key = b._id||b.bookingId; window._bkdMap[bkd3key] = b;
           var detailBtn3 = '<button onclick="openBookingDetails(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
+          var extendBtn3 = (isConf3 || isActive3)
+            ? '<button onclick="extendBookingQuick(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:var(--yd);background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⏱ Extend Booking →</button>'
+            : '';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -2588,6 +2589,7 @@ async function renderProfile(){
               '<span class="sbadge ' + (statusMap3[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
             '</div>' +
             checkinBtn3 +
+            extendBtn3 +
             cancelBtn3 +
             detailBtn3 +
           '</div>';
@@ -2686,13 +2688,16 @@ async function renderProfile(){
           : '';
         var bkd2key = b._id||b.bookingId; window._bkdMap[bkd2key] = b;
         var detailBtn2 = '<button onclick="openBookingDetails(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:#555;background:#faf9f6;border:1.5px solid #ddd;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#f0ede4\'" onmouseout="this.style.background=\'#faf9f6\'">View Details →</button>';
+        var extendBtn2 = (isConf2 || isActive2)
+          ? '<button onclick="extendBookingQuick(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.75rem;font-weight:700;color:var(--yd);background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:\'Inter\',sans-serif;text-align:left" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⏱ Extend Booking →</button>'
+          : '';
         return '<div class="bk-row" style="display:block;padding:14px 0">' +
           '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
             '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
             '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
             '<div class="bk-date">' + new Date(pickupDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(dropDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
             '<span class="sbadge ' + (statusMap[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
-          '</div>' + syncNote + checkinBtn2 + cancelBtn2 + detailBtn2 +
+          '</div>' + syncNote + checkinBtn2 + extendBtn2 + cancelBtn2 + detailBtn2 +
         '</div>';
       }).join("") +
       '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin(renderProfile)">Log in →</span></div>');
@@ -4324,6 +4329,13 @@ async function cancelBooking(id, displayId){
 }
 
 // ── BOOKING DETAILS + EXTENSION ──
+function extendBookingQuick(id){
+  openBookingDetails(id);
+  setTimeout(function(){
+    var el = document.getElementById("bkd-extend-section");
+    if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+  }, 60);
+}
 function openBookingDetails(id) {
   var b = window._bkdMap[id];
   // Fallback: search by bookingId if UUID lookup fails

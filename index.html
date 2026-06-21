@@ -434,6 +434,7 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .chat-contact-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--b);border-radius:10px;margin-bottom:9px;font-size:.82rem;color:var(--t);text-decoration:none;font-weight:600}
 .chat-contact-row:hover{background:var(--wg)}
 .chat-contact-row .ico{font-size:1rem}
+.brand-ico{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;flex-shrink:0}
 @media(max-width:480px){.chat-widget{right:14px;left:14px;width:auto;bottom:90px;height:min(80vh,600px)}}
 
 /* ---- MOBILE STICKY CTA ---- */
@@ -1295,10 +1296,22 @@ function csTick(){
     <div class="chat-pane" id="chat-pane-contact">
       <div style="padding:0 18px 18px;overflow-y:auto;flex:1">
         <p class="chat-pane-intro" style="padding:14px 0 0">Reach us directly — we're happy to help.</p>
-        <a class="chat-contact-row" href="https://wa.me/917709209765" target="_blank"><span class="ico">💬</span>WhatsApp: +91 77092 09765</a>
-        <a class="chat-contact-row" href="tel:+917709209765"><span class="ico">📞</span>Call: +91 77092 09765</a>
-        <a class="chat-contact-row" href="mailto:info@drivedilse.com"><span class="ico">✉️</span>info@drivedilse.com</a>
-        <a class="chat-contact-row" href="https://www.instagram.com/drivedilse/" target="_blank"><span class="ico">📷</span>@drivedilse</a>
+        <a class="chat-contact-row" href="https://wa.me/917709209765" target="_blank">
+          <span class="brand-ico" style="background:#25D366"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.46-1.43c1.36.74 2.91 1.17 4.58 1.17 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 1.67c4.55 0 8.24 3.69 8.24 8.24s-3.69 8.24-8.24 8.24c-1.46 0-2.83-.38-4.02-1.06l-.29-.17-3.01.79.8-2.94-.19-.3a8.16 8.16 0 0 1-1.29-4.41c0-4.55 3.7-8.24 8.24-8.24zm-3.69 4.41c-.16 0-.42.06-.6.27-.21.24-.81.79-.81 1.92 0 1.13.83 2.23.95 2.38.12.16 1.7 2.6 4.13 3.55 2.03.79 2.44.66 2.88.61.44-.05 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.23-.16-.48-.28-.25-.12-1.45-.71-1.68-.79-.22-.08-.39-.12-.55.12-.16.24-.63.79-.78.95-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.71-.63-1.2-1.41-1.34-1.65-.14-.24-.01-.37.12-.5.12-.12.28-.32.42-.48.13-.16.18-.27.27-.45.09-.18.04-.34-.04-.46-.08-.12-.55-1.33-.76-1.83-.16-.39-.32-.39-.48-.4-.13-.01-.28-.01-.43-.01z"/></svg></span>
+          WhatsApp: +91 77092 09765
+        </a>
+        <a class="chat-contact-row" href="tel:+917709209765">
+          <span class="brand-ico" style="background:#161616"><svg viewBox="0 0 24 24" width="14" height="14" fill="#fff"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.24.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2z"/></svg></span>
+          Call: +91 77092 09765
+        </a>
+        <a class="chat-contact-row" href="mailto:info@drivedilse.com">
+          <span class="brand-ico" style="background:#EA4335"><svg viewBox="0 0 24 24" width="15" height="15" fill="#fff"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 2.236-8 5-8-5h16zM4 18V8.41l8 5 8-5V18H4z"/></svg></span>
+          info@drivedilse.com
+        </a>
+        <a class="chat-contact-row" href="https://www.instagram.com/drivedilse/" target="_blank">
+          <span class="brand-ico" style="background:radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%,#d6249f 60%,#285AEB 90%)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="#fff" stroke="none"/></svg></span>
+          @drivedilse
+        </a>
       </div>
     </div>
   </div>

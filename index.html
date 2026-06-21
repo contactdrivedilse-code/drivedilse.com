@@ -4600,7 +4600,13 @@ function renderReviewBody(b){
       '<div style="font-size:.84rem;color:#1a7a3c;font-weight:700;margin-bottom:6px">✅ Thanks — here\'s what you submitted:</div>' +
       '<div style="font-size:1.2rem;letter-spacing:3px;color:#f5b400;margin-bottom:4px">'+stars+'</div>' +
       '<div style="font-size:.8rem;color:var(--ts);margin-bottom:8px">You rated this car '+rating+'/5</div>' +
-      (rv.reviewText ? '<div style="font-size:.82rem;color:#444;background:#faf9f6;border:1px solid #ede9db;border-radius:10px;padding:10px 12px">'+esc(rv.reviewText)+'</div>' : '');
+      (rv.reviewText ? '<div style="font-size:.82rem;color:#444;background:#faf9f6;border:1px solid #ede9db;border-radius:10px;padding:10px 12px;margin-bottom:10px">'+esc(rv.reviewText)+'</div>' : '') +
+      (rating >= 4
+        ? '<div style="background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:10px;padding:12px 14px;margin-top:4px">' +
+            '<div style="font-size:.82rem;font-weight:700;margin-bottom:6px">🙏 Glad you enjoyed it! Mind sharing it on Google too?</div>' +
+            '<a class="btn btn-y btn-sm" style="width:100%" href="https://g.page/r/CZCGmNbcHTChEAI/review" target="_blank">⭐ Leave a Google Review →</a>' +
+          '</div>'
+        : '');
     return;
   }
   _bkdSelectedStars = 0;

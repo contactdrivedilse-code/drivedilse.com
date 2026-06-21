@@ -72,6 +72,12 @@ export async function findOrCreateContact(name: string, phone: string, email: st
 
 export interface ZohoLineItem { name: string; rate: number; taxed?: boolean; }
 
+// SAC code for car rental/leasing services — set explicitly on every line so
+// it doesn't depend on Zoho's name-based auto-matching (confirmed live: the
+// "Booking Fee" line picked it up automatically, but the extension line
+// right next to it on the same invoice came out blank).
+const RENTAL_SAC = "997329";
+
 export async function createInvoice(
   contactId: string,
   lineItems: ZohoLineItem[],
@@ -83,7 +89,7 @@ export async function createInvoice(
       customer_id: contactId,
       reference_number: referenceNumber,
       line_items: lineItems.map((li) => ({
-        name: li.name, rate: li.rate, quantity: 1,
+        name: li.name, rate: li.rate, quantity: 1, hsn_or_sac: RENTAL_SAC,
         tax_id: li.taxed ? GST18_TAX_ID : ZERO_TAX_ID,
       })),
     }),
@@ -168,7 +174,13 @@ export async function raiseInvoiceForBooking(booking: {
   if (booking.deliveryFee > 0) lineItems.push({ name: "Doorstep Delivery Fee", rate: booking.deliveryFee });
   if (booking.couponDiscount > 0) lineItems.push({ name: "Coupon Discount", rate: -booking.couponDiscount });
   booking.extensions.forEach((e, i) => {
-    lineItems.push({ name: `Extension #${i + 1} (+${e.hours}hr, incl. GST)`, rate: e.cost });
+    // Skip zero-cost extensions entirely — a ₹0 line carries no real
+    // information and omitting its tax_id (the only way to avoid a 0% tax
+    // group splitting into redundant CGST0/SGST0 rows) makes Zoho fall back
+    // to the contact's default tax instead, which is just as redundant
+    // (confirmed live: it showed CGST6/SGST6 instead of CGST0/SGST0).
+    if (e.cost === 0) return;
+    lineItems.push({ name: `Extension #${i + 1} (+${e.hours}hr)`, rate: e.cost });
   });
 
   const { invoiceId, total } = await createInvoice(contactId, lineItems, booking.bookingId);

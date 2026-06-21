@@ -677,6 +677,17 @@ async function adminFetch(path, opts){
   // Don't set Content-Type for FormData — browser sets it with boundary
   if(opts.body instanceof FormData) delete opts.headers["Content-Type"];
   var r = await fetch(API + path, opts);
+  if(r.status === 401 && adminToken && adminToken !== "local"){
+    // Session expired/invalid — force a fresh login instead of silently
+    // falling back to "Demo mode" everywhere, which was misleading
+    // (looked like the backend was down when it was just an old token).
+    localStorage.removeItem("dds_admin_token");
+    localStorage.removeItem("dds_role");
+    adminToken = "";
+    alert("Your session has expired. Please sign in again.");
+    location.reload();
+    throw new Error("Session expired");
+  }
   if(!r.ok){ var e = await r.json().catch(function(){ return {error:r.status}; }); throw new Error(e.error || r.status); }
   return r.json();
 }

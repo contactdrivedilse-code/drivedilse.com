@@ -253,6 +253,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="nav-item" data-tab="schedule"  onclick="navTo('schedule',this)"> <span class="nav-icon">📅</span>Today's Schedule</div>
       <div class="nav-item" data-tab="fleet"     onclick="navTo('fleet',this)">    <span class="nav-icon">🚗</span>Fleet</div>
       <div class="nav-item" data-tab="coupons"   onclick="navTo('coupons',this)">  <span class="nav-icon">🎁</span>Coupons</div>
+      <div class="nav-item" data-tab="blog"      onclick="navTo('blog',this)">     <span class="nav-icon">📝</span>Blog</div>
       <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
       <div class="nav-item" data-tab="tickets"   onclick="navTo('tickets',this)">   <span class="nav-icon">🎫</span>Support Tickets <span class="nav-badge" id="nb-tickets">0</span></div>
     </div>
@@ -439,6 +440,41 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
     <div class="modal-footer" style="margin-top:16px">
       <button class="btn btn-g btn-sm" style="flex:1" onclick="closeCouponModal()">Cancel</button>
       <button class="btn btn-y btn-sm" style="flex:1" id="cpm-submit-btn" onclick="submitCouponForm()">Save Coupon</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="blog-modal">
+  <div class="modal-box" style="max-width:620px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="blog-modal-title">New Blog Post</div>
+    <input type="hidden" id="bgm-id">
+
+    <div style="margin-bottom:12px">
+      <label class="lbl">Title *</label>
+      <input class="inp" type="text" id="bgm-title" placeholder="e.g. Documents You Need to Rent a Self-Drive Car in Pune">
+    </div>
+    <div style="margin-bottom:12px">
+      <label class="lbl">Excerpt — shown on the blog list page</label>
+      <textarea class="inp" id="bgm-excerpt" rows="2" placeholder="One or two sentences summarizing the post"></textarea>
+    </div>
+    <div style="margin-bottom:12px">
+      <label class="lbl">Content *</label>
+      <textarea class="inp" id="bgm-content" rows="12" placeholder="Write the post here. Leave a blank line between paragraphs. Start a line with '## ' for a subheading."></textarea>
+    </div>
+    <div style="margin-bottom:12px">
+      <label class="lbl">Meta Description — for Google search results (optional, falls back to excerpt)</label>
+      <input class="inp" type="text" id="bgm-meta" placeholder="Shown under the title in Google search results">
+    </div>
+    <div style="margin-bottom:4px">
+      <label class="lbl">Author</label>
+      <input class="inp" type="text" id="bgm-author" placeholder="DriveDilSe Team" value="DriveDilSe Team">
+    </div>
+    <div id="bgm-status" style="font-size:.78rem;margin-top:8px"></div>
+
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="closeBlogModal()">Cancel</button>
+      <button class="btn btn-g btn-sm" style="flex:1" id="bgm-save-btn" onclick="submitBlogForm(false)">Save Draft</button>
+      <button class="btn btn-y btn-sm" style="flex:1" id="bgm-publish-btn" onclick="submitBlogForm(true)">Save &amp; Publish →</button>
     </div>
   </div>
 </div>
@@ -720,6 +756,8 @@ async function renderTab(tab){
     await renderFleet(isLocal, c);
   } else if(tab === "coupons"){
     await renderCoupons(isLocal, c);
+  } else if(tab === "blog"){
+    await renderBlog(isLocal, c);
   } else if(tab === "customers"){
     await renderCustomers(isLocal, c);
   } else if(tab === "tickets"){
@@ -1886,6 +1924,145 @@ async function deleteCoupon(id){
     await adminFetch("/admin/coupons/"+id, { method:"DELETE" });
     toast("Coupon deleted.", "success");
     navTo("coupons", document.querySelector('[data-tab="coupons"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+// ── BLOG ──
+var BLOG_CACHE = [];
+
+async function renderBlog(isLocal, c){
+  var posts = [];
+  if(!isLocal){
+    try {
+      posts = await adminFetch("/admin/blog");
+    } catch(e){ isLocal = true; }
+  }
+
+  if(isLocal){
+    c.innerHTML = '<div class="page-title">Blog</div><div class="page-sub">Could not load blog posts — please log in again.</div>';
+    return;
+  }
+
+  BLOG_CACHE = posts;
+
+  var cards = posts.map(function(p){
+    var isPub = p.status === "published";
+    return '<div class="v-card">' +
+      '<div class="v-body">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
+          '<div style="font-weight:800;font-size:.92rem;line-height:1.3">'+esc(p.title)+'</div>' +
+          '<span class="sbadge '+(isPub?"sb-act":"sb-pend")+'" style="white-space:nowrap;margin-left:8px">'+(isPub?"Published":"Draft")+'</span>' +
+        '</div>' +
+        '<div style="font-size:.78rem;color:var(--ts);margin-bottom:10px;line-height:1.5">'+esc(p.excerpt||"")+'</div>' +
+        (isPub ? '<div style="font-size:.72rem;margin-bottom:10px"><a href="https://www.drivedilse.com/blog/'+esc(p.slug)+'" target="_blank" style="color:var(--yd);font-weight:700">/blog/'+esc(p.slug)+' ↗</a></div>' : '') +
+        '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+          '<button class="btn btn-y btn-sm" style="flex:1" onclick="openEditBlogModal(\''+p.id+'\')">✏️ Edit</button>' +
+          (isPub
+            ? '<button class="btn btn-g btn-sm" style="flex:1" onclick="unpublishBlogPost(\''+p.id+'\')">⬇️ Unpublish</button>'
+            : '<button class="btn btn-g btn-sm" style="flex:1" onclick="publishBlogPost(\''+p.id+'\')">🚀 Publish</button>') +
+        '</div>' +
+        '<button class="btn btn-g btn-sm" style="width:100%" onclick="deleteBlogPost(\''+p.id+'\')">🗑️ Delete</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  c.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
+      '<div><div class="page-title" style="margin-bottom:0">Blog</div>' +
+      '<div class="page-sub" style="margin-top:2px">'+posts.length+' post'+(posts.length!==1?'s':'')+' total &middot; '+posts.filter(function(p){return p.status==="published";}).length+' published</div></div>' +
+      '<button class="btn btn-y btn-sm" onclick="openAddBlogModal()" style="white-space:nowrap">+ New Post</button>' +
+    '</div>' +
+    '<div class="v-grid" style="margin-top:16px">'+(cards || '<div class="page-sub">No posts yet. Click "+ New Post" to write one for SEO.</div>')+'</div>';
+}
+
+function openAddBlogModal(){
+  document.getElementById("blog-modal-title").textContent = "New Blog Post";
+  document.getElementById("bgm-id").value      = "";
+  document.getElementById("bgm-title").value   = "";
+  document.getElementById("bgm-excerpt").value = "";
+  document.getElementById("bgm-content").value = "";
+  document.getElementById("bgm-meta").value    = "";
+  document.getElementById("bgm-author").value  = "DriveDilSe Team";
+  document.getElementById("bgm-status").textContent = "";
+  document.getElementById("bgm-publish-btn").style.display = "block";
+  document.getElementById("blog-modal").classList.add("open");
+}
+
+function openEditBlogModal(id){
+  var p = BLOG_CACHE.find(function(x){ return x.id === id; });
+  if(!p) return;
+  document.getElementById("blog-modal-title").textContent = "Edit Blog Post";
+  document.getElementById("bgm-id").value      = p.id;
+  document.getElementById("bgm-title").value   = p.title || "";
+  document.getElementById("bgm-excerpt").value = p.excerpt || "";
+  document.getElementById("bgm-content").value = p.content || "";
+  document.getElementById("bgm-meta").value    = p.meta_description || "";
+  document.getElementById("bgm-author").value  = p.author || "DriveDilSe Team";
+  document.getElementById("bgm-status").textContent = p.status === "published" ? "This post is live. Saving will update the live page." : "";
+  document.getElementById("bgm-publish-btn").style.display = p.status === "published" ? "none" : "block";
+  document.getElementById("blog-modal").classList.add("open");
+}
+
+function closeBlogModal(){
+  document.getElementById("blog-modal").classList.remove("open");
+}
+
+async function submitBlogForm(thenPublish){
+  var id      = document.getElementById("bgm-id").value;
+  var title   = document.getElementById("bgm-title").value.trim();
+  var content = document.getElementById("bgm-content").value.trim();
+  if(!title || !content){ toast("Title and content are required.", "error"); return; }
+
+  var body = {
+    title: title,
+    excerpt: document.getElementById("bgm-excerpt").value.trim(),
+    content: content,
+    meta_description: document.getElementById("bgm-meta").value.trim(),
+    author: document.getElementById("bgm-author").value.trim() || "DriveDilSe Team",
+  };
+
+  try {
+    var saved;
+    if(id){
+      saved = await adminFetch("/admin/blog/"+id, { method:"PUT", body: JSON.stringify(body) });
+    } else {
+      saved = await adminFetch("/admin/blog", { method:"POST", body: JSON.stringify(body) });
+    }
+    if(thenPublish){
+      await adminFetch("/admin/blog/"+(saved.id || id)+"/publish", { method:"POST" });
+      toast("Post published live.", "success");
+    } else {
+      toast("Draft saved.", "success");
+    }
+    closeBlogModal();
+    navTo("blog", document.querySelector('[data-tab="blog"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function publishBlogPost(id){
+  if(!confirm("Publish this post? It will go live on drivedilse.com immediately.")) return;
+  try {
+    await adminFetch("/admin/blog/"+id+"/publish", { method:"POST" });
+    toast("Post published live.", "success");
+    navTo("blog", document.querySelector('[data-tab="blog"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function unpublishBlogPost(id){
+  if(!confirm("Unpublish this post? The live page will be removed.")) return;
+  try {
+    await adminFetch("/admin/blog/"+id+"/unpublish", { method:"POST" });
+    toast("Post unpublished.", "success");
+    navTo("blog", document.querySelector('[data-tab="blog"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function deleteBlogPost(id){
+  if(!confirm("Delete this post? This cannot be undone.")) return;
+  try {
+    await adminFetch("/admin/blog/"+id, { method:"DELETE" });
+    toast("Post deleted.", "success");
+    navTo("blog", document.querySelector('[data-tab="blog"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 

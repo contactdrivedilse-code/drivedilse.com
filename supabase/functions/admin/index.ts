@@ -3,6 +3,8 @@ import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
 import { sendEmail, escapeHtml } from "../_shared/email.ts";
+import { putFile, deleteFile } from "../_shared/github.ts";
+import { slugify, buildBlogPostHtml, buildBlogIndexHtml, buildSitemapXml, type BlogPost } from "../_shared/blog.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -10,6 +12,21 @@ const sb = createClient(
 );
 
 function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+// Re-fetches every published post and re-commits both the blog index page
+// and sitemap.xml, so they're always in sync with whatever's actually live
+// — called after every publish/unpublish/delete rather than trying to
+// patch those two files incrementally.
+async function rebuildBlogIndexAndSitemap(): Promise<void> {
+  const { data } = await sb.from("blog_posts").select("*").eq("status", "published").order("published_at", { ascending: false });
+  const posts: BlogPost[] = ((data ?? []) as Record<string, unknown>[]).map((p) => ({
+    slug: p.slug as string, title: p.title as string, excerpt: p.excerpt as string,
+    content: p.content as string, metaDescription: p.meta_description as string,
+    author: p.author as string, publishedAt: p.published_at as string,
+  }));
+  await putFile("blog/index.html", buildBlogIndexHtml(posts), "Rebuild blog index");
+  await putFile("sitemap.xml", buildSitemapXml(posts), "Rebuild sitemap.xml");
+}
 
 // Sign the check-in photo URLs on a mapped booking (private bucket support).
 async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -591,6 +608,100 @@ Deno.serve(async (req) => {
       }
 
       return json({ success: true, replyImageUrl: imageUrl });
+    }
+
+    // GET /blog — list all posts (drafts + published) for the admin panel
+    if (req.method === "GET" && path === "/blog") {
+      const { data, error } = await sb.from("blog_posts").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return json(data ?? []);
+    }
+
+    // POST /blog — create a new draft post
+    if (req.method === "POST" && path === "/blog") {
+      const body = await req.json();
+      const title = String(body.title ?? "").trim();
+      if (!title) return json({ error: "Title is required" }, 400);
+      let slug = slugify(title);
+      const { data: clash } = await sb.from("blog_posts").select("id").eq("slug", slug).maybeSingle();
+      if (clash) slug = slug + "-" + Date.now().toString(36);
+
+      const { data, error } = await sb.from("blog_posts").insert({
+        slug, title,
+        excerpt: String(body.excerpt ?? ""),
+        content: String(body.content ?? ""),
+        meta_description: String(body.metaDescription ?? ""),
+        author: String(body.author ?? "DriveDilSe Team"),
+      }).select().single();
+      if (error) throw error;
+      return json(data, 201);
+    }
+
+    // PUT /blog/:id — update a post's fields (does not touch the live page;
+    // call /publish again afterwards to push the update live)
+    const blogIdMatch = path.match(/^\/blog\/([^/]+)$/);
+    if (req.method === "PUT" && blogIdMatch) {
+      const body = await req.json();
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (body.title !== undefined) updates.title = String(body.title).trim();
+      if (body.excerpt !== undefined) updates.excerpt = String(body.excerpt);
+      if (body.content !== undefined) updates.content = String(body.content);
+      if (body.metaDescription !== undefined) updates.meta_description = String(body.metaDescription);
+      if (body.author !== undefined) updates.author = String(body.author);
+      const { data, error } = await sb.from("blog_posts").update(updates).eq("id", blogIdMatch[1]).select().maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Post not found" }, 404);
+      return json(data);
+    }
+
+    // DELETE /blog/:id — delete the post and, if it was published, its live page
+    if (req.method === "DELETE" && blogIdMatch) {
+      const { data: post } = await sb.from("blog_posts").select("*").eq("id", blogIdMatch[1]).maybeSingle();
+      const p = post as Record<string, unknown> | null;
+      if (!p) return json({ error: "Post not found" }, 404);
+      await sb.from("blog_posts").delete().eq("id", blogIdMatch[1]);
+      if (p.status === "published") {
+        try {
+          await deleteFile(`blog/${p.slug}.html`, `Delete blog post: ${p.title}`);
+          await rebuildBlogIndexAndSitemap();
+        } catch (ghErr) {
+          console.error("GitHub cleanup failed after delete:", (ghErr as Error).message);
+        }
+      }
+      return json({ success: true });
+    }
+
+    // POST /blog/:id/publish — generate the static page and commit it live
+    const publishMatch = path.match(/^\/blog\/([^/]+)\/publish$/);
+    if (req.method === "POST" && publishMatch) {
+      const { data: post } = await sb.from("blog_posts").select("*").eq("id", publishMatch[1]).maybeSingle();
+      const p = post as Record<string, unknown> | null;
+      if (!p) return json({ error: "Post not found" }, 404);
+      if (!String(p.content ?? "").trim()) return json({ error: "Add some content before publishing" }, 400);
+
+      const publishedAt = (p.published_at as string) || new Date().toISOString();
+      await sb.from("blog_posts").update({ status: "published", published_at: publishedAt }).eq("id", publishMatch[1]);
+
+      const blogPost: BlogPost = {
+        slug: p.slug as string, title: p.title as string, excerpt: p.excerpt as string,
+        content: p.content as string, metaDescription: p.meta_description as string,
+        author: p.author as string, publishedAt,
+      };
+      await putFile(`blog/${blogPost.slug}.html`, buildBlogPostHtml(blogPost), `Publish blog post: ${blogPost.title}`);
+      await rebuildBlogIndexAndSitemap();
+      return json({ success: true, url: `https://www.drivedilse.com/blog/${blogPost.slug}` });
+    }
+
+    // POST /blog/:id/unpublish — take the live page down, keep the draft
+    const unpublishMatch = path.match(/^\/blog\/([^/]+)\/unpublish$/);
+    if (req.method === "POST" && unpublishMatch) {
+      const { data: post } = await sb.from("blog_posts").select("slug, title").eq("id", unpublishMatch[1]).maybeSingle();
+      const p = post as Record<string, unknown> | null;
+      if (!p) return json({ error: "Post not found" }, 404);
+      await sb.from("blog_posts").update({ status: "draft" }).eq("id", unpublishMatch[1]);
+      await deleteFile(`blog/${p.slug}.html`, `Unpublish blog post: ${p.title}`);
+      await rebuildBlogIndexAndSitemap();
+      return json({ success: true });
     }
 
     return json({ error: "Not found" }, 404);

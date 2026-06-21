@@ -72,10 +72,11 @@ async function verifyRazorpay(orderId: string, paymentId: string, signature: str
   return expected === signature;
 }
 
-function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] = []) {
+function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] = [], hasReview = false) {
   return {
     _id: b.id, id: b.id, bookingId: b.booking_id,
     car: { _id: b.car_id, id: b.car_id, name: b.car_name }, carName: b.car_name,
+    hasReview,
     customer: b.customer, phone: b.phone,
     pickup: { date: b.pickup_date, location: b.pickup_location },
     drop:   { date: b.drop_date,   location: b.drop_location },
@@ -125,6 +126,9 @@ Deno.serve(async (req) => {
       const { data: exts } = ids.length
         ? await sb.from("extensions").select("*").in("booking_id", ids)
         : { data: [] };
+      const { data: reviewed } = ids.length
+        ? await sb.from("car_reviews").select("booking_id").in("booking_id", ids)
+        : { data: [] };
 
       const extMap: Record<string, Record<string, unknown>[]> = {};
       for (const e of exts ?? []) {
@@ -133,8 +137,10 @@ Deno.serve(async (req) => {
         if (!extMap[bid]) extMap[bid] = [];
         extMap[bid].push(ee);
       }
+      const reviewedSet = new Set((reviewed ?? []).map((r: Record<string, unknown>) => r.booking_id as string));
 
-      return json(await Promise.all((bookings ?? []).map((b: Record<string, unknown>) => signBookingPhotos(mapBooking(b, extMap[b.id as string])))));
+      return json(await Promise.all((bookings ?? []).map((b: Record<string, unknown>) =>
+        signBookingPhotos(mapBooking(b, extMap[b.id as string], reviewedSet.has(b.id as string))))));
     }
 
     // GET /:id/selfie-status — customer polls for selfie verification result
@@ -562,6 +568,45 @@ Deno.serve(async (req) => {
           "Content-Disposition": `inline; filename="invoice-${b.booking_id}.pdf"`,
         },
       });
+    }
+
+    // /:id/review — leave a review for a completed trip's car (one per booking)
+    const reviewMatch = path.match(/^\/([^/]+)\/review$/);
+    if (req.method === "GET" && reviewMatch) {
+      const { data } = await sb.from("car_reviews").select("id").eq("booking_id", reviewMatch[1]).maybeSingle();
+      return json({ reviewed: !!data });
+    }
+    if (req.method === "POST" && reviewMatch) {
+      const id = reviewMatch[1];
+      const { rating, reviewText } = await req.json();
+
+      const ratingNum = Number(rating);
+      if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5)
+        return json({ error: "Rating must be a whole number from 1 to 5" }, 400);
+      const text = String(reviewText ?? "").trim().slice(0, 1000);
+
+      const { data: booking } = await sb.from("bookings").select("id, car_id, customer, status, user_id").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.status !== "completed") return json({ error: "You can only review a completed trip" }, 400);
+
+      const { data: existing } = await sb.from("car_reviews").select("id").eq("booking_id", id).maybeSingle();
+      if (existing) return json({ error: "You've already reviewed this trip" }, 400);
+
+      const { error: insErr } = await sb.from("car_reviews").insert({
+        booking_id: id,
+        car_id: b.car_id as string,
+        user_id: user.id,
+        customer_name: (b.customer as string) || "",
+        rating: ratingNum,
+        review_text: text,
+      });
+      if (insErr) {
+        if ((insErr as { code?: string }).code === "23505") return json({ error: "You've already reviewed this trip" }, 400);
+        throw insErr;
+      }
+
+      return json({ success: true, message: "Thanks for your review!" });
     }
 
     return json({ error: "Not found" }, 404);

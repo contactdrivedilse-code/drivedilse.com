@@ -1382,15 +1382,32 @@ async function submitTicket(){
   }
 }
 
-// Duplicate the review cards once so the marquee track can scroll -50%
-// and loop seamlessly forever, with no visible jump/reset.
-(function(){
+// Fetch real customer reviews and prepend them to the marquee automatically,
+// then duplicate the full card set once so the track can scroll -50% and
+// loop seamlessly forever, with no visible jump/reset.
+// Deferred to DOMContentLoaded: apiFetch()/esc() are defined in a later
+// <script> block further down the page, not yet available at this point.
+document.addEventListener("DOMContentLoaded", async function(){
   var track = document.getElementById("reviews-track");
-  if(track && !track.dataset.cloned){
-    track.innerHTML += track.innerHTML;
-    track.dataset.cloned = "1";
+  if(!track || track.dataset.cloned) return;
+  try {
+    var reviews = await apiFetch("/fleet/reviews/latest?limit=12");
+    if(reviews && reviews.length){
+      var realCardsHtml = reviews.map(function(r){
+        var stars = Math.round(r.rating);
+        var initial = (r.customerName||"D")[0].toUpperCase();
+        return '<div class="review-card"><div class="review-card-hdr"><div class="review-avatar" style="background:#c9a014;color:#fff">'+initial+'</div><div><div class="review-name">'+esc(r.customerName||"DriveDilSe Customer")+'</div><div class="review-stars">'+"★".repeat(stars)+"☆".repeat(5-stars)+'</div></div></div>' +
+          (r.reviewText ? '<div class="review-text">'+esc(r.reviewText)+'</div>' : '') +
+          '<div class="review-google-badge">🚗 '+esc(r.carName||"DriveDilSe")+' · Verified Trip</div></div>';
+      }).join("");
+      track.innerHTML = realCardsHtml + track.innerHTML;
+    }
+  } catch(e){
+    console.warn("Could not load real reviews for marquee:", e.message);
   }
-})();
+  track.innerHTML += track.innerHTML;
+  track.dataset.cloned = "1";
+});
 (function(){
   var obs=new IntersectionObserver(function(entries){
     entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});
@@ -2187,6 +2204,24 @@ window.addEventListener('scroll',function(){
       <div style="padding:12px 16px" id="bkd-photos-body"></div>
     </div>
 
+    <!-- Pre-existing damage noted at check-in -->
+    <div id="bkd-predamage-section" style="display:none;border:1px solid #ede9db;border-radius:14px;overflow:hidden;margin-bottom:14px">
+      <div style="background:#faf9f6;padding:9px 16px;font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);border-bottom:1px solid #ede9db">⚠️ Pre-Existing Damage (Check-In)</div>
+      <div style="padding:12px 16px" id="bkd-predamage-body"></div>
+    </div>
+
+    <!-- Damage noted at checkout -->
+    <div id="bkd-codamage-section" style="display:none;border:1px solid #ede9db;border-radius:14px;overflow:hidden;margin-bottom:14px">
+      <div style="background:#faf9f6;padding:9px 16px;font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);border-bottom:1px solid #ede9db">⚠️ Checkout Damage</div>
+      <div style="padding:12px 16px" id="bkd-codamage-body"></div>
+    </div>
+
+    <!-- Leave a review (completed bookings only) -->
+    <div id="bkd-review-section" style="display:none;border:1px solid #ede9db;border-radius:14px;overflow:hidden;margin-bottom:14px">
+      <div style="background:#faf9f6;padding:9px 16px;font-size:.62rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);border-bottom:1px solid #ede9db">⭐ Rate This Car</div>
+      <div style="padding:14px 16px" id="bkd-review-body"></div>
+    </div>
+
     <!-- Reschedule section (confirmed only) -->
     <div id="bkd-reschedule-section" style="display:none;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -2614,6 +2649,9 @@ async function renderProfile(){
           var secondaryRow = (extendBtn || detailBtn)
             ? '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn + detailBtn + '</div>'
             : '';
+          var reviewQuickBtn = (b.status === "completed" && !b.hasReview)
+            ? '<button onclick="leaveReviewQuick(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>'
+            : '';
           var extBadge = (b.extensions && b.extensions.length)
             ? '<span style="background:#e8f4fd;color:#1a6fa8;border-radius:20px;padding:2px 8px;font-size:.65rem;font-weight:700;margin-left:6px">+' + b.extensions.length + ' extension' + (b.extensions.length>1?'s':'') + '</span>'
             : '';
@@ -2627,6 +2665,7 @@ async function renderProfile(){
             checkinBtn +
             cancelBtn +
             secondaryRow +
+            reviewQuickBtn +
           '</div>';
         }).join(""));
       } else {
@@ -2657,6 +2696,9 @@ async function renderProfile(){
             ? '<button onclick="extendBookingQuick(\''+bkd3key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:var(--yd);background:#fff;border:1.5px solid var(--yd);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fffbe6\'" onmouseout="this.style.background=\'#fff\'">⏱ Extend</button>'
             : '';
           var secondaryRow3 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn3 + detailBtn3 + '</div>';
+          var reviewQuickBtn3 = (b.status === "completed" && !b.hasReview)
+            ? '<button onclick="leaveReviewQuick(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>'
+            : '';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -2667,6 +2709,7 @@ async function renderProfile(){
             checkinBtn3 +
             cancelBtn3 +
             secondaryRow3 +
+            reviewQuickBtn3 +
           '</div>';
         }).join("") +
         '<div style="font-size:.72rem;color:#e67e22;margin-top:8px;text-align:center">⚠️ Showing locally saved data — server unreachable</div>');
@@ -2767,13 +2810,16 @@ async function renderProfile(){
           ? '<button onclick="extendBookingQuick(\''+bkd2key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:var(--yd);background:#fff;border:1.5px solid var(--yd);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fffbe6\'" onmouseout="this.style.background=\'#fff\'">⏱ Extend</button>'
           : '';
         var secondaryRow2 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn2 + detailBtn2 + '</div>';
+        var reviewQuickBtn2 = (b.status === "completed" && !b.hasReview)
+          ? '<button onclick="leaveReviewQuick(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>'
+          : '';
         return '<div class="bk-row" style="display:block;padding:14px 0">' +
           '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
             '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
             '<div><div class="bk-car">' + (b.carName||"Car") + '</div>' +
             '<div class="bk-date">' + new Date(pickupDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ' → ' + new Date(dropDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div></div>' +
             '<span class="sbadge ' + (statusMap[b.status]||"sb-up") + '">' + (b.status==="pending_sync"?"pending":b.status) + '</span>' +
-          '</div>' + syncNote + checkinBtn2 + cancelBtn2 + secondaryRow2 +
+          '</div>' + syncNote + checkinBtn2 + cancelBtn2 + secondaryRow2 + reviewQuickBtn2 +
         '</div>';
       }).join("") +
       '<div style="font-size:.72rem;color:var(--ts);margin-top:12px;text-align:center">Log in with your phone to see live booking status. <span style="color:var(--yd);cursor:pointer;font-weight:700" onclick="openQuickLogin(renderProfile)">Log in →</span></div>');
@@ -3032,10 +3078,35 @@ function renderCarDetailExtras(car){
     '</div>';
   }).join("");
 
+  // Overlay real customer reviews for this car, if any exist, shown automatically
+  loadRealCarReviews(car);
+
   // Reset to first tab
   document.querySelectorAll(".detail-tab-btn").forEach(function(b,i){ b.classList.toggle("active", i===0); });
   document.querySelectorAll(".detail-tab-panel").forEach(function(p,i){ p.classList.toggle("active", i===0); });
   document.querySelectorAll(".faq-item.open").forEach(function(f){ f.classList.remove("open"); });
+}
+async function loadRealCarReviews(car){
+  var carId = car.id || car._id;
+  if(!carId || !selCar || (selCar.id||selCar._id) !== carId) return;
+  try {
+    var data = await apiFetch("/fleet/" + carId + "/reviews?limit=10");
+    if(!selCar || (selCar.id||selCar._id) !== carId) return; // user navigated away meanwhile
+    if(!data.count) return; // keep the synthetic placeholder reviews as-is
+    document.getElementById("d-rating").innerHTML = "⭐ " + data.average.toFixed(1) + " (" + data.count + ")";
+    document.getElementById("d-review-summary").innerHTML = "⭐ " + data.average.toFixed(1) + " · Based on " + data.count + " real review" + (data.count>1?"s":"");
+    document.getElementById("d-reviews").innerHTML = data.reviews.map(function(r){
+      var stars = Math.round(r.rating);
+      return '<div class="review-card">' +
+        '<div class="rname">' + esc(r.customerName||"DriveDilSe Customer") + '</div>' +
+        '<div class="rtrips">' + new Date(r.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + '</div>' +
+        '<div class="review-stars">' + "★".repeat(stars) + "☆".repeat(5-stars) + '</div>' +
+        (r.reviewText ? '<p>' + esc(r.reviewText) + '</p>' : '') +
+      '</div>';
+    }).join("");
+  } catch(e){
+    console.warn("Could not load real reviews for car", carId, e.message);
+  }
 }
 function carouselScroll(dir){
   var g=document.getElementById("fleet-grid");
@@ -4405,6 +4476,70 @@ async function cancelBooking(id, displayId){
 }
 
 // ── BOOKING DETAILS + EXTENSION ──
+function parseDamagePhotosFE(notes, key){
+  if(!notes) return [];
+  var urls = [];
+  String(notes).split("\n").forEach(function(line){
+    if(line.indexOf(key+":") === 0){
+      line.slice(key.length+1).split(",").forEach(function(u){ u=u.trim(); if(u) urls.push(u); });
+    }
+  });
+  return urls;
+}
+function damagePhotoGridFE(urls){
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+    urls.map(function(u, i){
+      return '<a href="'+u+'" target="_blank" style="text-decoration:none">' +
+        '<img src="'+u+'" style="width:100%;height:100px;object-fit:cover;border-radius:10px;border:1.5px solid var(--b);display:block">' +
+        '<div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:4px;font-weight:600">Photo '+(i+1)+'</div>' +
+      '</a>';
+    }).join("") +
+  '</div>';
+}
+
+// ── CAR REVIEW (left from a completed trip) ──
+var _bkdSelectedStars = 0;
+function renderReviewBody(b){
+  var body = document.getElementById("bkd-review-body");
+  if(b.hasReview){
+    body.innerHTML = '<div style="font-size:.84rem;color:#1a7a3c;font-weight:700">✅ Thanks — you\'ve already reviewed this car.</div>';
+    return;
+  }
+  _bkdSelectedStars = 0;
+  body.innerHTML =
+    '<div style="font-size:.8rem;color:var(--ts);margin-bottom:10px">How was '+(b.carName||"this car")+'?</div>' +
+    '<div id="bkd-star-row" style="font-size:1.6rem;letter-spacing:4px;margin-bottom:12px;cursor:pointer">' +
+      [1,2,3,4,5].map(function(n){ return '<span data-star="'+n+'" onclick="setBkdStar('+n+')" style="color:#ddd">★</span>'; }).join("") +
+    '</div>' +
+    '<textarea id="bkd-review-text" class="inp" placeholder="Tell us about your trip (optional)" style="width:100%;min-height:70px;margin-bottom:10px;font-family:inherit"></textarea>' +
+    '<div id="bkd-review-msg" style="font-size:.78rem;margin-bottom:8px"></div>' +
+    '<button class="btn btn-y btn-sm" style="width:100%" onclick="submitCarReview()">Submit Review →</button>';
+}
+function setBkdStar(n){
+  _bkdSelectedStars = n;
+  document.querySelectorAll("#bkd-star-row span").forEach(function(s){
+    s.style.color = (parseInt(s.dataset.star,10) <= n) ? "#f5b400" : "#ddd";
+  });
+}
+async function submitCarReview(){
+  var b = window._bkdCurrent;
+  if(!b) return;
+  var msg = document.getElementById("bkd-review-msg");
+  if(_bkdSelectedStars < 1){ msg.innerHTML = '<span style="color:#c0392b">Please select a star rating.</span>'; return; }
+  var text = document.getElementById("bkd-review-text").value.trim();
+  try {
+    await apiFetch("/bookings/" + (b._id||b.bookingId) + "/review", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ rating: _bkdSelectedStars, reviewText: text })
+    });
+    b.hasReview = true;
+    renderReviewBody(b);
+    msg.textContent = "";
+    renderProfile();
+  } catch(e){
+    msg.innerHTML = '<span style="color:#c0392b">'+esc(e.message||"Could not submit review")+'</span>';
+  }
+}
 async function viewInvoice(){
   var b = window._bkdCurrent;
   if(!b) return;
@@ -4429,6 +4564,13 @@ function extendBookingQuick(id){
   openBookingDetails(id, true);
   setTimeout(function(){
     var el = document.getElementById("bkd-extend-section");
+    if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+  }, 60);
+}
+function leaveReviewQuick(id){
+  openBookingDetails(id);
+  setTimeout(function(){
+    var el = document.getElementById("bkd-review-section");
     if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
   }, 60);
 }
@@ -4510,6 +4652,33 @@ function openBookingDetails(id, showExtend) {
       '</div>';
   } else {
     photosSection.style.display = "none";
+  }
+
+  // Pre-existing damage (check-in) + checkout damage — parsed from notes
+  var preCi = parseDamagePhotosFE(b.notes, "damage_checkin");
+  var preCo = parseDamagePhotosFE(b.notes, "damage_checkout");
+  var preSection = document.getElementById("bkd-predamage-section");
+  if(preCi.length && !showExtend){
+    preSection.style.display = "block";
+    document.getElementById("bkd-predamage-body").innerHTML = damagePhotoGridFE(preCi);
+  } else {
+    preSection.style.display = "none";
+  }
+  var coSection = document.getElementById("bkd-codamage-section");
+  if(preCo.length && !showExtend){
+    coSection.style.display = "block";
+    document.getElementById("bkd-codamage-body").innerHTML = damagePhotoGridFE(preCo);
+  } else {
+    coSection.style.display = "none";
+  }
+
+  // Leave a review — completed trips only
+  var reviewSection = document.getElementById("bkd-review-section");
+  if(b.status === "completed" && !showExtend){
+    reviewSection.style.display = "block";
+    renderReviewBody(b);
+  } else {
+    reviewSection.style.display = "none";
   }
 
   // Reset drop card to original values when modal opens

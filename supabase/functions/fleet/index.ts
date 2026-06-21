@@ -65,6 +65,42 @@ Deno.serve(async (req) => {
       return json((data ?? []).map(mapCar));
     }
 
+    // GET /reviews/latest?limit=12 — latest customer reviews across all cars,
+    // shown automatically in the homepage reviews marquee
+    if (req.method === "GET" && path === "/reviews/latest") {
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 12));
+      const { data, error } = await sb.from("car_reviews")
+        .select("customer_name, rating, review_text, created_at, car_id, cars(name)")
+        .order("created_at", { ascending: false }).limit(limit);
+      if (error) throw error;
+      return json((data ?? []).map((r: Record<string, unknown>) => ({
+        customerName: r.customer_name, rating: r.rating, reviewText: r.review_text,
+        carName: (r.cars as Record<string, unknown> | null)?.name ?? "",
+        createdAt: r.created_at,
+      })));
+    }
+
+    // GET /:carId/reviews?limit=5 — reviews + average rating for one car,
+    // shown automatically on that car's detail page
+    const carReviewsMatch = path.match(/^\/([^/]+)\/reviews$/);
+    if (req.method === "GET" && carReviewsMatch) {
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 5));
+      const { data, error } = await sb.from("car_reviews")
+        .select("customer_name, rating, review_text, created_at")
+        .eq("car_id", carReviewsMatch[1])
+        .order("created_at", { ascending: false }).limit(limit);
+      if (error) throw error;
+      const reviews = data ?? [];
+      const avg = reviews.length ? reviews.reduce((s: number, r: Record<string, unknown>) => s + (r.rating as number), 0) / reviews.length : 0;
+      return json({
+        average: Math.round(avg * 10) / 10,
+        count: reviews.length,
+        reviews: reviews.map((r: Record<string, unknown>) => ({
+          customerName: r.customer_name, rating: r.rating, reviewText: r.review_text, createdAt: r.created_at,
+        })),
+      });
+    }
+
     // GET /:id
     const idMatch = path.match(/^\/([^/]+)$/);
     if (req.method === "GET" && idMatch) {

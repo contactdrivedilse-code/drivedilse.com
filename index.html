@@ -2649,8 +2649,8 @@ async function renderProfile(){
           var secondaryRow = (extendBtn || detailBtn)
             ? '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn + detailBtn + '</div>'
             : '';
-          var reviewQuickBtn = (b.status === "completed" && !b.hasReview)
-            ? '<button onclick="leaveReviewQuick(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>'
+          var reviewQuickBtn = (b.status === "completed")
+            ? (b.hasReview ? reviewSummaryHtml(b) : '<button onclick="leaveReviewQuick(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>')
             : '';
           var extBadge = (b.extensions && b.extensions.length)
             ? '<span style="background:#e8f4fd;color:#1a6fa8;border-radius:20px;padding:2px 8px;font-size:.65rem;font-weight:700;margin-left:6px">+' + b.extensions.length + ' extension' + (b.extensions.length>1?'s':'') + '</span>'
@@ -2696,8 +2696,8 @@ async function renderProfile(){
             ? '<button onclick="extendBookingQuick(\''+bkd3key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:var(--yd);background:#fff;border:1.5px solid var(--yd);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fffbe6\'" onmouseout="this.style.background=\'#fff\'">⏱ Extend</button>'
             : '';
           var secondaryRow3 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn3 + detailBtn3 + '</div>';
-          var reviewQuickBtn3 = (b.status === "completed" && !b.hasReview)
-            ? '<button onclick="leaveReviewQuick(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>'
+          var reviewQuickBtn3 = (b.status === "completed")
+            ? (b.hasReview ? reviewSummaryHtml(b) : '<button onclick="leaveReviewQuick(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>')
             : '';
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
@@ -2810,8 +2810,8 @@ async function renderProfile(){
           ? '<button onclick="extendBookingQuick(\''+bkd2key+'\')" style="flex:1;font-size:.74rem;font-weight:700;color:var(--yd);background:#fff;border:1.5px solid var(--yd);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fffbe6\'" onmouseout="this.style.background=\'#fff\'">⏱ Extend</button>'
           : '';
         var secondaryRow2 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn2 + detailBtn2 + '</div>';
-        var reviewQuickBtn2 = (b.status === "completed" && !b.hasReview)
-          ? '<button onclick="leaveReviewQuick(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>'
+        var reviewQuickBtn2 = (b.status === "completed")
+          ? (b.hasReview ? reviewSummaryHtml(b) : '<button onclick="leaveReviewQuick(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>')
           : '';
         return '<div class="bk-row" style="display:block;padding:14px 0">' +
           '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
@@ -4476,6 +4476,13 @@ async function cancelBooking(id, displayId){
 }
 
 // ── BOOKING DETAILS + EXTENSION ──
+function reviewSummaryHtml(b){
+  var rating = (b.myReview && b.myReview.rating) || 5;
+  var stars = "★".repeat(rating) + "☆".repeat(5-rating);
+  return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;text-align:center">' +
+    '<span style="letter-spacing:2px">'+stars+'</span> You rated this car ' + rating + '/5' +
+  '</div>';
+}
 function parseDamagePhotosFE(notes, key){
   if(!notes) return [];
   var urls = [];
@@ -4502,7 +4509,14 @@ var _bkdSelectedStars = 0;
 function renderReviewBody(b){
   var body = document.getElementById("bkd-review-body");
   if(b.hasReview){
-    body.innerHTML = '<div style="font-size:.84rem;color:#1a7a3c;font-weight:700">✅ Thanks — you\'ve already reviewed this car.</div>';
+    var rv = b.myReview || {};
+    var rating = rv.rating || 5;
+    var stars = "★".repeat(rating) + "☆".repeat(5-rating);
+    body.innerHTML =
+      '<div style="font-size:.84rem;color:#1a7a3c;font-weight:700;margin-bottom:6px">✅ Thanks — here\'s what you submitted:</div>' +
+      '<div style="font-size:1.2rem;letter-spacing:3px;color:#f5b400;margin-bottom:4px">'+stars+'</div>' +
+      '<div style="font-size:.8rem;color:var(--ts);margin-bottom:8px">You rated this car '+rating+'/5</div>' +
+      (rv.reviewText ? '<div style="font-size:.82rem;color:#444;background:#faf9f6;border:1px solid #ede9db;border-radius:10px;padding:10px 12px">'+esc(rv.reviewText)+'</div>' : '');
     return;
   }
   _bkdSelectedStars = 0;
@@ -4533,6 +4547,7 @@ async function submitCarReview(){
       body: JSON.stringify({ rating: _bkdSelectedStars, reviewText: text })
     });
     b.hasReview = true;
+    b.myReview = { rating: _bkdSelectedStars, reviewText: text };
     renderReviewBody(b);
     msg.textContent = "";
     renderProfile();

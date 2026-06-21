@@ -72,11 +72,12 @@ async function verifyRazorpay(orderId: string, paymentId: string, signature: str
   return expected === signature;
 }
 
-function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] = [], hasReview = false) {
+function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] = [], review: Record<string, unknown> | null = null) {
   return {
     _id: b.id, id: b.id, bookingId: b.booking_id,
     car: { _id: b.car_id, id: b.car_id, name: b.car_name }, carName: b.car_name,
-    hasReview,
+    hasReview: !!review,
+    myReview: review ? { rating: review.rating, reviewText: review.review_text } : null,
     customer: b.customer, phone: b.phone,
     pickup: { date: b.pickup_date, location: b.pickup_location },
     drop:   { date: b.drop_date,   location: b.drop_location },
@@ -127,7 +128,7 @@ Deno.serve(async (req) => {
         ? await sb.from("extensions").select("*").in("booking_id", ids)
         : { data: [] };
       const { data: reviewed } = ids.length
-        ? await sb.from("car_reviews").select("booking_id").in("booking_id", ids)
+        ? await sb.from("car_reviews").select("booking_id, rating, review_text").in("booking_id", ids)
         : { data: [] };
 
       const extMap: Record<string, Record<string, unknown>[]> = {};
@@ -137,10 +138,14 @@ Deno.serve(async (req) => {
         if (!extMap[bid]) extMap[bid] = [];
         extMap[bid].push(ee);
       }
-      const reviewedSet = new Set((reviewed ?? []).map((r: Record<string, unknown>) => r.booking_id as string));
+      const reviewMap: Record<string, Record<string, unknown>> = {};
+      for (const r of reviewed ?? []) {
+        const rr = r as Record<string, unknown>;
+        reviewMap[rr.booking_id as string] = rr;
+      }
 
       return json(await Promise.all((bookings ?? []).map((b: Record<string, unknown>) =>
-        signBookingPhotos(mapBooking(b, extMap[b.id as string], reviewedSet.has(b.id as string))))));
+        signBookingPhotos(mapBooking(b, extMap[b.id as string], reviewMap[b.id as string])))));
     }
 
     // GET /:id/selfie-status — customer polls for selfie verification result
@@ -573,8 +578,9 @@ Deno.serve(async (req) => {
     // /:id/review — leave a review for a completed trip's car (one per booking)
     const reviewMatch = path.match(/^\/([^/]+)\/review$/);
     if (req.method === "GET" && reviewMatch) {
-      const { data } = await sb.from("car_reviews").select("id").eq("booking_id", reviewMatch[1]).maybeSingle();
-      return json({ reviewed: !!data });
+      const { data } = await sb.from("car_reviews").select("rating, review_text").eq("booking_id", reviewMatch[1]).maybeSingle();
+      const r = data as Record<string, unknown> | null;
+      return json({ reviewed: !!r, rating: r?.rating ?? null, reviewText: r?.review_text ?? null });
     }
     if (req.method === "POST" && reviewMatch) {
       const id = reviewMatch[1];

@@ -524,7 +524,7 @@ var DEMO_CUSTOMERS = [
   {_id:"demo_u_006",name:"Anita Desai", phone:"9845678901",email:"anita@example.com", createdAt:"2026-05-15T14:00:00Z",kyc:{status:"pending",  aadhaarUrl:null,dlUrl:null}}
 ];
 
-function inr(n){ return "₹" + Number(n).toLocaleString("en-IN"); }
+function inr(n){ return "₹" + Number(Math.round(Number(n)*100)/100).toLocaleString("en-IN", {maximumFractionDigits:2}); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); }
 
 function toast(msg, type){
@@ -736,7 +736,7 @@ async function renderDashboard(isLocal, c){
       updateBadges();
       var paidBks = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
       var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);
-      var gst = Math.round(rev * 18 / 118);
+      var gst = Math.round(rev * 18 / 118 * 100) / 100;
       var bookingFee = rev - gst;
       stats = [
         {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab:"fleet"},
@@ -758,7 +758,7 @@ async function renderDashboard(isLocal, c){
     updateBadges();
     var demoPaidBks = DEMO_BOOKINGS.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
     var demoRev = demoPaidBks.reduce(function(s,b){ return s+b.total; },0);
-    var demoGst = Math.round(demoRev * 18 / 118);
+    var demoGst = Math.round(demoRev * 18 / 118 * 100) / 100;
     var demoFee = demoRev - demoGst;
     stats = [
       {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles", tab:"fleet"},
@@ -1362,7 +1362,7 @@ function _revRender(c){
   var grandTotal = 0, grandGst = 0, grandFee = 0, grandBks = 0;
   var rows = Object.keys(carMap).sort().map(function(car){
     var d   = carMap[car];
-    var gst = Math.round(d.total * 18 / 118);
+    var gst = Math.round(d.total * 18 / 118 * 100) / 100;
     var fee = d.total - gst;
     grandTotal += d.total; grandGst += gst; grandFee += fee; grandBks += d.bookings;
     return '<tr>' +

@@ -159,28 +159,23 @@ export async function raiseInvoiceForBooking(booking: {
 }): Promise<{ invoiceId: string; total: number }> {
   const contactId = await findOrCreateContact(booking.customer, booking.phone, booking.email);
 
-  // Untaxed lines (delivery fee charged as-is, coupon discount, extensions
-  // which already have their own GST baked into the figure) are summed and
-  // subtracted from the target so the taxed "Booking Fee" line can be
-  // solved to make the grand total land exactly on booking.total.
-  const untaxedSum = (booking.deliveryFee > 0 ? booking.deliveryFee : 0)
-    - (booking.couponDiscount > 0 ? booking.couponDiscount : 0)
-    + booking.extensions.reduce((s, e) => s + e.cost, 0);
-  const bookingFeeRate = solveTaxedRate(booking.total - untaxedSum);
-
+  // Every chargeable line (booking fee, delivery fee, each extension) is
+  // taxed at the real GST18 rate. Each one's pre-tax rate is individually
+  // back-solved so its post-tax amount lands exactly on what that
+  // component actually contributed to booking.total — e.g. an extension
+  // line still shows its real cost after tax, not cost-plus-extra-tax.
+  // Using one consistent tax group throughout also avoids ever mixing
+  // different tax groups on one invoice (the original cause of duplicate
+  // CGST/SGST rows in the tax summary).
   const lineItems: ZohoLineItem[] = [
-    { name: "Booking Fee", rate: bookingFeeRate, taxed: true },
+    { name: "Booking Fee", rate: solveTaxedRate(booking.base + booking.gst), taxed: true },
   ];
-  if (booking.deliveryFee > 0) lineItems.push({ name: "Doorstep Delivery Fee", rate: booking.deliveryFee });
+  if (booking.deliveryFee > 0) {
+    lineItems.push({ name: "Doorstep Delivery Fee", rate: solveTaxedRate(booking.deliveryFee), taxed: true });
+  }
   if (booking.couponDiscount > 0) lineItems.push({ name: "Coupon Discount", rate: -booking.couponDiscount });
   booking.extensions.forEach((e, i) => {
-    // Skip zero-cost extensions entirely — a ₹0 line carries no real
-    // information and omitting its tax_id (the only way to avoid a 0% tax
-    // group splitting into redundant CGST0/SGST0 rows) makes Zoho fall back
-    // to the contact's default tax instead, which is just as redundant
-    // (confirmed live: it showed CGST6/SGST6 instead of CGST0/SGST0).
-    if (e.cost === 0) return;
-    lineItems.push({ name: `Extension #${i + 1} (+${e.hours}hr)`, rate: e.cost });
+    lineItems.push({ name: `Extension #${i + 1} (+${e.hours}hr)`, rate: solveTaxedRate(e.cost), taxed: true });
   });
 
   const { invoiceId, total } = await createInvoice(contactId, lineItems, booking.bookingId);

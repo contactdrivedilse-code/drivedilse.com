@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
   // Simple secret check so it can't be called publicly without auth
   const secret = req.headers.get("x-cleanup-secret");
-  if (secret !== Deno.env.get("CLEANUP_SECRET") && secret !== "drivedilse-cleanup-2025")
+  if (!secret || secret !== Deno.env.get("CLEANUP_SECRET"))
     return json({ error: "Unauthorized" }, 401);
 
   try {

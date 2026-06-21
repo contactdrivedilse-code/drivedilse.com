@@ -2116,8 +2116,11 @@ async function renderTickets(isLocal, c){
           replyBlock +
           '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
             '<input type="text" class="inp" id="reply-msg-'+t._id+'" placeholder="Type a reply..." style="flex:1;min-width:160px;font-size:.8rem;padding:8px 10px" />' +
-            '<input type="file" id="reply-img-'+t._id+'" accept="image/*" style="font-size:.74rem;max-width:140px" />' +
-            '<button class="btn btn-g btn-sm" onclick="replyToTicket(\''+t._id+'\')">Send Reply</button>' +
+            '<label style="display:flex;align-items:center;gap:5px;background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:.76rem;color:var(--ts);white-space:nowrap" title="Attach an image">' +
+              '📎 <span id="reply-img-lbl-'+t._id+'">Attach</span>' +
+              '<input type="file" id="reply-img-'+t._id+'" accept="image/*" style="display:none" onchange="document.getElementById(\'reply-img-lbl-'+t._id+'\').textContent = this.files[0] ? (this.files[0].name.length>14 ? this.files[0].name.slice(0,12)+\'…\' : this.files[0].name) : \'Attach\'" />' +
+            '</label>' +
+            '<button class="btn btn-g btn-sm" style="white-space:nowrap" onclick="replyToTicket(\''+t._id+'\')">Send Reply</button>' +
           '</div>' +
         '</div>' +
         '<button class="btn '+(isResolved?"btn-g":"btn-y")+' btn-sm" style="white-space:nowrap" onclick="toggleTicketResolved(\''+t._id+'\','+(!isResolved)+')">'+(isResolved?"Reopen":"Mark Resolved")+'</button>' +

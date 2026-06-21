@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /panel-b8498a3a80977c4a.html
+Disallow: /panel-b8498a3a80977c4a
 
 Sitemap: https://www.drivedilse.com/sitemap.xml

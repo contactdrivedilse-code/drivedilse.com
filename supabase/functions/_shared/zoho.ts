@@ -52,10 +52,16 @@ export async function findOrCreateContact(name: string, phone: string, email: st
     const contacts = search.contacts as Record<string, unknown>[] | undefined;
     if (contacts && contacts.length) return contacts[0].contact_id as string;
   }
+  // Zoho requires contact_name to be unique across the whole org. Two
+  // different customers can share a first name (confirmed live: creating
+  // a second "abhay" with a different phone failed outright), so the
+  // phone number is always appended to guarantee uniqueness.
+  const baseName = name || "DriveDilSe Guest";
+  const uniqueName = phone ? `${baseName} (${phone})` : baseName;
   const created = await zohoFetch(`/contacts`, {
     method: "POST",
     body: JSON.stringify({
-      contact_name: name || phone || "DriveDilSe Guest",
+      contact_name: uniqueName,
       contact_persons: email ? [{ email, is_primary_contact: true }] : [],
       phone: phone || undefined,
     }),
@@ -112,6 +118,31 @@ export async function recordPayment(
   });
 }
 
+// Zoho's GST18 tax group is CGST 9% + SGST 9%, each rounded to paise
+// independently — so naive rate*1.18 doesn't always land on the exact
+// target total (confirmed live: rate=1 produced 1.18, but rate=0.85, the
+// mathematically "correct" pre-tax value for a ₹1.00 target, produced
+// ₹1.01 because 0.85*0.09 rounds to 0.08 on each side, not 0.075 split
+// evenly). This solves for the rate that actually lands on target after
+// Zoho's real rounding behaviour, searching a small window around the
+// naive estimate.
+function solveTaxedRate(targetTotal: number): number {
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const totalFor = (rate: number) => {
+    const half = round2(rate * 0.09);
+    return round2(rate + half * 2);
+  };
+  const estimate = round2(targetTotal / 1.18);
+  for (let steps = 0; steps <= 10; steps++) {
+    for (const sign of [1, -1]) {
+      if (steps === 0 && sign === -1) continue;
+      const candidate = round2(estimate + sign * steps * 0.01);
+      if (totalFor(candidate) === targetTotal) return candidate;
+    }
+  }
+  return estimate; // fallback: closest we found, off by at most a paisa or two
+}
+
 // Builds line items whose sum equals `booking.total` exactly, then creates
 // the invoice and immediately records a matching payment (since the
 // customer already paid via Razorpay at booking/checkout time).
@@ -122,10 +153,17 @@ export async function raiseInvoiceForBooking(booking: {
 }): Promise<{ invoiceId: string; total: number }> {
   const contactId = await findOrCreateContact(booking.customer, booking.phone, booking.email);
 
-  // Single taxed line at the pre-tax amount — Zoho's GST18 tax group adds
-  // the real 18% (CGST 9% + SGST 9%) on top, landing at base + gst.
+  // Untaxed lines (delivery fee charged as-is, coupon discount, extensions
+  // which already have their own GST baked into the figure) are summed and
+  // subtracted from the target so the taxed "Booking Fee" line can be
+  // solved to make the grand total land exactly on booking.total.
+  const untaxedSum = (booking.deliveryFee > 0 ? booking.deliveryFee : 0)
+    - (booking.couponDiscount > 0 ? booking.couponDiscount : 0)
+    + booking.extensions.reduce((s, e) => s + e.cost, 0);
+  const bookingFeeRate = solveTaxedRate(booking.total - untaxedSum);
+
   const lineItems: ZohoLineItem[] = [
-    { name: "Booking Fee", rate: booking.base, taxed: true },
+    { name: "Booking Fee", rate: bookingFeeRate, taxed: true },
   ];
   if (booking.deliveryFee > 0) lineItems.push({ name: "Doorstep Delivery Fee", rate: booking.deliveryFee });
   if (booking.couponDiscount > 0) lineItems.push({ name: "Coupon Discount", rate: -booking.couponDiscount });

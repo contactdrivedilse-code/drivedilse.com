@@ -2600,6 +2600,13 @@ async function loadFleet(){
     ];
     renderFleet("","",false);
   }
+  // Deep link from a car's standalone SEO landing page (/cars/<slug>.html),
+  // e.g. /?car=<carId> — opens straight to that car's detail/booking view.
+  var carParam = new URLSearchParams(location.search).get("car");
+  if(carParam){
+    var match = FLEET.find(function(c){ return c.id === carParam; });
+    if(match) openCar(match.id);
+  }
 }
 
 // ── UTILS ──

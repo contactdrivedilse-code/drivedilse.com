@@ -380,20 +380,45 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 /* ── HELP CHAT WIDGET ── */
 .chat-bubble{position:fixed;bottom:28px;right:28px;width:58px;height:58px;background:var(--y);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 24px rgba(245,197,24,.55);z-index:301;transition:transform .2s,box-shadow .2s}
 .chat-bubble:hover{transform:scale(1.12);box-shadow:0 8px 32px rgba(245,197,24,.7)}
-.chat-widget{position:fixed;bottom:96px;right:28px;width:340px;max-height:72vh;background:#fff;border-radius:18px;box-shadow:0 12px 48px rgba(0,0,0,.22);z-index:302;display:none;flex-direction:column;overflow:hidden}
-.chat-widget.open{display:flex}
-.chat-hdr{background:var(--t);color:#fff;padding:16px 18px;display:flex;justify-content:space-between;align-items:center}
-.chat-hdr-title{font-weight:800;font-size:.95rem}
-.chat-hdr-sub{font-size:.72rem;opacity:.75;margin-top:2px}
-.chat-close{background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;opacity:.8}
-.chat-close:hover{opacity:1}
-.chat-tabs{display:flex;border-bottom:1px solid var(--b)}
-.chat-tab{flex:1;background:none;border:none;padding:11px 4px;font-size:.72rem;font-weight:700;color:var(--ts);cursor:pointer;border-bottom:2px solid transparent}
-.chat-tab.on{color:var(--t);border-bottom-color:var(--y)}
-.chat-body{padding:16px 18px;overflow-y:auto;flex:1}
-.chat-pane{display:none}
-.chat-pane.on{display:block}
-.chat-pane-intro{font-size:.78rem;color:var(--ts);margin-bottom:12px;line-height:1.5}
+.chat-bubble::after{content:"";position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:#22c55e;border:2.5px solid #fff;border-radius:50%}
+.chat-widget{position:fixed;bottom:96px;right:28px;width:366px;height:min(78vh,600px);background:#fff;border-radius:20px;box-shadow:0 16px 56px rgba(0,0,0,.24);z-index:302;display:none;flex-direction:column;overflow:hidden;transform:translateY(12px) scale(.97);opacity:0;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s ease}
+.chat-widget.open{display:flex;transform:translateY(0) scale(1);opacity:1}
+.chat-hdr{background:linear-gradient(135deg,#241c0a,#161616);color:#fff;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-shrink:0}
+.chat-hdr-left{display:flex;align-items:center;gap:11px}
+.chat-hdr-avatar{position:relative;width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.chat-hdr-avatar::after{content:"";position:absolute;bottom:-2px;right:-2px;width:11px;height:11px;background:#22c55e;border:2px solid #161616;border-radius:50%}
+.chat-hdr-title{font-weight:800;font-size:.92rem;line-height:1.2}
+.chat-hdr-sub{font-size:.7rem;opacity:.7;margin-top:2px;display:flex;align-items:center;gap:5px}
+.chat-close{background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:.9rem;cursor:pointer;opacity:.85;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,opacity .15s}
+.chat-close:hover{opacity:1;background:rgba(255,255,255,.18)}
+.chat-tabs{display:flex;gap:4px;padding:8px;background:var(--wg);flex-shrink:0}
+.chat-tab{flex:1;background:none;border:none;padding:8px 4px;font-size:.7rem;font-weight:700;color:var(--ts);cursor:pointer;border-radius:9px;transition:background .15s,color .15s;white-space:nowrap}
+.chat-tab.on{color:var(--t);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.chat-body{display:flex;flex-direction:column;flex:1;min-height:0}
+.chat-pane{display:none;flex-direction:column;flex:1;min-height:0}
+.chat-pane.on{display:flex}
+.chat-pane-intro{font-size:.78rem;color:var(--ts);margin-bottom:12px;line-height:1.5;padding:14px 18px 0}
+.chat-thread{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.chat-row{display:flex;gap:8px;align-items:flex-end;max-width:92%}
+.chat-row.user{align-self:flex-end;flex-direction:row-reverse}
+.chat-row.bot{align-self:flex-start}
+.chat-row-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--y),var(--yd));display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.chat-bubble-msg{padding:10px 13px;border-radius:14px;font-size:.82rem;line-height:1.55;animation:chatPop .22s ease both}
+.chat-row.bot .chat-bubble-msg{background:var(--wg);color:var(--t);border-bottom-left-radius:4px}
+.chat-row.user .chat-bubble-msg{background:var(--y);color:var(--t);font-weight:600;border-bottom-right-radius:4px}
+@keyframes chatPop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.chat-typing-dots{display:inline-flex;gap:3px;padding:4px 2px}
+.chat-typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--ts);opacity:.5;animation:chatTyping 1s infinite}
+.chat-typing-dots span:nth-child(2){animation-delay:.15s}
+.chat-typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes chatTyping{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-3px);opacity:.9}}
+.chat-chips{display:flex;flex-wrap:wrap;gap:7px;padding:2px 16px 14px}
+.chat-chip{background:#fff;border:1.3px solid var(--b);border-radius:20px;padding:8px 13px;font-size:.74rem;color:var(--t);font-weight:600;cursor:pointer;transition:all .15s;text-align:left}
+.chat-chip:hover{background:#fff8e1;border-color:var(--y);transform:translateY(-1px)}
+.chat-input-row{display:flex;align-items:center;gap:8px;padding:11px 14px;border-top:1px solid var(--b);flex-shrink:0;background:#fff}
+.chat-input-row .chat-input{flex:1;margin-bottom:0;border-radius:22px;padding:10px 16px}
+.chat-send-btn{width:38px;height:38px;border-radius:50%;background:var(--y);border:none;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;flex-shrink:0;transition:background .15s,transform .15s}
+.chat-send-btn:hover{background:var(--yd);transform:scale(1.06)}
 .chat-faq-btn{display:block;width:100%;text-align:left;background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:10px 12px;font-size:.8rem;color:var(--t);margin-bottom:8px;cursor:pointer;font-weight:600}
 .chat-faq-btn:hover{background:#fef3c7}
 .chat-answer-box{margin-top:6px;background:#fff8e1;border:1px solid var(--y);border-radius:10px;padding:12px 14px;font-size:.8rem;color:var(--t);line-height:1.55}
@@ -403,7 +428,7 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .chat-contact-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--b);border-radius:10px;margin-bottom:9px;font-size:.82rem;color:var(--t);text-decoration:none;font-weight:600}
 .chat-contact-row:hover{background:var(--wg)}
 .chat-contact-row .ico{font-size:1rem}
-@media(max-width:480px){.chat-widget{right:14px;left:14px;width:auto;bottom:90px}}
+@media(max-width:480px){.chat-widget{right:14px;left:14px;width:auto;bottom:90px;height:min(80vh,600px)}}
 
 /* ---- MOBILE STICKY CTA ---- */
 .mob-cta{display:none;position:fixed;bottom:0;left:0;right:0;padding:12px 16px 20px;background:#fff;border-top:1px solid #ede9db;box-shadow:0 -4px 24px rgba(200,160,0,.12);z-index:200}
@@ -1229,7 +1254,10 @@ function csTick(){
 </button>
 <div class="chat-widget" id="chatWidget">
   <div class="chat-hdr">
-    <div><div class="chat-hdr-title">DriveDilSe Help</div><div class="chat-hdr-sub">Usually replies instantly</div></div>
+    <div class="chat-hdr-left">
+      <div class="chat-hdr-avatar">🚗</div>
+      <div><div class="chat-hdr-title">DriveDilSe Assistant</div><div class="chat-hdr-sub">🟢 Usually replies instantly</div></div>
+    </div>
     <button class="chat-close" onclick="toggleChatWidget()">✕</button>
   </div>
   <div class="chat-tabs">
@@ -1239,29 +1267,33 @@ function csTick(){
   </div>
   <div class="chat-body">
     <div class="chat-pane on" id="chat-pane-faq">
-      <p class="chat-pane-intro">Type your question, or tap one below for an instant answer.</p>
-      <input class="chat-input" id="chat-ask-input" placeholder="Ask anything... e.g. airport delivery charge" onkeydown="if(event.key==='Enter')askChatBot()" />
-      <button class="btn btn-y btn-sm" style="width:100%;margin-bottom:12px" onclick="askChatBot()">Ask</button>
-      <div class="chat-answer-box" id="chat-faq-answer" style="display:none"></div>
-      <div id="chat-faq-list"></div>
+      <div class="chat-thread" id="chat-thread"></div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-ask-input" placeholder="Ask anything..." onkeydown="if(event.key==='Enter')askChatBot()" />
+        <button class="chat-send-btn" onclick="askChatBot()" title="Send">➤</button>
+      </div>
     </div>
     <div class="chat-pane" id="chat-pane-ticket">
-      <p class="chat-pane-intro">Tell us what's up — our team will get back to you shortly.</p>
-      <div id="chat-ticket-form">
-        <input class="chat-input" id="ct-name" placeholder="Your Name" />
-        <input class="chat-input" id="ct-phone" placeholder="Phone Number" maxlength="10" inputmode="numeric" />
-        <input class="chat-input" id="ct-email" placeholder="Email (optional)" />
-        <textarea class="chat-input" id="ct-message" placeholder="How can we help?" rows="3"></textarea>
-        <button class="btn btn-y" style="width:100%;margin-top:6px" onclick="submitTicket()">Submit Ticket</button>
-        <div class="chat-msg" id="ct-status"></div>
+      <div style="padding:0 18px 18px;overflow-y:auto;flex:1">
+        <p class="chat-pane-intro" style="padding:14px 0 0">Tell us what's up — our team will get back to you shortly.</p>
+        <div id="chat-ticket-form">
+          <input class="chat-input" id="ct-name" placeholder="Your Name" />
+          <input class="chat-input" id="ct-phone" placeholder="Phone Number" maxlength="10" inputmode="numeric" />
+          <input class="chat-input" id="ct-email" placeholder="Email (optional)" />
+          <textarea class="chat-input" id="ct-message" placeholder="How can we help?" rows="3"></textarea>
+          <button class="btn btn-y" style="width:100%;margin-top:6px" onclick="submitTicket()">Submit Ticket</button>
+          <div class="chat-msg" id="ct-status"></div>
+        </div>
       </div>
     </div>
     <div class="chat-pane" id="chat-pane-contact">
-      <p class="chat-pane-intro">Reach us directly — we're happy to help.</p>
-      <a class="chat-contact-row" href="https://wa.me/917709209765" target="_blank"><span class="ico">💬</span>WhatsApp: +91 77092 09765</a>
-      <a class="chat-contact-row" href="tel:+917709209765"><span class="ico">📞</span>Call: +91 77092 09765</a>
-      <a class="chat-contact-row" href="mailto:info@drivedilse.com"><span class="ico">✉️</span>info@drivedilse.com</a>
-      <a class="chat-contact-row" href="https://www.instagram.com/drivedilse/" target="_blank"><span class="ico">📷</span>@drivedilse</a>
+      <div style="padding:0 18px 18px;overflow-y:auto;flex:1">
+        <p class="chat-pane-intro" style="padding:14px 0 0">Reach us directly — we're happy to help.</p>
+        <a class="chat-contact-row" href="https://wa.me/917709209765" target="_blank"><span class="ico">💬</span>WhatsApp: +91 77092 09765</a>
+        <a class="chat-contact-row" href="tel:+917709209765"><span class="ico">📞</span>Call: +91 77092 09765</a>
+        <a class="chat-contact-row" href="mailto:info@drivedilse.com"><span class="ico">✉️</span>info@drivedilse.com</a>
+        <a class="chat-contact-row" href="https://www.instagram.com/drivedilse/" target="_blank"><span class="ico">📷</span>@drivedilse</a>
+      </div>
     </div>
   </div>
 </div>
@@ -1314,39 +1346,77 @@ function chatScoreMatch(query, item){
   return score;
 }
 
-function askChatBot(){
-  var input = document.getElementById("chat-ask-input");
-  var query = input.value.trim();
-  var box = document.getElementById("chat-faq-answer");
-  if(!query) return;
+function chatThreadEl(){ return document.getElementById("chat-thread"); }
+function chatScrollToBottom(){
+  var t = chatThreadEl();
+  t.scrollTop = t.scrollHeight;
+}
+function appendChatUserMsg(text){
+  var row = document.createElement("div");
+  row.className = "chat-row user";
+  row.innerHTML = '<div class="chat-bubble-msg">'+esc(text)+'</div>';
+  chatThreadEl().appendChild(row);
+  chatScrollToBottom();
+}
+function appendChatBotTyping(){
+  var row = document.createElement("div");
+  row.className = "chat-row bot";
+  row.id = "chat-typing-row";
+  row.innerHTML = '<div class="chat-row-avatar">🚗</div><div class="chat-bubble-msg"><span class="chat-typing-dots"><span></span><span></span><span></span></span></div>';
+  chatThreadEl().appendChild(row);
+  chatScrollToBottom();
+}
+function appendChatBotMsg(html){
+  var typing = document.getElementById("chat-typing-row");
+  if(typing) typing.remove();
+  var row = document.createElement("div");
+  row.className = "chat-row bot";
+  row.innerHTML = '<div class="chat-row-avatar">🚗</div><div class="chat-bubble-msg">'+html+'</div>';
+  chatThreadEl().appendChild(row);
+  chatScrollToBottom();
+}
+function appendChatChips(){
+  var wrap = document.createElement("div");
+  wrap.className = "chat-chips";
+  wrap.innerHTML = CHAT_PRESET_FAQS.slice(0,6).map(function(item,i){
+    return '<button class="chat-chip" onclick="askPreset('+i+')">'+esc(item.q)+'</button>';
+  }).join("");
+  chatThreadEl().appendChild(wrap);
+  chatScrollToBottom();
+}
+function answerFor(query){
   var best = null, bestScore = 0;
   CHAT_PRESET_FAQS.forEach(function(item){
     var s = chatScoreMatch(query, item);
     if(s > bestScore){ bestScore = s; best = item; }
   });
-  box.style.display = "block";
-  if(best && bestScore > 0){
-    box.innerHTML = '<div style="font-weight:700;margin-bottom:6px">'+best.q+'</div>'+best.a;
-  } else {
-    box.innerHTML = "I couldn't find an exact answer for that. Tap <b>🎫 Raise Ticket</b> above and our team will personally help you out.";
-  }
+  if(best && bestScore > 0) return best.a;
+  return "I couldn't find an exact answer for that — tap <b>🎫 Raise Ticket</b> above and our team will personally help you out.";
+}
+function askPreset(i){
+  var item = CHAT_PRESET_FAQS[i];
+  appendChatUserMsg(item.q);
+  appendChatBotTyping();
+  setTimeout(function(){ appendChatBotMsg(item.a); }, 450);
+}
+function askChatBot(){
+  var input = document.getElementById("chat-ask-input");
+  var query = input.value.trim();
+  if(!query) return;
+  appendChatUserMsg(query);
+  input.value = "";
+  appendChatBotTyping();
+  setTimeout(function(){ appendChatBotMsg(answerFor(query)); }, 450);
 }
 
 function toggleChatWidget(){
   var w = document.getElementById("chatWidget");
   w.classList.toggle("open");
-  if(w.classList.contains("open") && !document.getElementById("chat-faq-list").dataset.built){
-    document.getElementById("chat-faq-list").dataset.built = "1";
-    document.getElementById("chat-faq-list").innerHTML = CHAT_PRESET_FAQS.map(function(item, i){
-      return '<button class="chat-faq-btn" onclick="showChatAnswer('+i+')">'+item.q+'</button>';
-    }).join("");
+  if(w.classList.contains("open") && !chatThreadEl().dataset.built){
+    chatThreadEl().dataset.built = "1";
+    appendChatBotMsg("👋 Hi! I'm the DriveDilSe Assistant. Ask me anything about bookings, pricing, or documents — or tap a question below to get started.");
+    appendChatChips();
   }
-}
-
-function showChatAnswer(i){
-  var box = document.getElementById("chat-faq-answer");
-  box.style.display = "block";
-  box.innerHTML = '<div style="font-weight:700;margin-bottom:6px">'+CHAT_PRESET_FAQS[i].q+'</div>'+CHAT_PRESET_FAQS[i].a;
 }
 
 function setChatPane(pane, btn){

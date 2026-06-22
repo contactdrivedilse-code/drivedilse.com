@@ -1784,6 +1784,8 @@ window.addEventListener('scroll',function(){
             </div>
           </div>
         </div>
+        <div id="bf-signedin-badge" style="display:none;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.8rem;font-weight:700;color:#1a7a3c">✓ Signed in &amp; verified — booking as <span id="bf-signedin-name" style="margin-left:2px"></span></div>
+        <div id="bf-guest-fields">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div class="dt-pair">
             <div class="dt-pair-label">👤 Full Name</div>
@@ -1797,6 +1799,7 @@ window.addEventListener('scroll',function(){
         <div style="margin-bottom:14px">
           <div class="dt-pair-label">📧 Email (for OTP verification)</div>
           <input type="email" class="inp" id="bf-email" placeholder="you@example.com" style="width:100%" oninput="bfEmailEdited()">
+        </div>
         </div>
         <div id="bf-otp-box" style="display:none;text-align:left;background:#f4f8ff;border:1.5px solid #b9d3f5;border-radius:10px;padding:14px;margin-bottom:14px">
           <div style="font-weight:700;font-size:.84rem;margin-bottom:6px">📧 Verify your email to continue</div>
@@ -3375,6 +3378,10 @@ function openCar(id){
   document.getElementById("bf-name").value  = userProfile.name  || "";
   document.getElementById("bf-phone").value = userProfile.phone || "";
   document.getElementById("bf-email").value = userProfile.email || "";
+  var isSignedInUser = !!(authToken && !authToken.startsWith("demo_") && userProfile.phoneVerified);
+  document.getElementById("bf-signedin-badge").style.display = isSignedInUser ? "flex" : "none";
+  document.getElementById("bf-guest-fields").style.display   = isSignedInUser ? "none" : "block";
+  if(isSignedInUser) document.getElementById("bf-signedin-name").textContent = (userProfile.name || "Guest") + " · +91 " + userProfile.phone;
   document.getElementById("chk-ded").checked = false;
   document.getElementById("chk-tnc").checked = false;
   // Delivery charge (chosen on homepage) carries over read-only
@@ -3450,7 +3457,8 @@ function calcPrice(){
   var emailVal = document.getElementById("bf-email").value.trim();
   var alreadyVerified = bfEmailVerified && emailVal.toLowerCase() === bfVerifiedEmailValue;
   var loginVerified = userProfile.emailVerified && userProfile.email && userProfile.email.toLowerCase() === emailVal.toLowerCase();
-  if(!alreadyVerified && !loginVerified){
+  var isSignedInUser = !!(authToken && !authToken.startsWith("demo_") && userProfile.phoneVerified);
+  if(!alreadyVerified && !loginVerified && !isSignedInUser){
     if(!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
       alert("Please enter a valid email address — we need to verify it before calculating your price.");
       return;

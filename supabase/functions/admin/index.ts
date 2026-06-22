@@ -81,6 +81,7 @@ function mapBooking(b: Record<string, unknown>) {
     },
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
+    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id } : null,
     source: b.source ?? "website", pickupDone: b.pickup_done ?? false, dropDone: b.drop_done ?? false,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: [],
@@ -199,6 +200,18 @@ Deno.serve(async (req) => {
       const { data, error } = await sb.from("bookings")
         .update(updates)
         .eq("id", bkStatusMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Booking not found" }, 404);
+      return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
+    }
+
+    // POST /bookings/:id/refund/mark-done — admin confirms a manual refund
+    // (e.g. UPI/bank transfer) for a booking Razorpay couldn't auto-refund
+    const markRefundMatch = path.match(/^\/bookings\/([^/]+)\/refund\/mark-done$/);
+    if (req.method === "POST" && markRefundMatch && isAdmin) {
+      const { data, error } = await sb.from("bookings")
+        .update({ refund_status: "refunded_manually", updated_at: new Date().toISOString() })
+        .eq("id", markRefundMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);
       return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));

@@ -40,7 +40,7 @@ function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
 async function applyCoupon(
   baseTotal: number,
   code: unknown,
-  ctx: { verifiedUserId?: string } = {},
+  ctx: { verifiedUserId?: string; consume?: boolean } = {},
 ): Promise<{ discount: number; code: string | null }> {
   if (typeof code !== "string" || !code.trim()) return { discount: 0, code: null };
   if (!ctx.verifiedUserId) return { discount: 0, code: null };
@@ -54,6 +54,23 @@ async function applyCoupon(
       .eq("user_id", ctx.verifiedUserId).limit(1).maybeSingle();
     if (priorBooking) return { discount: 0, code: null };
   }
+  const maxUses  = c.max_uses as number | null;
+  const timesUsed = (c.times_used as number) ?? 0;
+  if (maxUses != null && timesUsed >= maxUses) return { discount: 0, code: null };
+
+  if (ctx.consume && maxUses != null) {
+    // Atomic conditional increment — the WHERE clause is re-evaluated under
+    // row lock, so two simultaneous redemptions of the same one-time code
+    // can't both succeed.
+    const { data: updated } = await sb.from("coupons")
+      .update({ times_used: timesUsed + 1 })
+      .eq("id", c.id as string)
+      .lt("times_used", maxUses)
+      .select("id")
+      .maybeSingle();
+    if (!updated) return { discount: 0, code: null };
+  }
+
   const raw = c.type === "flat" ? (c.value as number) : Math.round(baseTotal * (c.value as number) / 100);
   const discount = Math.max(0, Math.min(raw, baseTotal));
   return { discount, code: c.code as string };
@@ -199,7 +216,7 @@ Deno.serve(async (req) => {
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string });
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const total = baseTotal + deliveryFee - couponDiscount;
       const bookingId = makeBookingId();
       const isConfirmed = p.kyc_status === "verified";
@@ -250,7 +267,7 @@ Deno.serve(async (req) => {
 
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string });
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const total = baseTotal + deliveryFee - couponDiscount;
       const bookingId = makeBookingId();
       const isConfirmedDirect = p.kyc_status === "verified";

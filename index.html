@@ -3272,6 +3272,28 @@ function renderFleet(pickup, drop, searched, gridId){
 }
 loadFleet();
 initCookieConsent();
+preloadUserProfile();
+
+// Signed-in customers shouldn't be asked to re-verify mid-booking just
+// because they went straight from the homepage to checkout without
+// visiting Profile first — userProfile defaults to unverified until we
+// know better, so fetch the real status as soon as we have a token.
+async function preloadUserProfile(){
+  if(!authToken) return;
+  try {
+    var apiUser = await apiFetch("/auth/profile");
+    userProfile.name            = apiUser.name || userProfile.name;
+    userProfile.phone           = apiUser.phone || userProfile.phone;
+    userProfile.email           = apiUser.email || userProfile.email;
+    userProfile.phoneVerified   = !!apiUser.phoneVerified;
+    userProfile.emailVerified   = !!apiUser.emailVerified;
+    userProfile.aadhaarUploaded = !!(apiUser.kyc && apiUser.kyc.aadhaarUploaded);
+    userProfile.dlUploaded      = !!(apiUser.kyc && apiUser.kyc.dlUrl);
+    userProfile.dlVerified      = !!(apiUser.kyc && apiUser.kyc.dlVerified);
+    userProfile.kycStatus       = apiUser.kyc && apiUser.kyc.status;
+    userVerified = userProfile.phoneVerified;
+  } catch(e){ /* offline — booking flow falls back to its own checks */ }
+}
 
 async function doSearch(){
   var p = getDt("h-pickup");

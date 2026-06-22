@@ -4623,10 +4623,18 @@ function reviewSummaryHtml(b){
     '<span style="letter-spacing:2px">'+stars+'</span> You rated this car ' + rating + '/5' +
   '</div>';
 }
+function refundReasonFallback(r){
+  if(r.reason) return r.reason;
+  if(r.amount > 0) return "";
+  if(r.pct === 0) return "Cancelled less than 24 hours before pickup — the booking fee is non-refundable per our cancellation policy.";
+  if(r.pct > 0) return "No payment is on record for this booking, so there's nothing to refund.";
+  return "";
+}
 function refundBadgeHtml(b){
   var r = b.refund;
   if(!r) return '';
-  var reason = r.reason ? '<div style="font-weight:500;color:inherit;opacity:.85;margin-top:3px;font-size:.7rem">'+r.reason+'</div>' : '';
+  var reasonText = refundReasonFallback(r);
+  var reason = reasonText ? '<div style="font-weight:500;color:inherit;opacity:.85;margin-top:3px;font-size:.7rem">'+reasonText+'</div>' : '';
   if(!(r.amount > 0)){
     return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#888;background:#f4f4f4;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;text-align:center">No refund applicable for this cancellation'+reason+'</div>';
   }

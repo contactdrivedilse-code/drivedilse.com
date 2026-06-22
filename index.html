@@ -2823,7 +2823,7 @@ async function renderProfile(){
           var secondaryRow3 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn3 + detailBtn3 + '</div>';
           var reviewQuickBtn3 = (b.status === "completed")
             ? (b.hasReview ? reviewSummaryHtml(b) : '<button onclick="leaveReviewQuick(\''+bkd3key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>')
-            : '';
+            : (b.status === "cancelled" ? refundBadgeHtml(b) : '');
           return '<div class="bk-row" style="display:block;padding:14px 0">' +
             '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
               '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -2937,7 +2937,7 @@ async function renderProfile(){
         var secondaryRow2 = '<div style="display:flex;gap:8px;margin-top:8px">' + extendBtn2 + detailBtn2 + '</div>';
         var reviewQuickBtn2 = (b.status === "completed")
           ? (b.hasReview ? reviewSummaryHtml(b) : '<button onclick="leaveReviewQuick(\''+bkd2key+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>')
-          : '';
+          : (b.status === "cancelled" ? refundBadgeHtml(b) : '');
         return '<div class="bk-row" style="display:block;padding:14px 0">' +
           '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start">' +
             '<span class="bk-id">' + (b.bookingId||"—") + '</span>' +
@@ -4591,7 +4591,11 @@ async function doCancelBooking(id, displayId){
     // update local cache
     var cache = getCachedBookings();
     var i = cache.findIndex(function(b){ return b._id === id || b.bookingId === displayId; });
-    if(i > -1){ cache[i].status = "cancelled"; localStorage.setItem("dds_bk_cache", JSON.stringify(cache)); }
+    if(i > -1){
+      cache[i].status = "cancelled";
+      cache[i].refund = { amount: r.refundAmount, pct: r.refundPct, status: r.refundStatus, reason: r.refundReason };
+      localStorage.setItem("dds_bk_cache", JSON.stringify(cache));
+    }
     renderProfile();
     if(r.refundAmount > 0){
       alert(r.refundStatus === "refunded" ? "Booking cancelled. " + inr(r.refundAmount) + " refunded to your original payment method." : "Booking cancelled. " + inr(r.refundAmount) + " refund is being processed and will reflect within 5-7 business days.");

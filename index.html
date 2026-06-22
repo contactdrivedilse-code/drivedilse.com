@@ -4573,18 +4573,30 @@ async function coVerifyOtp() {
 }
 
 // ── CANCEL BOOKING ──
-function cancelBooking(id, displayId){
-  showConfirm("Cancel booking " + displayId + "?", "This cannot be undone.", function(){ doCancelBooking(id, displayId); });
+async function cancelBooking(id, displayId){
+  var body = "This cannot be undone.";
+  try {
+    var prev = await apiFetch("/bookings/" + id + "/cancel-preview");
+    body = prev.refundAmount > 0
+      ? "You'll receive a refund of " + inr(prev.refundAmount) + " (" + Math.round(prev.refundPct*100) + "% of the booking fee) within 5-7 business days. This cannot be undone."
+      : "Based on our cancellation policy, no refund applies at this time. This cannot be undone.";
+  } catch(e){ /* fall back to generic confirm text */ }
+  showConfirm("Cancel booking " + displayId + "?", body, function(){ doCancelBooking(id, displayId); });
 }
 
 async function doCancelBooking(id, displayId){
   try {
-    await apiFetch("/bookings/" + id + "/cancel", { method: "PUT" });
+    var r = await apiFetch("/bookings/" + id + "/cancel", { method: "PUT" });
     // update local cache
     var cache = getCachedBookings();
     var i = cache.findIndex(function(b){ return b._id === id || b.bookingId === displayId; });
     if(i > -1){ cache[i].status = "cancelled"; localStorage.setItem("dds_bk_cache", JSON.stringify(cache)); }
     renderProfile();
+    if(r.refundAmount > 0){
+      alert(r.refundStatus === "refunded" ? "Booking cancelled. " + inr(r.refundAmount) + " refunded to your original payment method." : "Booking cancelled. " + inr(r.refundAmount) + " refund is being processed and will reflect within 5-7 business days.");
+    } else {
+      alert("Booking cancelled.");
+    }
   } catch(e){
     // offline / demo mode — cancel in cache only
     if(authToken && authToken.startsWith("demo_")){

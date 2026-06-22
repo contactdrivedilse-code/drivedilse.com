@@ -91,6 +91,7 @@ function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] 
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     invoiceId: b.zoho_invoice_id ?? null,
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
+    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id } : null,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: exts.map(e => ({ hours: e.hours, cost: e.cost, razorpayOrderId: e.razorpay_order_id, extendedAt: e.extended_at })),
   };
@@ -105,6 +106,28 @@ async function razorpayCreate(body: Record<string, unknown>) {
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+// Cancellation refund tiers, matching the policy shown on /policy and the
+// booking cancellation tab: >48h before pickup = full refund, 24-48h = 50%,
+// under 24h / no-show = no refund of the booking fee.
+function refundPctForCancellation(pickupDateIso: string): number {
+  const hoursUntilPickup = (new Date(pickupDateIso).getTime() - Date.now()) / 3600000;
+  if (hoursUntilPickup >= 48) return 1;
+  if (hoursUntilPickup >= 24) return 0.5;
+  return 0;
+}
+
+async function razorpayRefund(paymentId: string, amountPaise: number) {
+  const auth = btoa(`${Deno.env.get("RAZORPAY_KEY_ID")}:${Deno.env.get("RAZORPAY_KEY_SECRET")}`);
+  const res  = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
+    method: "POST",
+    headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: amountPaise, speed: "normal" }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.description || "Razorpay refund failed");
+  return data;
 }
 
 Deno.serve(async (req) => {
@@ -490,20 +513,58 @@ Deno.serve(async (req) => {
       });
     }
 
+    // GET /:id/cancel-preview — refund amount the user would get right now
+    const cancelPreviewMatch = path.match(/^\/([^/]+)\/cancel-preview$/);
+    if (req.method === "GET" && cancelPreviewMatch) {
+      const id = cancelPreviewMatch[1];
+      const { data: booking } = await sb.from("bookings").select("status, pickup_date, total").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      const pct = refundPctForCancellation(b.pickup_date as string);
+      const amount = Math.round((Number(b.total) || 0) * pct * 100) / 100;
+      return json({ refundPct: pct, refundAmount: amount });
+    }
+
     // PUT /:id/cancel
     const cancelMatch = path.match(/^\/([^/]+)\/cancel$/);
     if (req.method === "PUT" && cancelMatch) {
       const id = cancelMatch[1];
-      const { data: booking } = await sb.from("bookings").select("id, status").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
       if (b.status !== "confirmed") return json({ error: "Only confirmed bookings can be cancelled" }, 400);
 
+      const pct = refundPctForCancellation(b.pickup_date as string);
+      const refundAmount = Math.round((Number(b.total) || 0) * pct * 100) / 100;
+
+      let refundStatus = "not_applicable";
+      let razorpayRefundId: string | null = null;
+
+      if (refundAmount > 0) {
+        const paymentId = b.razorpay_payment_id as string;
+        if (paymentId && paymentId !== "direct") {
+          try {
+            const refund = await razorpayRefund(paymentId, Math.round(refundAmount * 100));
+            razorpayRefundId = refund.id;
+            refundStatus = "refunded";
+          } catch (e) {
+            console.error("Razorpay refund failed for booking", id, (e as Error).message);
+            refundStatus = "failed_needs_manual";
+          }
+        } else {
+          refundStatus = "needs_manual";
+        }
+      }
+
       await sb.from("bookings").update({
         status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+        refund_amount: refundAmount, refund_pct: pct, razorpay_refund_id: razorpayRefundId, refund_status: refundStatus,
       }).eq("id", id);
 
-      return json({ success: true, message: "Booking cancelled." });
+      return json({
+        success: true, message: "Booking cancelled.",
+        refundAmount, refundPct: pct, refundStatus,
+      });
     }
 
     // POST /:id/checkout/verify

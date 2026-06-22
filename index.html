@@ -1997,6 +1997,17 @@ window.addEventListener('scroll',function(){
 </div>
 
 <!-- ══════════ OFFERS / COUPONS MODAL ══════════ -->
+<div class="modal-bg" id="confirm-modal" onclick="if(event.target===this)closeModal('confirm-modal')">
+  <div class="modal" style="width:380px;padding:28px 26px">
+    <div style="font-family:Georgia,serif;font-size:1.1rem;font-weight:900;margin-bottom:8px" id="confirm-modal-title">Are you sure?</div>
+    <div style="font-size:.85rem;color:var(--ts);line-height:1.5;margin-bottom:22px" id="confirm-modal-body"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="closeModal('confirm-modal')">Go Back</button>
+      <button class="btn btn-y btn-sm" style="flex:1" id="confirm-modal-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="offers-modal" onclick="if(event.target===this)closeModal('offers-modal')">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('offers-modal')">✕</button>
@@ -2651,6 +2662,16 @@ function showPage(id){
 }
 function openModal(id){ document.getElementById(id).classList.add("open"); }
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+function showConfirm(title, body, onConfirm){
+  document.getElementById("confirm-modal-title").textContent = title;
+  document.getElementById("confirm-modal-body").textContent  = body;
+  var okBtn = document.getElementById("confirm-modal-ok");
+  var fresh = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(fresh, okBtn);
+  fresh.onclick = function(){ closeModal("confirm-modal"); onConfirm(); };
+  openModal("confirm-modal");
+}
 function goHome(){ showPage("pg-home"); }
 
 function clearMyProfile(){
@@ -4552,15 +4573,13 @@ async function coVerifyOtp() {
 }
 
 // ── CANCEL BOOKING ──
-async function cancelBooking(id, displayId){
-  if(!confirm("Cancel booking " + displayId + "?\n\nThis cannot be undone.")) return;
+function cancelBooking(id, displayId){
+  showConfirm("Cancel booking " + displayId + "?", "This cannot be undone.", function(){ doCancelBooking(id, displayId); });
+}
+
+async function doCancelBooking(id, displayId){
   try {
-    var r = await fetch(API + "/bookings/" + id + "/cancel", {
-      method: "PUT",
-      headers: { "Authorization": "Bearer " + authToken }
-    });
-    var d = await r.json();
-    if(!r.ok) throw new Error(d.error || "Could not cancel");
+    await apiFetch("/bookings/" + id + "/cancel", { method: "PUT" });
     // update local cache
     var cache = getCachedBookings();
     var i = cache.findIndex(function(b){ return b._id === id || b.bookingId === displayId; });

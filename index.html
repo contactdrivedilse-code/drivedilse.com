@@ -4577,9 +4577,10 @@ async function cancelBooking(id, displayId){
   var body = "This cannot be undone.";
   try {
     var prev = await apiFetch("/bookings/" + id + "/cancel-preview");
-    body = prev.refundAmount > 0
-      ? "You'll receive a refund of " + inr(prev.refundAmount) + " (" + Math.round(prev.refundPct*100) + "% of the booking fee) within 5-7 business days. This cannot be undone."
-      : "Based on our cancellation policy, no refund applies at this time. This cannot be undone.";
+    body = (prev.refundAmount > 0
+      ? "You'll receive a refund of " + inr(prev.refundAmount) + " within 5-7 business days. "
+      : "No refund will be issued for this cancellation. ") +
+      (prev.refundReason || "") + " This cannot be undone.";
   } catch(e){ /* fall back to generic confirm text */ }
   showConfirm("Cancel booking " + displayId + "?", body, function(){ doCancelBooking(id, displayId); });
 }
@@ -4621,13 +4622,14 @@ function reviewSummaryHtml(b){
 function refundBadgeHtml(b){
   var r = b.refund;
   if(!r) return '';
+  var reason = r.reason ? '<div style="font-weight:500;color:inherit;opacity:.85;margin-top:3px;font-size:.7rem">'+r.reason+'</div>' : '';
   if(!(r.amount > 0)){
-    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#888;background:#f4f4f4;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;text-align:center">No refund applicable for this cancellation</div>';
+    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#888;background:#f4f4f4;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;text-align:center">No refund applicable for this cancellation'+reason+'</div>';
   }
   var label = (r.status === "refunded" || r.status === "refunded_manually")
     ? inr(r.amount) + " refunded"
     : inr(r.amount) + " refund processing — reflects in 5-7 business days";
-  return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#1a7a3c;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:8px 10px;text-align:center">💸 '+label+'</div>';
+  return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#1a7a3c;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:8px 10px;text-align:center">💸 '+label+reason+'</div>';
 }
 function parseDamagePhotosFE(notes, key){
   if(!notes) return [];

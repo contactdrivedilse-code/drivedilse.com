@@ -91,7 +91,7 @@ function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] 
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     invoiceId: b.zoho_invoice_id ?? null,
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
-    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id } : null,
+    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id, reason: b.refund_reason } : null,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: exts.map(e => ({ hours: e.hours, cost: e.cost, razorpayOrderId: e.razorpay_order_id, extendedAt: e.extended_at })),
   };
@@ -116,6 +116,13 @@ function refundPctForCancellation(pickupDateIso: string): number {
   if (hoursUntilPickup >= 48) return 1;
   if (hoursUntilPickup >= 24) return 0.5;
   return 0;
+}
+
+function refundReasonText(pct: number, total: number): string {
+  if (!(total > 0)) return "No payment is on record for this booking, so there's nothing to refund.";
+  if (pct === 1)   return "Cancelled more than 48 hours before pickup — full refund of the booking fee, per our cancellation policy.";
+  if (pct === 0.5) return "Cancelled 24–48 hours before pickup — 50% refund of the booking fee, per our cancellation policy.";
+  return "Cancelled less than 24 hours before pickup — the booking fee is non-refundable per our cancellation policy.";
 }
 
 async function razorpayRefund(paymentId: string, amountPaise: number) {
@@ -521,8 +528,9 @@ Deno.serve(async (req) => {
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
       const pct = refundPctForCancellation(b.pickup_date as string);
-      const amount = Math.round((Number(b.total) || 0) * pct * 100) / 100;
-      return json({ refundPct: pct, refundAmount: amount });
+      const total = Number(b.total) || 0;
+      const amount = Math.round(total * pct * 100) / 100;
+      return json({ refundPct: pct, refundAmount: amount, refundReason: refundReasonText(pct, total) });
     }
 
     // PUT /:id/cancel
@@ -535,7 +543,9 @@ Deno.serve(async (req) => {
       if (b.status !== "confirmed") return json({ error: "Only confirmed bookings can be cancelled" }, 400);
 
       const pct = refundPctForCancellation(b.pickup_date as string);
-      const refundAmount = Math.round((Number(b.total) || 0) * pct * 100) / 100;
+      const totalAmt = Number(b.total) || 0;
+      const refundAmount = Math.round(totalAmt * pct * 100) / 100;
+      const refundReason = refundReasonText(pct, totalAmt);
 
       let refundStatus = "not_applicable";
       let razorpayRefundId: string | null = null;
@@ -559,11 +569,12 @@ Deno.serve(async (req) => {
       await sb.from("bookings").update({
         status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
         refund_amount: refundAmount, refund_pct: pct, razorpay_refund_id: razorpayRefundId, refund_status: refundStatus,
+        refund_reason: refundReason,
       }).eq("id", id);
 
       return json({
         success: true, message: "Booking cancelled.",
-        refundAmount, refundPct: pct, refundStatus,
+        refundAmount, refundPct: pct, refundStatus, refundReason,
       });
     }
 

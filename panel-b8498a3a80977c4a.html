@@ -1890,6 +1890,7 @@ function refundSectionHtml(b){
   return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
     '<div style="font-weight:700;font-size:.82rem;margin-bottom:4px">💸 Refund</div>' +
     '<div style="font-size:.8rem;margin-bottom:6px">'+(r.amount>0?inr(r.amount)+' ('+Math.round((r.pct||0)*100)+'% tier)':'No refund due')+'</div>' +
+    (r.reason ? '<div style="font-size:.74rem;color:var(--ts);margin-bottom:6px">'+r.reason+'</div>' : '') +
     '<div style="font-size:.76rem;color:var(--ts);margin-bottom:'+(needsAction?'10px':'0')+'">'+statusLabel+'</div>' +
     (needsAction ? '<button class="btn btn-y btn-sm" onclick="markRefundDone(\''+b._id+'\')">Mark Refunded</button>' : '') +
   '</div>';

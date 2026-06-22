@@ -81,7 +81,7 @@ function mapBooking(b: Record<string, unknown>) {
     },
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
-    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id } : null,
+    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id, reason: b.refund_reason } : null,
     source: b.source ?? "website", pickupDone: b.pickup_done ?? false, dropDone: b.drop_done ?? false,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: [],

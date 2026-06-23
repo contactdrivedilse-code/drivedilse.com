@@ -51,6 +51,9 @@ function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = 
     active: c.active,
     imageUrl: c.image_url || "",
     images: (c.images as string[] | null) || [],
+    coverPhoto: (c.cover_photo as string) || "",
+    exteriorPhotos: (c.exterior_photos as string[] | null) || [],
+    interiorPhotos: (c.interior_photos as string[] | null) || [],
     pauses: pauses.map((p) => ({ _id: p.id, from: p.from_date, to: p.to_date, note: p.note })),
   };
 }
@@ -322,38 +325,78 @@ Deno.serve(async (req) => {
       return json(mapCar(data as Record<string, unknown>), 201);
     }
 
-    // POST /fleet/:id/photo — upload a photo for a car
+    // POST /fleet/:id/photo — upload a photo for a car into one of three
+    // sections: cover (single photo, overwrites), exterior or interior
+    // (multiple, capped at 5 each)
+    const SECTION_CAP: Record<string, number> = { exterior: 5, interior: 5 };
     const photoMatch = path.match(/^\/fleet\/([^/]+)\/photo$/);
     if (req.method === "POST" && photoMatch) {
       const carId = photoMatch[1];
       const fd = await req.formData();
       const file = fd.get("photo") as File | null;
+      const section = ((fd.get("section") as string) || "exterior").toLowerCase();
       if (!file) return json({ error: "photo field required" }, 400);
+      if (!["cover", "exterior", "interior"].includes(section)) return json({ error: "Invalid section" }, 400);
       const imgErr = validateImage(file);
       if (imgErr) return json({ error: imgErr }, 400);
+
+      const { data: carRow } = await sb.from("cars").select("cover_photo, exterior_photos, interior_photos, image_url, images").eq("id", carId).maybeSingle();
+      const c = (carRow as Record<string, unknown>) || {};
+
+      if (section === "exterior" || section === "interior") {
+        const col = section === "exterior" ? "exterior_photos" : "interior_photos";
+        const existing = (c[col] as string[] | null) || [];
+        if (existing.length >= SECTION_CAP[section]) return json({ error: `Maximum ${SECTION_CAP[section]} ${section} photos allowed` }, 400);
+      }
+
       const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
-      const storagePath = `${carId}/${Date.now()}.${ext}`;
+      const storagePath = `${carId}/${section}/${Date.now()}.${ext}`;
       const buf = new Uint8Array(await file.arrayBuffer());
       const { error: upErr } = await sb.storage.from("cars").upload(storagePath, buf, { contentType: file.type, upsert: false });
       if (upErr) throw upErr;
       const publicUrl = sb.storage.from("cars").getPublicUrl(storagePath).data.publicUrl;
-      const { data: car } = await sb.from("cars").select("images, image_url").eq("id", carId).maybeSingle();
-      const existing = ((car as Record<string, unknown>)?.images as string[] | null) || [];
-      const newImages = [...existing, publicUrl];
-      const imgUrl = ((car as Record<string, unknown>)?.image_url as string) || publicUrl;
-      await sb.from("cars").update({ images: newImages, image_url: imgUrl || publicUrl }).eq("id", carId);
-      return json({ url: publicUrl, images: newImages });
+
+      const updates: Record<string, unknown> = {};
+      // Keep the legacy image_url/images columns in sync so any code still
+      // reading them (old cached clients, reports) doesn't break.
+      updates.images = [...((c.images as string[] | null) || []), publicUrl];
+      if (section === "cover") {
+        updates.cover_photo = publicUrl;
+        updates.image_url = publicUrl; // cover always takes priority as the legacy "main" image
+      } else {
+        const col = section === "exterior" ? "exterior_photos" : "interior_photos";
+        updates[col] = [...((c[col] as string[] | null) || []), publicUrl];
+        if (!c.cover_photo && !c.image_url) updates.image_url = publicUrl;
+      }
+
+      await sb.from("cars").update(updates).eq("id", carId);
+      const { data: updated } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
+      return json(mapCar(updated as Record<string, unknown>));
     }
 
-    // DELETE /fleet/:id/photo — remove a photo
+    // DELETE /fleet/:id/photo — remove a photo from a section
     if (req.method === "DELETE" && photoMatch) {
-      const { url } = await req.json();
-      const { data: car } = await sb.from("cars").select("images, image_url").eq("id", photoMatch[1]).maybeSingle();
-      const c = car as Record<string, unknown>;
-      const existing = (c?.images as string[] | null) || [];
-      const newImages = existing.filter((u) => u !== url);
-      await sb.from("cars").update({ images: newImages, image_url: newImages[0] || "" }).eq("id", photoMatch[1]);
-      return json({ images: newImages });
+      const { url, section } = await req.json();
+      const carId = photoMatch[1];
+      const { data: carRow } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
+      const c = carRow as Record<string, unknown>;
+      if (!c) return json({ error: "Car not found" }, 404);
+
+      const updates: Record<string, unknown> = {};
+      if (section === "cover") {
+        updates.cover_photo = "";
+      } else if (section === "interior") {
+        updates.interior_photos = ((c.interior_photos as string[] | null) || []).filter((u) => u !== url);
+      } else {
+        updates.exterior_photos = ((c.exterior_photos as string[] | null) || []).filter((u) => u !== url);
+      }
+      const legacyImages = ((c.images as string[] | null) || []).filter((u) => u !== url);
+      updates.images = legacyImages;
+      if (c.image_url === url) updates.image_url = legacyImages[0] || "";
+
+      await sb.from("cars").update(updates).eq("id", carId);
+      const { data: updated } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
+      return json(mapCar(updated as Record<string, unknown>));
     }
 
     // PUT /fleet/:id/toggle

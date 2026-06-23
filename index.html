@@ -2598,7 +2598,9 @@ function mapApiCar(c){
     rate: c.pricePerDay, deposit: c.deposit||0,
     color: colorMap[c.category]||"#f5c518",
     emoji: emojiMap[c.category]||"🚗",
-    imageUrl: c.image || "",
+    imageUrl: c.coverPhoto || c.image || "",
+    exteriorPhotos: c.exteriorPhotos || [],
+    interiorPhotos: c.interiorPhotos || [],
     features: c.features || [],
     active: c.active,
     paused: (c.pauses||[]).map(function(p){ return {start:p.from,end:p.to}; })
@@ -3339,39 +3341,56 @@ function openCar(id){
 
   renderCarDetailExtras(selCar);
 
-  // Gallery
-  var labels = ["Front","Side","Interior"];
-  var hasPhotoDetail = !!selCar.imageUrl;
+  // Gallery — cover photo first, then real exterior photos, then interior
+  var galleryShots = [];
+  if(selCar.imageUrl) galleryShots.push({url: selCar.imageUrl, label: "Cover"});
+  (selCar.exteriorPhotos||[]).forEach(function(u, i){ if(u !== selCar.imageUrl) galleryShots.push({url:u, label:"Exterior " + (i+1)}); });
+  (selCar.interiorPhotos||[]).forEach(function(u, i){ galleryShots.push({url:u, label:"Interior " + (i+1)}); });
+
   var mainImg = document.getElementById("d-main-img");
-  mainImg.style.background = hasPhotoDetail
-    ? "#000 url('" + selCar.imageUrl + "') center/cover no-repeat"
-    : "linear-gradient(135deg," + selCar.color + "," + selCar.color + "55)";
-  mainImg.innerHTML = hasPhotoDetail ? "" : '<span style="font-size:6rem">' + selCar.emoji + '</span>';
   var thumbsEl = document.getElementById("d-thumbs");
   thumbsEl.innerHTML = "";
-  labels.forEach(function(lbl, i){
-    var t = document.createElement("div");
-    t.className = "thumb" + (i===0 ? " active" : "");
-    if(hasPhotoDetail){
-      t.style.background = "#000 url('" + selCar.imageUrl + "') center/cover no-repeat";
+
+  function showShot(shot){
+    if(shot){
+      mainImg.style.background = "#000 url('" + shot.url + "') center/cover no-repeat";
+      mainImg.innerHTML = '<div style="position:absolute;bottom:12px;background:rgba(255,255,255,.85);font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:20px;color:#555">' + shot.label + '</div>';
     } else {
-      t.style.background = "linear-gradient(135deg," + selCar.color + (i===0?"":"88") + "," + selCar.color + "33)";
-      t.innerHTML = '<span title="' + lbl + '">' + selCar.emoji + '</span>';
+      mainImg.style.background = "linear-gradient(135deg," + selCar.color + "," + selCar.color + "55)";
+      mainImg.innerHTML = '<span style="font-size:6rem">' + selCar.emoji + '</span>';
     }
-    (function(idx, label){
+  }
+
+  if(galleryShots.length){
+    showShot(galleryShots[0]);
+    galleryShots.forEach(function(shot, i){
+      var t = document.createElement("div");
+      t.className = "thumb" + (i===0 ? " active" : "");
+      t.style.background = "#000 url('" + shot.url + "') center/cover no-repeat";
+      t.title = shot.label;
       t.addEventListener("click", function(){
         document.querySelectorAll(".thumb").forEach(function(x){ x.classList.remove("active"); });
         t.classList.add("active");
-        if(hasPhotoDetail){
-          mainImg.innerHTML = '<div style="position:absolute;bottom:12px;background:rgba(255,255,255,.85);font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:20px;color:#555">' + label + '</div>';
-        } else {
-          mainImg.innerHTML = '<span style="font-size:6rem">' + selCar.emoji + '</span>' +
-            '<div style="position:absolute;bottom:12px;background:rgba(255,255,255,.85);font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:20px;color:#555">' + label + '</div>';
-        }
+        showShot(shot);
       });
-    })(i, lbl);
-    thumbsEl.appendChild(t);
-  });
+      thumbsEl.appendChild(t);
+    });
+  } else {
+    showShot(null);
+    ["Front","Side","Interior"].forEach(function(lbl, i){
+      var t = document.createElement("div");
+      t.className = "thumb" + (i===0 ? " active" : "");
+      t.style.background = "linear-gradient(135deg," + selCar.color + (i===0?"":"88") + "," + selCar.color + "33)";
+      t.innerHTML = '<span title="' + lbl + '">' + selCar.emoji + '</span>';
+      t.addEventListener("click", function(){
+        document.querySelectorAll(".thumb").forEach(function(x){ x.classList.remove("active"); });
+        t.classList.add("active");
+        mainImg.innerHTML = '<span style="font-size:6rem">' + selCar.emoji + '</span>' +
+          '<div style="position:absolute;bottom:12px;background:rgba(255,255,255,.85);font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:20px;color:#555">' + lbl + '</div>';
+      });
+      thumbsEl.appendChild(t);
+    });
+  }
 
   // Pre-fill dates from search
   var hp = getDt("h-pickup"), hd = getDt("h-drop");

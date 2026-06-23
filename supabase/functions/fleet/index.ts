@@ -12,6 +12,7 @@ function mapCar(c: Record<string, unknown>) {
     fuel: c.fuel, seats: c.seats, transmission: c.transmission,
     pricePerDay: c.price_per_day, deposit: c.deposit,
     features: c.features ?? [], image: c.image_url ?? "", images: c.images ?? [],
+    coverPhoto: c.cover_photo ?? "", exteriorPhotos: c.exterior_photos ?? [], interiorPhotos: c.interior_photos ?? [],
     active: c.active, createdAt: c.created_at,
   };
 }

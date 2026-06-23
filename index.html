@@ -2633,6 +2633,7 @@ async function loadFleet(){
     var cars = await apiFetch("/fleet");
     FLEET = cars.map(mapApiCar);
     renderFleet("","",false);
+    startFleetAutoSlide();
   } catch(e){
     console.warn("Fleet API unavailable, using fallback", e.message);
     FLEET = [
@@ -2645,6 +2646,7 @@ async function loadFleet(){
       {id:"5fdd6246-7287-44ad-9f75-354c3ea051ab",name:"Maruti Suzuki XL6",         cat:"MPV",      tm:"MT",fuel:"Petrol",seats:6,rate:2238,deposit:0,color:"#f5c518",emoji:"🚐",active:true,paused:[]},
     ];
     renderFleet("","",false);
+    startFleetAutoSlide();
   }
   // Deep link from a car's standalone SEO landing page (/cars/<slug>.html),
   // e.g. /?car=<carId> — opens straight to that car's detail/booking view.
@@ -3285,6 +3287,35 @@ function carouselScroll(dir){
   var g=document.getElementById("fleet-grid");
   if(g) g.scrollBy({left:dir*320,behavior:"smooth"});
 }
+
+var _fleetAutoSlideTimer = null;
+var _fleetAutoSlideResumeTimer = null;
+function startFleetAutoSlide(){
+  stopFleetAutoSlide();
+  var g = document.getElementById("fleet-grid");
+  if(!g) return;
+  _fleetAutoSlideTimer = setInterval(function(){
+    var atEnd = g.scrollLeft + g.clientWidth >= g.scrollWidth - 10;
+    if(atEnd) g.scrollTo({left:0, behavior:"smooth"});
+    else carouselScroll(1);
+  }, 3200);
+}
+function stopFleetAutoSlide(){
+  if(_fleetAutoSlideTimer){ clearInterval(_fleetAutoSlideTimer); _fleetAutoSlideTimer = null; }
+}
+function pauseFleetAutoSlideThenResume(){
+  stopFleetAutoSlide();
+  if(_fleetAutoSlideResumeTimer) clearTimeout(_fleetAutoSlideResumeTimer);
+  _fleetAutoSlideResumeTimer = setTimeout(startFleetAutoSlide, 5000);
+}
+(function(){
+  var g = document.getElementById("fleet-grid");
+  if(!g) return;
+  g.addEventListener("mouseenter", stopFleetAutoSlide);
+  g.addEventListener("mouseleave", startFleetAutoSlide);
+  g.addEventListener("touchstart", pauseFleetAutoSlideThenResume, {passive:true});
+  g.addEventListener("wheel", pauseFleetAutoSlideThenResume, {passive:true});
+})();
 function renderFleet(pickup, drop, searched, gridId){
   var g = document.getElementById(gridId || "fleet-grid");
   g.innerHTML = "";

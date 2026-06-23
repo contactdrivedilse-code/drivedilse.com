@@ -700,6 +700,40 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .hero h1{letter-spacing:-.5px;text-shadow:0 2px 24px rgba(0,0,0,.12)}
 .section-title,.feat-title,#how-sec h2,.cta-band-title,.faq-sec h2{letter-spacing:-.2px}
 
+/* ══════════ MINIMAL HERO REDESIGN (zerolease-inspired, scoped to hero) ══════════ */
+.hero-bg-overlay,.hero-glow{display:none !important}
+.hero::before{background-image:radial-gradient(circle,rgba(0,0,0,.07) 1.5px,transparent 1.5px);background-size:26px 26px}
+.hero{min-height:auto !important;padding:0 !important}
+.hero-inner{padding:56px 48px 48px !important}
+.hero-badge{background:#fff !important;border:1px solid var(--b) !important;color:var(--t) !important;box-shadow:none !important;font-weight:800 !important}
+.hero h1{font-family:'Inter',sans-serif !important;font-weight:900 !important;font-size:3.3rem !important;letter-spacing:-1.5px !important;line-height:1.04 !important;text-shadow:none !important}
+.hero h1 .gold{color:var(--yd) !important}
+.hero-sub{color:#666 !important;font-weight:500 !important}
+.hero-search-card,.hero-search{border-radius:16px !important;border:1.5px solid var(--b) !important;box-shadow:0 1px 3px rgba(0,0,0,.04) !important;padding:24px !important}
+.hero-search-eyebrow{color:var(--ts) !important;letter-spacing:1.5px !important}
+.hero-search-heading{font-family:'Inter',sans-serif !important;font-weight:800 !important;font-size:1.15rem !important}
+.hero-trip-field{border-radius:10px !important}
+.hero-feature-icon{background:var(--ow) !important;border:1px solid var(--b) !important;border-radius:8px !important}
+.hero .btn-y{box-shadow:none !important;transform:none !important}
+.hero .btn-y::after{display:none !important}
+.hero .btn-y:hover{box-shadow:0 2px 10px rgba(0,0,0,.1) !important;transform:none !important;filter:none !important}
+.hero .btn-hero-outline{border-radius:10px}
+.hero .btn-g{box-shadow:none}
+
+/* Trust strip — between hero and ticker */
+.trust-strip{display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;padding:18px 48px;border-top:1px solid var(--b);font-size:.74rem;color:var(--ts);font-weight:700;letter-spacing:.3px}
+.trust-strip .ts-sep{color:var(--b)}
+.trust-strip .ts-stars{color:var(--yd)}
+.trust-strip strong{color:var(--t)}
+@media(max-width:640px){.trust-strip{gap:14px;padding:14px 20px;font-size:.68rem}}
+
+/* Ticker — flipped to a bold black bar */
+.ticker-wrap{background:var(--t) !important;border-top:none !important;border-bottom:none !important}
+.ticker-wrap::before{background:linear-gradient(90deg,var(--t),transparent) !important}
+.ticker-wrap::after{background:linear-gradient(270deg,var(--t),transparent) !important}
+.ticker-item{color:#fff !important;letter-spacing:2.5px !important;font-weight:800 !important}
+.ticker-dot{color:var(--y) !important}
+
 /* Car cards — gold accent top bar on hover */
 .car-card{position:relative;overflow:hidden}
 .car-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--y),var(--yd),var(--y));background-size:200% 100%;opacity:0;transition:opacity .3s;z-index:2}
@@ -984,6 +1018,17 @@ function csTick(){
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- TRUST STRIP -->
+  <div class="trust-strip">
+    <span>Trusted by <strong>500+</strong> drivers</span>
+    <span class="ts-sep">•</span>
+    <span class="ts-stars">★★★★★</span> <strong>5.0/5</strong>
+    <span class="ts-sep">•</span>
+    <span><strong>OTP-Verified</strong> Handover</span>
+    <span class="ts-sep">•</span>
+    <span><strong>Doorstep</strong> Delivery</span>
   </div>
 
   <!-- TICKER STRIP -->

@@ -11,6 +11,16 @@
 <link rel="icon" type="image/png" href="/assets/logo-icon.png">
 <link rel="stylesheet" href="/assets/car-page.css">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+.fcat-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.fcat{background:var(--wg);border:1.5px solid var(--b);border-radius:20px;padding:8px 18px;font-size:.82rem;font-weight:700;color:var(--t);cursor:pointer;font-family:inherit}
+.fcat.on{background:var(--y);border-color:var(--y)}
+.spec-card.fleet-card{padding:0;overflow:hidden;display:block}
+.fleet-card .thumb{height:120px;background:linear-gradient(135deg,#f8f8f8,#ede9db);display:flex;align-items:center;justify-content:center;font-size:2.6rem}
+.fleet-card .body{padding:14px 16px}
+.fleet-card .price{font-weight:800;color:var(--yd);margin-top:6px}
+.fleet-card .meta{font-size:.78rem;color:var(--ts);margin-top:4px}
+</style>
 </head>
 <body>
 <header class="hdr">
@@ -20,11 +30,17 @@
   </a>
   <a class="btn btn-g" href="/">&larr; Home</a>
 </header>
-<div class="wrap">
+<div class="wrap" style="max-width:1080px">
   <div class="crumbs"><a href="/">Home</a> &rsaquo; Fleet</div>
-  <div class="hero"><div><h1>Self-Drive Cars for Rent in Pune</h1><p style="color:var(--ts);font-size:.92rem;max-width:520px">Hatchbacks, SUVs, and MPVs — all Aadhaar-verified, GST-inclusive pricing, doorstep delivery available across Pune.</p></div></div>
+  <div class="hero"><div><h1>Self-Drive Cars for Rent in Pune</h1><p style="color:var(--ts);font-size:.92rem;max-width:520px">Hatchbacks, SUVs, and MPVs — all Aadhaar-verified, GST-inclusive pricing, doorstep delivery available across Pune. Tap any car to check live pricing and book.</p></div></div>
   <div class="section">
-    <div class="spec-grid">
+    <div class="fcat-row" id="fleet-filters">
+      <button class="fcat on" onclick="filterFleetCars('all',this)">All</button>
+      <button class="fcat" onclick="filterFleetCars('Hatchback',this)">Hatchback</button>
+      <button class="fcat" onclick="filterFleetCars('SUV',this)">SUV</button>
+      <button class="fcat" onclick="filterFleetCars('MPV',this)">MPV</button>
+    </div>
+    <div class="spec-grid" id="fleet-cards">
       <a href="/cars/maruti-suzuki-ignis" class="spec-card" style="display:block;text-decoration:none">
         <div class="v" style="font-size:1.05rem">Maruti Suzuki Ignis</div>
         <div style="font-size:.8rem;color:var(--ts);margin-top:4px">Hatchback &middot; Manual &middot; 5 Seats</div>
@@ -64,5 +80,49 @@
   </div>
 </div>
 <footer class="ftr">&copy; 2026 DriveDilSe &mdash; Self-drive car rental in Pune. <a href="/">drivedilse.com</a></footer>
+
+<script>
+var API = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
+var ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
+var emojiMap = {Hatchback:"🚗",Sedan:"🚙",SUV:"🛻",MPV:"🚐"};
+var LIVE_CARS = [];
+
+function renderFleetCards(filterCat){
+  var grid = document.getElementById("fleet-cards");
+  var cars = LIVE_CARS.filter(function(c){ return filterCat === "all" || c.category === filterCat; });
+  if(!cars.length){ grid.innerHTML = '<p style="color:var(--ts)">No cars in this category right now.</p>'; return; }
+  grid.innerHTML = cars.map(function(c){
+    var photo = c.coverPhoto || c.image || "";
+    var thumb = photo
+      ? '<div class="thumb" style="background:#000 url(\''+photo+'\') center/cover no-repeat"></div>'
+      : '<div class="thumb">'+(emojiMap[c.category]||"🚗")+'</div>';
+    return '<a href="/?car='+c._id+'" class="spec-card fleet-card">' +
+      thumb +
+      '<div class="body">' +
+        '<div class="v" style="font-size:1rem">'+c.name+'</div>' +
+        '<div class="meta">'+c.category+' &middot; '+(c.transmission==="Automatic"?"Automatic":"Manual")+' &middot; '+c.seats+' Seats</div>' +
+        '<div class="price">₹'+Number(c.pricePerDay).toLocaleString("en-IN")+'/day</div>' +
+      '</div>' +
+    '</a>';
+  }).join("");
+}
+
+var _fleetFilterCat = "all";
+function filterFleetCars(cat, btn){
+  _fleetFilterCat = cat;
+  document.querySelectorAll("#fleet-filters .fcat").forEach(function(b){ b.classList.remove("on"); });
+  if(btn) btn.classList.add("on");
+  renderFleetCards(cat);
+}
+
+fetch(API + "/fleet", { headers: { "Authorization": "Bearer " + ANON_KEY } })
+  .then(function(r){ return r.json(); })
+  .then(function(cars){
+    if(!Array.isArray(cars)) return;
+    LIVE_CARS = cars.filter(function(c){ return c.active; });
+    if(LIVE_CARS.length) renderFleetCards(_fleetFilterCat);
+  })
+  .catch(function(){ /* keep the static fallback cards above */ });
+</script>
 </body>
 </html>

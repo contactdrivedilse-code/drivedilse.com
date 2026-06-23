@@ -2013,6 +2013,9 @@ window.addEventListener('scroll',function(){
 
 <div class="modal-bg" id="photo-lightbox" onclick="closeModal('photo-lightbox')" style="background:rgba(0,0,0,.88)">
   <img id="photo-lightbox-img" src="" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)" onclick="event.stopPropagation()">
+  <div id="photo-lightbox-counter" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;font-size:.8rem;font-weight:600;background:rgba(0,0,0,.5);padding:4px 14px;border-radius:20px;display:none"></div>
+  <button onclick="lightboxPrev(event)" id="photo-lightbox-prev" style="position:fixed;left:16px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:none;color:#fff;font-size:1.8rem;cursor:pointer;width:48px;height:48px;border-radius:50%;display:none;align-items:center;justify-content:center">&#8249;</button>
+  <button onclick="lightboxNext(event)" id="photo-lightbox-next" style="position:fixed;right:16px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);border:none;color:#fff;font-size:1.8rem;cursor:pointer;width:48px;height:48px;border-radius:50%;display:none;align-items:center;justify-content:center">&#8250;</button>
   <button onclick="closeModal('photo-lightbox')" style="position:fixed;top:20px;right:24px;background:none;border:none;color:#fff;font-size:2.2rem;cursor:pointer;line-height:1">✕</button>
 </div>
 
@@ -2674,11 +2677,38 @@ function showPage(id){
 function openModal(id){ document.getElementById(id).classList.add("open"); }
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }
 
-function openPhotoLightbox(url){
-  if(!url) return;
-  document.getElementById("photo-lightbox-img").src = url;
+var _lightboxUrls = [];
+var _lightboxIdx = 0;
+function openPhotoLightbox(urlOrList, index){
+  var list = Array.isArray(urlOrList) ? urlOrList.filter(Boolean) : [urlOrList];
+  if(!list.length) return;
+  _lightboxUrls = list;
+  _lightboxIdx = index || 0;
+  renderLightboxShot();
   openModal("photo-lightbox");
 }
+function renderLightboxShot(){
+  document.getElementById("photo-lightbox-img").src = _lightboxUrls[_lightboxIdx];
+  var multi = _lightboxUrls.length > 1;
+  document.getElementById("photo-lightbox-prev").style.display = multi ? "flex" : "none";
+  document.getElementById("photo-lightbox-next").style.display = multi ? "flex" : "none";
+  var counter = document.getElementById("photo-lightbox-counter");
+  if(multi){
+    counter.style.display = "block";
+    counter.textContent = (_lightboxIdx+1) + " / " + _lightboxUrls.length;
+  } else {
+    counter.style.display = "none";
+  }
+}
+function lightboxPrev(e){ if(e) e.stopPropagation(); if(!_lightboxUrls.length) return; _lightboxIdx = (_lightboxIdx - 1 + _lightboxUrls.length) % _lightboxUrls.length; renderLightboxShot(); }
+function lightboxNext(e){ if(e) e.stopPropagation(); if(!_lightboxUrls.length) return; _lightboxIdx = (_lightboxIdx + 1) % _lightboxUrls.length; renderLightboxShot(); }
+document.addEventListener("keydown", function(e){
+  var lb = document.getElementById("photo-lightbox");
+  if(!lb || !lb.classList.contains("open")) return;
+  if(e.key === "ArrowLeft") lightboxPrev();
+  else if(e.key === "ArrowRight") lightboxNext();
+  else if(e.key === "Escape") closeModal("photo-lightbox");
+});
 
 function showConfirm(title, body, onConfirm){
   document.getElementById("confirm-modal-title").textContent = title;
@@ -3362,24 +3392,25 @@ function openCar(id){
   var thumbsEl = document.getElementById("d-thumbs");
   thumbsEl.innerHTML = "";
 
-  var currentShotUrl = "";
-  function showShot(shot){
+  var currentShotIdx = -1;
+  var galleryUrls = galleryShots.map(function(s){ return s.url; });
+  function showShot(shot, idx){
     if(shot){
-      currentShotUrl = shot.url;
+      currentShotIdx = idx;
       mainImg.style.background = "#000 url('" + shot.url + "') center/cover no-repeat";
       mainImg.style.cursor = "zoom-in";
       mainImg.innerHTML = '<div style="position:absolute;bottom:12px;background:rgba(255,255,255,.85);font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:20px;color:#555">' + shot.label + '</div>';
     } else {
-      currentShotUrl = "";
+      currentShotIdx = -1;
       mainImg.style.background = "linear-gradient(135deg," + selCar.color + "," + selCar.color + "55)";
       mainImg.style.cursor = "default";
       mainImg.innerHTML = '<span style="font-size:6rem">' + selCar.emoji + '</span>';
     }
   }
-  mainImg.onclick = function(){ if(currentShotUrl) openPhotoLightbox(currentShotUrl); };
+  mainImg.onclick = function(){ if(currentShotIdx >= 0) openPhotoLightbox(galleryUrls, currentShotIdx); };
 
   if(galleryShots.length){
-    showShot(galleryShots[0]);
+    showShot(galleryShots[0], 0);
     galleryShots.forEach(function(shot, i){
       var t = document.createElement("div");
       t.className = "thumb" + (i===0 ? " active" : "");
@@ -3388,7 +3419,7 @@ function openCar(id){
       t.addEventListener("click", function(){
         document.querySelectorAll(".thumb").forEach(function(x){ x.classList.remove("active"); });
         t.classList.add("active");
-        showShot(shot);
+        showShot(shot, i);
       });
       thumbsEl.appendChild(t);
     });

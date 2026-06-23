@@ -2011,6 +2011,11 @@ window.addEventListener('scroll',function(){
   </div>
 </div>
 
+<div class="modal-bg" id="photo-lightbox" onclick="closeModal('photo-lightbox')" style="background:rgba(0,0,0,.88)">
+  <img id="photo-lightbox-img" src="" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)" onclick="event.stopPropagation()">
+  <button onclick="closeModal('photo-lightbox')" style="position:fixed;top:20px;right:24px;background:none;border:none;color:#fff;font-size:2.2rem;cursor:pointer;line-height:1">✕</button>
+</div>
+
 <div class="modal-bg" id="offers-modal" onclick="if(event.target===this)closeModal('offers-modal')">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('offers-modal')">✕</button>
@@ -2668,6 +2673,12 @@ function showPage(id){
 }
 function openModal(id){ document.getElementById(id).classList.add("open"); }
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+function openPhotoLightbox(url){
+  if(!url) return;
+  document.getElementById("photo-lightbox-img").src = url;
+  openModal("photo-lightbox");
+}
 
 function showConfirm(title, body, onConfirm){
   document.getElementById("confirm-modal-title").textContent = title;
@@ -3351,15 +3362,21 @@ function openCar(id){
   var thumbsEl = document.getElementById("d-thumbs");
   thumbsEl.innerHTML = "";
 
+  var currentShotUrl = "";
   function showShot(shot){
     if(shot){
+      currentShotUrl = shot.url;
       mainImg.style.background = "#000 url('" + shot.url + "') center/cover no-repeat";
+      mainImg.style.cursor = "zoom-in";
       mainImg.innerHTML = '<div style="position:absolute;bottom:12px;background:rgba(255,255,255,.85);font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:20px;color:#555">' + shot.label + '</div>';
     } else {
+      currentShotUrl = "";
       mainImg.style.background = "linear-gradient(135deg," + selCar.color + "," + selCar.color + "55)";
+      mainImg.style.cursor = "default";
       mainImg.innerHTML = '<span style="font-size:6rem">' + selCar.emoji + '</span>';
     }
   }
+  mainImg.onclick = function(){ if(currentShotUrl) openPhotoLightbox(currentShotUrl); };
 
   if(galleryShots.length){
     showShot(galleryShots[0]);

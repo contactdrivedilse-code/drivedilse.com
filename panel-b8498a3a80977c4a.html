@@ -1514,9 +1514,10 @@ async function renderFleet(isLocal, c){
     var emoji = emojiMap[car.category]||"🚗";
     var color = colorMap[car.category]||"#f5c518";
     var tm    = car.transmission==="Automatic"?"AT":"MT";
+    var hasPhoto = !!car.imageUrl;
     return '<div class="v-card">' +
-      '<div class="v-img" style="background:linear-gradient(135deg,'+color+','+color+'55)">' +
-        '<span>'+emoji+'</span>' +
+      '<div class="v-img" style="'+(hasPhoto ? 'background:#000;background-image:url(\''+car.imageUrl+'\');background-size:cover;background-position:center' : 'background:linear-gradient(135deg,'+color+','+color+'55)')+'">' +
+        (hasPhoto ? '' : '<span>'+emoji+'</span>') +
         '<div class="v-status"><span class="sbadge '+(car.active?"sb-act":"sb-pend")+'">'+(car.active?"Active":"Inactive")+'</span></div>' +
       '</div>' +
       '<div class="v-body">' +
@@ -1528,7 +1529,6 @@ async function renderFleet(isLocal, c){
           '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">💺 '+car.seats+' Seats</span>' +
         '</div>' +
         (car.pauses&&car.pauses.length ? '<div style="margin-bottom:10px;font-size:.75rem;color:var(--ts)">'+car.pauses.map(function(p,i){return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">⏸ '+new Date(p.from).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+ ' → '+new Date(p.to).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})+(p.note?' — '+p.note:'')+(isFleetRole?' <button onclick="removePause(\''+car._id+'\',\''+p._id+'\')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:700;font-size:.85rem">✕</button>':'')+'</div>';}).join('')+'</div>' : '') +
-        (car.imageUrl ? '<img src="'+car.imageUrl+'" style="width:100%;height:80px;object-fit:cover;border-radius:8px;margin-bottom:10px" onerror="this.style.display=\'none\'">' : '') +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
           '<button class="btn '+(car.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCar(\''+car._id+'\')">'+(car.active?"Deactivate":"Activate")+'</button>' +
           (isFleetRole ? '<button class="btn btn-g btn-sm" style="flex:1" onclick="openPauseModal(\''+car._id+'\',\''+car.name+'\')">⏸ Pause</button>' : '') +

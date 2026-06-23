@@ -466,6 +466,11 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<div class="modal-overlay" id="photo-lightbox" onclick="closePhotoLightbox()" style="background:rgba(0,0,0,.85);align-items:center;justify-content:center">
+  <img id="photo-lightbox-img" src="" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)" onclick="event.stopPropagation()">
+  <button onclick="closePhotoLightbox()" style="position:absolute;top:20px;right:28px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1">✕</button>
+</div>
+
 <div class="modal-overlay" id="blog-modal">
   <div class="modal-box" style="max-width:620px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title" id="blog-modal-title">New Blog Post</div>
@@ -1538,7 +1543,7 @@ async function renderFleet(isLocal, c){
     var tm    = car.transmission==="Automatic"?"AT":"MT";
     var hasPhoto = !!car.imageUrl;
     return '<div class="v-card">' +
-      '<div class="v-img" style="'+(hasPhoto ? 'background:#000;background-image:url(\''+car.imageUrl+'\');background-size:cover;background-position:center' : 'background:linear-gradient(135deg,'+color+','+color+'55)')+'">' +
+      '<div class="v-img" style="'+(hasPhoto ? 'background:#000;background-image:url(\''+car.imageUrl+'\');background-size:cover;background-position:center;cursor:zoom-in' : 'background:linear-gradient(135deg,'+color+','+color+'55)')+'"'+(hasPhoto ? ' onclick="openPhotoLightbox(\''+car.imageUrl+'\')"' : '')+'>' +
         (hasPhoto ? '' : '<span>'+emoji+'</span>') +
         '<div class="v-status"><span class="sbadge '+(car.active?"sb-act":"sb-pend")+'">'+(car.active?"Active":"Inactive")+'</span></div>' +
       '</div>' +
@@ -1744,9 +1749,17 @@ function resetCarPhotoSections(){
 
 function existingPhotoChip(carId, url, section){
   return '<div style="position:relative;display:inline-block">' +
-    '<img src="'+url+'" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db">' +
+    '<img src="'+url+'" onclick="openPhotoLightbox(\''+url+'\')" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db;cursor:zoom-in">' +
     '<button onclick="removeExistingPhoto(\''+carId+'\',\''+url+'\',\''+section+'\',this.parentElement)" style="position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;line-height:18px;text-align:center">✕</button>' +
   '</div>';
+}
+
+function openPhotoLightbox(url){
+  document.getElementById("photo-lightbox-img").src = url;
+  document.getElementById("photo-lightbox").classList.add("open");
+}
+function closePhotoLightbox(){
+  document.getElementById("photo-lightbox").classList.remove("open");
 }
 
 function openEditCarModal(car){
@@ -2163,7 +2176,7 @@ function previewCoverPhoto(){
   prev.innerHTML = "";
   if(_carCoverToUpload){
     var url = URL.createObjectURL(_carCoverToUpload);
-    prev.innerHTML = '<div style="text-align:center"><img src="'+url+'" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db"></div>';
+    prev.innerHTML = '<div style="text-align:center"><img src="'+url+'" onclick="openPhotoLightbox(\''+url+'\')" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db;cursor:zoom-in"></div>';
     document.getElementById("cm-cover-lbl").textContent = "1 photo selected — will replace current cover";
   } else {
     document.getElementById("cm-cover-lbl").textContent = "Click to set cover photo";
@@ -2187,7 +2200,7 @@ function previewSectionPhotos(section){
   files.forEach(function(f){
     var url = URL.createObjectURL(f);
     prev.innerHTML += '<div style="text-align:center">' +
-      '<img src="'+url+'" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db">' +
+      '<img src="'+url+'" onclick="openPhotoLightbox(\''+url+'\')" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:1.5px solid #ede9db;cursor:zoom-in">' +
       '<div style="font-size:.6rem;color:var(--ts);margin-top:2px;width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.name+'</div>' +
     '</div>';
   });

@@ -4658,7 +4658,7 @@ function refundReasonFallback(r){
   if(r.amount > 0) return "";
   if(r.pct === 0) return "Cancelled less than 24 hours before pickup — the booking fee is non-refundable per our cancellation policy.";
   if(r.pct > 0) return "No payment is on record for this booking, so there's nothing to refund.";
-  return "";
+  return "This cancellation was processed before refund tracking was added — contact support if you believe a refund is due.";
 }
 function refundBadgeHtml(b){
   var r = b.refund;

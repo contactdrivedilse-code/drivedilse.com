@@ -12,7 +12,7 @@ Key facts:
 - Booking steps: Pick dates → Choose car → Pay online → Upload Aadhaar + DL → Get Check-In OTP at handover
 - Contact: contact.drivedilse@gmail.com | WhatsApp: +91 99999 99999
 - Discount tiers: 5% off (2-3 days), 8% (4-5 days), 10% (6-7 days), 15% (up to 14 days), 20% (up to 21 days), 25% (longer)
-- Cars available: Hatchbacks, SUVs, MPVs — all well-maintained, Aadhaar-verified fleet
+- Cars available: Hatchbacks, SUVs, MPVs — all well-maintained
 - Cancellation and extensions supported from the profile page
 
 Keep answers short, friendly, and helpful. If unsure, suggest contacting on WhatsApp.`;

@@ -23,6 +23,7 @@ async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<str
 
 const CHECKIN_WINDOW_MINS = 30;
 function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
+const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 
 function calcMultiplier(hours: number): number {
   const days = hours / 24;
@@ -83,6 +84,8 @@ function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] 
     drop:   { date: b.drop_date,   location: b.drop_location },
     days: b.days, pricePerDay: b.price_per_day, total: b.total,
     deposit: b.deposit, discount: b.discount, deliveryFee: b.delivery_fee ?? 0,
+    depositAmount: b.deposit_amount ?? 0, depositChoice: b.deposit_choice ?? "later",
+    depositPaid: b.deposit_paid ?? false, depositPaidAt: b.deposit_paid_at ?? null,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
       photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },
@@ -91,7 +94,10 @@ function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] 
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     invoiceId: b.zoho_invoice_id ?? null,
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
-    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id, reason: b.refund_reason } : null,
+    refund: b.cancelled_at ? {
+      amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id, reason: b.refund_reason,
+      depositAmount: b.deposit_paid ? b.deposit_amount : 0, depositStatus: b.deposit_refund_status, depositRefundId: b.deposit_refund_id,
+    } : null,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: exts.map(e => ({ hours: e.hours, cost: e.cost, razorpayOrderId: e.razorpay_order_id, extendedAt: e.extended_at })),
   };
@@ -304,6 +310,43 @@ Deno.serve(async (req) => {
       return json({ success: true, message: "Photos uploaded. Get your check-in OTP from the DriveDilSe representative." });
     }
 
+    // POST /:id/deposit/order — create a Razorpay order to pay the
+    // refundable deposit for a "pay later" booking, before/at check-in
+    const depositOrderMatch = path.match(/^\/([^/]+)\/deposit\/order$/);
+    if (req.method === "POST" && depositOrderMatch) {
+      const id = depositOrderMatch[1];
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.deposit_paid) return json({ error: "Deposit already paid" }, 400);
+      const amount = (b.deposit_amount as number) || DEPOSIT_AMOUNT;
+
+      const order = await razorpayCreate({ amount: amount * 100, currency: "INR", receipt: "DEP" + Date.now().toString(36).toUpperCase(), notes: { bookingId: id, type: "deposit" } });
+      await sb.from("bookings").update({ deposit_razorpay_order_id: order.id }).eq("id", id);
+
+      return json({ orderId: order.id, amount, currency: "INR", keyId: Deno.env.get("RAZORPAY_KEY_ID") });
+    }
+
+    // POST /:id/deposit/verify
+    const depositVerifyMatch = path.match(/^\/([^/]+)\/deposit\/verify$/);
+    if (req.method === "POST" && depositVerifyMatch) {
+      const id = depositVerifyMatch[1];
+      const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = await req.json();
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.deposit_razorpay_order_id !== razorpayOrderId) return json({ error: "Order mismatch" }, 400);
+      if (!await verifyRazorpay(razorpayOrderId, razorpayPaymentId, razorpaySignature))
+        return json({ error: "Payment verification failed" }, 400);
+
+      await sb.from("bookings").update({
+        deposit_paid: true, deposit_paid_at: new Date().toISOString(),
+        deposit_razorpay_payment_id: razorpayPaymentId, updated_at: new Date().toISOString(),
+      }).eq("id", id);
+
+      return json({ success: true, message: "Refundable deposit paid." });
+    }
+
     // POST /:id/checkin/verify
     const checkinVerifyMatch = path.match(/^\/([^/]+)\/checkin\/verify$/);
     if (req.method === "POST" && checkinVerifyMatch) {
@@ -313,6 +356,9 @@ Deno.serve(async (req) => {
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
       if (b.status !== "confirmed") return json({ error: "Booking is not in confirmed state" }, 400);
+      // deposit_choice is null for bookings made before this feature shipped —
+      // those were never asked for a deposit, so don't retroactively block them.
+      if (b.deposit_choice && !b.deposit_paid) return json({ error: "Please pay the refundable security deposit before check-in." }, 400);
       if (!b.checkin_otp) return json({ error: "Upload car photos first" }, 400);
       if (b.checkin_otp !== otp) return json({ error: "Incorrect OTP. Get it from the DriveDilSe representative." }, 400);
 
@@ -524,13 +570,20 @@ Deno.serve(async (req) => {
     const cancelPreviewMatch = path.match(/^\/([^/]+)\/cancel-preview$/);
     if (req.method === "GET" && cancelPreviewMatch) {
       const id = cancelPreviewMatch[1];
-      const { data: booking } = await sb.from("bookings").select("status, pickup_date, total").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const { data: booking } = await sb.from("bookings").select("status, pickup_date, total, deposit_choice, deposit_paid, deposit_amount").eq("id", id).eq("user_id", user.id).maybeSingle();
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
       const pct = refundPctForCancellation(b.pickup_date as string);
       const total = Number(b.total) || 0;
-      const amount = Math.round(total * pct * 100) / 100;
-      return json({ refundPct: pct, refundAmount: amount, refundReason: refundReasonText(pct, total) });
+      const depositBundled = b.deposit_choice === "now" && !!b.deposit_paid;
+      const depositAmt = Number(b.deposit_amount) || 0;
+      const bookingFeeBase = depositBundled ? Math.max(0, total - depositAmt) : total;
+      const amount = Math.round(bookingFeeBase * pct * 100) / 100;
+      const depositRefundAmount = b.deposit_paid ? depositAmt : 0;
+      return json({
+        refundPct: pct, refundAmount: amount, refundReason: refundReasonText(pct, bookingFeeBase),
+        depositRefundAmount,
+      });
     }
 
     // PUT /:id/cancel
@@ -544,8 +597,15 @@ Deno.serve(async (req) => {
 
       const pct = refundPctForCancellation(b.pickup_date as string);
       const totalAmt = Number(b.total) || 0;
-      const refundAmount = Math.round(totalAmt * pct * 100) / 100;
-      const refundReason = refundReasonText(pct, totalAmt);
+      // Deposit paid at booking time ("now") is bundled into the same
+      // Razorpay payment as the booking fee — strip it out before applying
+      // the cancellation-tier percentage, since the deposit is always
+      // 100% refundable regardless of timing, unlike the booking fee.
+      const depositBundled = b.deposit_choice === "now" && !!b.deposit_paid;
+      const depositAmt = Number(b.deposit_amount) || 0;
+      const bookingFeeBase = depositBundled ? Math.max(0, totalAmt - depositAmt) : totalAmt;
+      const refundAmount = Math.round(bookingFeeBase * pct * 100) / 100;
+      const refundReason = refundReasonText(pct, bookingFeeBase);
 
       let refundStatus = "not_applicable";
       let razorpayRefundId: string | null = null;
@@ -566,15 +626,38 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Deposit refund — always 100%, independent of the booking-fee tier.
+      let depositRefundAmount = 0;
+      let depositRefundStatus = "not_applicable";
+      let depositRefundId: string | null = null;
+      if (b.deposit_paid) {
+        depositRefundAmount = depositAmt;
+        const depPaymentId = depositBundled ? (b.razorpay_payment_id as string) : (b.deposit_razorpay_payment_id as string);
+        if (depositRefundAmount > 0 && depPaymentId && depPaymentId !== "direct") {
+          try {
+            const dRefund = await razorpayRefund(depPaymentId, Math.round(depositRefundAmount * 100));
+            depositRefundId = dRefund.id;
+            depositRefundStatus = "refunded";
+          } catch (e) {
+            console.error("Razorpay deposit refund failed for booking", id, (e as Error).message);
+            depositRefundStatus = "failed_needs_manual";
+          }
+        } else if (depositRefundAmount > 0) {
+          depositRefundStatus = "needs_manual";
+        }
+      }
+
       await sb.from("bookings").update({
         status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString(),
         refund_amount: refundAmount, refund_pct: pct, razorpay_refund_id: razorpayRefundId, refund_status: refundStatus,
         refund_reason: refundReason,
+        deposit_refund_status: depositRefundStatus, deposit_refund_id: depositRefundId,
       }).eq("id", id);
 
       return json({
         success: true, message: "Booking cancelled.",
         refundAmount, refundPct: pct, refundStatus, refundReason,
+        depositRefundAmount, depositRefundStatus,
       });
     }
 

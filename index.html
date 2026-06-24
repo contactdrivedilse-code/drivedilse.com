@@ -2853,6 +2853,8 @@ async function renderProfile(){
               } else {
                 checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#888;font-weight:600">Upload Aadhaar + DL to unlock check-in. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#ffd400;color:var(--t);padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="showPage(\'pg-verify\')">Complete KYC →</button></div>';
               }
+            } else if(b.depositChoice && !b.depositPaid){
+              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#a16207;font-weight:700">🔒 Pay the refundable security deposit (₹'+(b.depositAmount||1000)+') to unlock check-in. <button class="btn btn-y btn-sm" style="margin-left:8px;font-size:.72rem" onclick="payDepositNow(\''+b._id+'\')">Pay Deposit →</button></div>';
             } else if(!photosUp){
               checkinBtn = windowOpen
                 ? '<button class="btn btn-y btn-sm" style="margin-top:8px;font-size:.75rem;width:100%" onclick="openCheckin(\''+b._id+'\',\''+(b.carName||"Car").replace(/'/g,"")+'\',' + "'"+new Date(b.pickup.date).toISOString()+"'"+ ')">Start Check-In →</button>'
@@ -3739,7 +3741,7 @@ async function payNow(){
   var pickupISO = new Date(priceResult.pickup).toISOString();
   var dropISO   = new Date(priceResult.drop).toISOString();
   var totalWithDelivery = priceResult.total + deliveryCharge + tripProtectionFee + depositFee - couponDiscount;
-  var chargeDeliveryFee = deliveryCharge + tripProtectionFee + depositFee;
+  var chargeDeliveryFee = deliveryCharge + tripProtectionFee;
   var couponCode = appliedCoupon ? appliedCoupon.code : undefined;
   var pickupLoc = deliveryCharge > 0 && deliveryAddress ? deliveryAddress + " (Doorstep)" : "Hub, Pune";
   var isSame    = deliveryMode === "same";
@@ -3762,10 +3764,10 @@ async function payNow(){
     if(isGuest){
       var guestPhone = bfPhone || (authToken && authToken.split("_")[1]) || userProfile.phone || "";
       orderEndpoint = "/payment/guest-order";
-      orderBody = { phone: guestPhone, name: bfName || userProfile.name || "", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
+      orderBody = { phone: guestPhone, name: bfName || userProfile.name || "", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice };
     } else {
       orderEndpoint = "/payment/order";
-      orderBody = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode };
+      orderBody = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice };
     }
     var order = await apiFetch(orderEndpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(orderBody) });
     if(order.guestToken){ authToken = order.guestToken; setAuthToken(authToken); }
@@ -3788,7 +3790,7 @@ async function payNow(){
           var verifyBody = {
             razorpayOrderId: resp.razorpay_order_id, razorpayPaymentId: resp.razorpay_payment_id, razorpaySignature: resp.razorpay_signature,
             carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc,
-            deliveryCharge: chargeDeliveryFee, couponCode: couponCode,
+            deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice,
           };
           var result = await apiFetch("/payment/verify", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(verifyBody) });
           finishBooking(result);
@@ -4467,6 +4469,33 @@ function proceedToCarPhotos(){
   document.getElementById("ci-photo-step").style.display  = "block";
 }
 
+async function payDepositNow(bookingId){
+  try {
+    var order = await apiFetch("/bookings/"+bookingId+"/deposit/order", { method:"POST" });
+    var rzp = new Razorpay({
+      key: order.keyId,
+      amount: Math.round(order.amount * 100),
+      currency: order.currency || "INR",
+      name: "DriveDilSe",
+      description: "Refundable Security Deposit",
+      order_id: order.orderId,
+      prefill: { name: userProfile.name || "", contact: userProfile.phone || "", email: userProfile.email || "" },
+      theme: { color: "#f5c518" },
+      handler: async function(resp){
+        try {
+          await apiFetch("/bookings/"+bookingId+"/deposit/verify", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ razorpayOrderId: resp.razorpay_order_id, razorpayPaymentId: resp.razorpay_payment_id, razorpaySignature: resp.razorpay_signature })
+          });
+          alert("Refundable deposit paid. You can now start check-in.");
+          renderProfile();
+        } catch(e){ alert("Deposit payment received but verification failed — contact support with payment ID: " + resp.razorpay_payment_id); }
+      },
+    });
+    rzp.open();
+  } catch(e){ alert("Could not start deposit payment: " + e.message); }
+}
+
 function openCheckin(bookingId, carName, pickupStr) {
   // Block check-in if KYC not verified
   var ks = userProfile && userProfile.kycStatus;
@@ -4476,6 +4505,14 @@ function openCheckin(bookingId, carName, pickupStr) {
       : "Please complete KYC verification (Aadhaar + Driving Licence) before check-in.";
     alert(msg);
     if(ks !== "uploaded") showPage("pg-verify");
+    return;
+  }
+  // Block check-in if the refundable deposit hasn't been paid yet
+  // (bookings from before this feature have depositChoice=null and are exempt)
+  var bkForDeposit = window._bkdMap && window._bkdMap[bookingId];
+  if(bkForDeposit && bkForDeposit.depositChoice && !bkForDeposit.depositPaid){
+    alert("Please pay the refundable security deposit before starting check-in.");
+    payDepositNow(bookingId);
     return;
   }
   ciBookingId = bookingId;

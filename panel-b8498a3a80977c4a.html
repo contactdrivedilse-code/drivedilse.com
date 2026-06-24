@@ -1913,6 +1913,7 @@ function openBkDetailsModal(id){
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Drop</div><div>'+(drop?new Date(drop).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
       (b.total!=null ? '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Total</div><div style="font-weight:700">'+inr(b.total)+'</div></div>' : '') +
     '</div>' +
+    (currentRole === "admin" ? depositSectionHtml(b) : '') +
     (currentRole === "admin" && b.status === "cancelled" && b.refund ? refundSectionHtml(b) : '') +
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
     '<div style="font-weight:700;font-size:.88rem;margin-bottom:4px">📸 Check-In Photos</div>' +
@@ -1929,6 +1930,34 @@ function openBkDetailsModal(id){
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
 
+function depositSectionHtml(b){
+  if(b.depositAmount == null) return '';
+  var amt = b.depositAmount || 1000;
+  var choiceLabel = b.depositChoice === "now" ? "Pay Now" : "Pay Later";
+  var statusHtml = b.depositPaid
+    ? '<span style="color:#15803d;font-weight:700">✅ Paid</span>'
+    : '<span style="color:#a16207;font-weight:700">⏳ Unpaid — check-in is blocked until paid</span>';
+  var markPaidBtn = (!b.depositPaid)
+    ? '<button class="btn btn-y btn-sm" style="margin-top:8px" onclick="markDepositPaid(\''+b._id+'\')">Mark Deposit Paid (cash/manual)</button>'
+    : '';
+  return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
+    '<div style="font-weight:700;font-size:.82rem;margin-bottom:4px">🔒 Refundable Deposit</div>' +
+    '<div style="font-size:.8rem;margin-bottom:4px">'+inr(amt)+' ('+choiceLabel+')</div>' +
+    '<div style="font-size:.78rem">'+statusHtml+'</div>' +
+    markPaidBtn +
+  '</div>';
+}
+
+async function markDepositPaid(id){
+  if(!confirm("Confirm you've manually collected this refundable deposit (cash/UPI outside the app)?")) return;
+  try {
+    var updated = await adminFetch("/admin/bookings/"+id+"/deposit/mark-paid", { method:"POST" });
+    window._bkDetailsMap[id] = updated;
+    openBkDetailsModal(id);
+    toast("Deposit marked as paid.", "success");
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
 function refundSectionHtml(b){
   var r = b.refund;
   var statusLabel = {
@@ -1939,12 +1968,27 @@ function refundSectionHtml(b){
     not_applicable: "No refund — outside cancellation refund window",
   }[r.status] || r.status || "—";
   var needsAction = (r.status === "needs_manual" || r.status === "failed_needs_manual");
+  var depositStatusLabel = {
+    refunded: "✅ Refunded automatically via Razorpay",
+    needs_manual: "⚠️ Needs manual refund",
+    failed_needs_manual: "⚠️ Razorpay refund failed — needs manual handling",
+    refunded_manually: "✅ Refunded manually (marked by admin)",
+  }[r.depositStatus] || r.depositStatus || "—";
+  var depositNeedsAction = r.depositAmount > 0 && (r.depositStatus === "needs_manual" || r.depositStatus === "failed_needs_manual");
+  var depositBlock = r.depositAmount > 0
+    ? '<hr style="border:none;border-top:1px solid var(--b);margin:10px 0">' +
+      '<div style="font-weight:700;font-size:.82rem;margin-bottom:4px">🔒 Deposit Refund</div>' +
+      '<div style="font-size:.8rem;margin-bottom:6px">'+inr(r.depositAmount)+' (always 100%)</div>' +
+      '<div style="font-size:.76rem;color:var(--ts);margin-bottom:'+(depositNeedsAction?'10px':'0')+'">'+depositStatusLabel+'</div>' +
+      (depositNeedsAction ? '<button class="btn btn-y btn-sm" onclick="markDepositRefundDone(\''+b._id+'\')">Mark Deposit Refunded</button>' : '')
+    : '';
   return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
     '<div style="font-weight:700;font-size:.82rem;margin-bottom:4px">💸 Refund</div>' +
     '<div style="font-size:.8rem;margin-bottom:6px">'+(r.amount>0?inr(r.amount)+' ('+Math.round((r.pct||0)*100)+'% tier)':'No refund due')+'</div>' +
     (r.reason ? '<div style="font-size:.74rem;color:var(--ts);margin-bottom:6px">'+r.reason+'</div>' : '') +
     '<div style="font-size:.76rem;color:var(--ts);margin-bottom:'+(needsAction?'10px':'0')+'">'+statusLabel+'</div>' +
     (needsAction ? '<button class="btn btn-y btn-sm" onclick="markRefundDone(\''+b._id+'\')">Mark Refunded</button>' : '') +
+    depositBlock +
   '</div>';
 }
 
@@ -1955,6 +1999,16 @@ async function markRefundDone(id){
     window._bkDetailsMap[id] = updated;
     openBkDetailsModal(id);
     toast("Marked as refunded.", "success");
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function markDepositRefundDone(id){
+  if(!confirm("Confirm you've manually refunded this customer's deposit outside the app (UPI/bank transfer)?")) return;
+  try {
+    var updated = await adminFetch("/admin/bookings/"+id+"/deposit-refund/mark-done", { method:"POST" });
+    window._bkDetailsMap[id] = updated;
+    openBkDetailsModal(id);
+    toast("Deposit marked as refunded.", "success");
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 

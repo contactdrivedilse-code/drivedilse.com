@@ -76,6 +76,7 @@ function mapBooking(b: Record<string, unknown>) {
     drop:   { date: b.drop_date,   location: b.drop_location },
     days: b.days, pricePerDay: b.price_per_day, total: b.total,
     deposit: b.deposit, discount: b.discount,
+    depositAmount: b.deposit_amount ?? 0, depositChoice: b.deposit_choice ?? "later", depositPaid: b.deposit_paid ?? false,
     couponCode: b.coupon_code ?? null, couponDiscount: b.coupon_discount ?? 0,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
@@ -84,7 +85,10 @@ function mapBooking(b: Record<string, unknown>) {
     },
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
-    refund: b.cancelled_at ? { amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id, reason: b.refund_reason } : null,
+    refund: b.cancelled_at ? {
+      amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id, reason: b.refund_reason,
+      depositAmount: b.deposit_paid ? b.deposit_amount : 0, depositStatus: b.deposit_refund_status, depositRefundId: b.deposit_refund_id,
+    } : null,
     source: b.source ?? "website", pickupDone: b.pickup_done ?? false, dropDone: b.drop_done ?? false,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: [],
@@ -215,6 +219,30 @@ Deno.serve(async (req) => {
       const { data, error } = await sb.from("bookings")
         .update({ refund_status: "refunded_manually", updated_at: new Date().toISOString() })
         .eq("id", markRefundMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Booking not found" }, 404);
+      return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
+    }
+
+    // POST /bookings/:id/deposit-refund/mark-done — admin confirms a manual
+    // deposit refund (UPI/bank transfer) when Razorpay couldn't auto-refund it
+    const markDepositRefundMatch = path.match(/^\/bookings\/([^/]+)\/deposit-refund\/mark-done$/);
+    if (req.method === "POST" && markDepositRefundMatch && isAdmin) {
+      const { data, error } = await sb.from("bookings")
+        .update({ deposit_refund_status: "refunded_manually", updated_at: new Date().toISOString() })
+        .eq("id", markDepositRefundMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Booking not found" }, 404);
+      return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
+    }
+
+    // POST /bookings/:id/deposit/mark-paid — admin manually marks the
+    // deposit collected (e.g. cash at handover) for pay-later bookings
+    const markDepositPaidMatch = path.match(/^\/bookings\/([^/]+)\/deposit\/mark-paid$/);
+    if (req.method === "POST" && markDepositPaidMatch && isAdmin) {
+      const { data, error } = await sb.from("bookings")
+        .update({ deposit_paid: true, deposit_paid_at: new Date().toISOString(), deposit_razorpay_payment_id: "manual", updated_at: new Date().toISOString() })
+        .eq("id", markDepositPaidMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);
       return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));

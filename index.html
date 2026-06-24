@@ -826,7 +826,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
     <div style="font-family:'Playfair Display',serif;font-weight:900;font-size:clamp(1.8rem,6vw,2.6rem);color:#fff;line-height:1.15;margin-bottom:10px">
       We're <span style="color:#f5c518">Launching Soon</span>
     </div>
-    <div style="color:#cbb98a;font-size:.95rem;margin-bottom:34px">DriveDilSe goes live on <strong style="color:#f5c518">25 June, 1 PM</strong>. Self-drive cars in Pune, booked your way.</div>
+    <div style="color:#cbb98a;font-size:.95rem;margin-bottom:34px">DriveDilSe goes live on <strong style="color:#f5c518">27 June, 1 PM</strong>. Self-drive cars in Pune, booked your way.</div>
     <div id="csCountdown" style="display:flex;gap:12px;justify-content:center;margin-bottom:36px">
       <div class="cs-unit"><div class="cs-num" id="csDays">00</div><div class="cs-label">Days</div></div>
       <div class="cs-unit"><div class="cs-num" id="csHrs">00</div><div class="cs-label">Hrs</div></div>
@@ -858,7 +858,7 @@ function csAdminLogin(){
   else { alert('Incorrect password'); }
 }
 function csTick(){
-  var LAUNCH = new Date("2026-06-25T13:00:00+05:30").getTime();
+  var LAUNCH = new Date("2026-06-27T13:00:00+05:30").getTime();
   var diff = LAUNCH - Date.now();
   if(diff <= 0){ csUnlock(); return; }
   var d = Math.floor(diff/86400000);

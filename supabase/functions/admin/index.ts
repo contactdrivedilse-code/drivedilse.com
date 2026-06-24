@@ -78,6 +78,13 @@ function mapBooking(b: Record<string, unknown>) {
     days: b.days, pricePerDay: b.price_per_day, total: b.total,
     deposit: b.deposit, discount: b.discount,
     depositAmount: b.deposit_amount ?? 0, depositChoice: b.deposit_choice ?? "later", depositPaid: b.deposit_paid ?? false,
+    settlement: b.settlement_filled_at ? {
+      filledAt: b.settlement_filled_at, lateHours: b.settlement_late_hours ?? 0,
+      damageAmount: b.settlement_damage_amount ?? 0, fastagAmount: b.settlement_fastag_amount ?? 0,
+      fuelAmount: b.settlement_fuel_amount ?? 0, extensionAmount: b.settlement_extension_amount ?? 0,
+      notes: b.settlement_notes ?? "", suggestedRefund: b.settlement_suggested_refund ?? 0,
+    } : (b.checked_out_at ? { lateHours: b.settlement_late_hours ?? 0 } : null),
+    depositRefundAmount: b.deposit_refund_amount ?? null, depositRefundStatus: b.deposit_refund_status ?? null,
     couponCode: b.coupon_code ?? null, couponDiscount: b.coupon_discount ?? 0,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
@@ -97,6 +104,18 @@ function mapBooking(b: Record<string, unknown>) {
 }
 
 function makeBookingId(): string { return "DS" + Date.now().toString(36).toUpperCase(); }
+
+async function razorpayRefund(paymentId: string, amountPaise: number) {
+  const auth = btoa(`${Deno.env.get("RAZORPAY_KEY_ID")}:${Deno.env.get("RAZORPAY_KEY_SECRET")}`);
+  const res  = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
+    method: "POST",
+    headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: amountPaise, speed: "normal" }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.description || "Razorpay refund failed");
+  return data;
+}
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -247,6 +266,85 @@ Deno.serve(async (req) => {
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);
       return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
+    }
+
+    // GET /bookings/pending-settlement-refunds — completed trips where the
+    // fleet manager has filled the post-checkout checklist but the deposit
+    // hasn't been refunded yet. This is the admin "notification" queue.
+    if (req.method === "GET" && path === "/bookings/pending-settlement-refunds" && isAdmin) {
+      const { data, error } = await sb.from("bookings").select("*")
+        .eq("status", "completed").not("settlement_filled_at", "is", null)
+        .is("deposit_refund_status", null).order("settlement_filled_at", { ascending: true });
+      if (error) throw error;
+      return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
+    }
+
+    // POST /bookings/:id/settlement — fleet manager (or admin) records
+    // post-checkout deductions against the deposit: damage, FASTag, fuel,
+    // and a late-return/unbilled-extension charge. Produces a suggested
+    // refund = deposit - deductions, which admin reviews before refunding.
+    const settlementMatch = path.match(/^\/bookings\/([^/]+)\/settlement$/);
+    if (req.method === "POST" && settlementMatch) {
+      const { damageAmount, fastagAmount, fuelAmount, extensionAmount, notes } = await req.json();
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", settlementMatch[1]).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.status !== "completed") return json({ error: "Booking is not completed yet" }, 400);
+
+      const damage    = Math.max(0, Number(damageAmount) || 0);
+      const fastag    = Math.max(0, Number(fastagAmount) || 0);
+      const fuel      = Math.max(0, Number(fuelAmount) || 0);
+      const extension = Math.max(0, Number(extensionAmount) || 0);
+      const depositAmt = Number(b.deposit_amount) || 0;
+      const suggestedRefund = Math.max(0, depositAmt - damage - fastag - fuel - extension);
+
+      const { data, error } = await sb.from("bookings").update({
+        settlement_filled_at: new Date().toISOString(),
+        settlement_damage_amount: damage, settlement_fastag_amount: fastag,
+        settlement_fuel_amount: fuel, settlement_extension_amount: extension,
+        settlement_notes: notes ?? "", settlement_suggested_refund: suggestedRefund,
+        updated_at: new Date().toISOString(),
+      }).eq("id", settlementMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      return json(mapBooking(data as Record<string, unknown>));
+    }
+
+    // POST /bookings/:id/deposit/settle-refund — admin reviews the suggested
+    // amount (or overrides it) and actually triggers the Razorpay refund.
+    const settleRefundMatch = path.match(/^\/bookings\/([^/]+)\/deposit\/settle-refund$/);
+    if (req.method === "POST" && settleRefundMatch && isAdmin) {
+      const { amount } = await req.json();
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", settleRefundMatch[1]).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (!b.deposit_paid) return json({ error: "No deposit was collected on this booking" }, 400);
+
+      const refundAmount = Math.max(0, Math.min(Number(amount) || 0, Number(b.deposit_amount) || 0));
+      let refundStatus = "needs_manual";
+      let refundId: string | null = null;
+
+      if (refundAmount > 0) {
+        const paymentId = b.deposit_razorpay_payment_id as string;
+        if (paymentId && paymentId !== "manual") {
+          try {
+            const refund = await razorpayRefund(paymentId, Math.round(refundAmount * 100));
+            refundId = refund.id;
+            refundStatus = "refunded";
+          } catch (e) {
+            console.error("Deposit settle-refund failed for booking", settleRefundMatch[1], (e as Error).message);
+            refundStatus = "failed_needs_manual";
+          }
+        }
+      } else {
+        refundStatus = "refunded"; // nothing owed back — fully consumed by deductions
+      }
+
+      const { data, error } = await sb.from("bookings").update({
+        deposit_refund_amount: refundAmount, deposit_refund_status: refundStatus,
+        deposit_refund_id: refundId, updated_at: new Date().toISOString(),
+      }).eq("id", settleRefundMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      return json(mapBooking(data as Record<string, unknown>));
     }
 
     // POST /bookings/:id/checkin-otp — reveal check-in OTP to admin

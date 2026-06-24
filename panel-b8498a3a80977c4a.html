@@ -248,6 +248,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="nav-item" data-tab="kycapprovals" onclick="navTo('kycapprovals',this)"><span class="nav-icon">📋</span>KYC Approvals <span class="nav-badge" id="nb-kyc">0</span></div>
       <div class="nav-item" data-tab="faceverify" onclick="navTo('faceverify',this)"><span class="nav-icon">🤳</span>Face Verify <span class="nav-badge" id="nb-faceverify">0</span></div>
       <div class="sidebar-section">Finance</div>
+      <div class="nav-item" data-tab="settlements" onclick="navTo('settlements',this)"><span class="nav-icon">🔒</span>Deposit Refunds <span class="nav-badge" id="nb-settlements">0</span></div>
       <div class="nav-item" data-tab="revenue"   onclick="navTo('revenue',this)">  <span class="nav-icon">💰</span>Revenue</div>
       <div class="sidebar-section">Manage</div>
       <div class="nav-item" data-tab="schedule"  onclick="navTo('schedule',this)"> <span class="nav-icon">📅</span>Today's Schedule</div>
@@ -730,6 +731,10 @@ function navTo(tab, el){
     toast("Coupon management is restricted for Fleet Manager.", "error");
     return;
   }
+  if(tab === "settlements" && currentRole === "fleet"){
+    toast("Use a booking's checkout checklist to record deductions — refunds are admin-only.", "error");
+    return;
+  }
   document.querySelectorAll(".nav-item").forEach(function(n){ n.classList.remove("on"); });
   if(el) el.classList.add("on");
   renderTab(tab);
@@ -779,6 +784,8 @@ async function renderTab(tab){
     await renderKycApprovals(isLocal, c);
   } else if(tab === "faceverify"){
     renderFaceVerify(c);
+  } else if(tab === "settlements"){
+    await renderSettlements(isLocal, c);
   } else if(tab === "revenue"){
     await renderRevenue(isLocal, c);
   } else if(tab === "schedule"){
@@ -1795,6 +1802,62 @@ function openEditCarModal(car){
 
 function closeCarModal(){ document.getElementById("car-modal").classList.remove("open"); }
 
+// ── DEPOSIT REFUNDS (post-checkout settlement) ──
+async function renderSettlements(isLocal, c){
+  var items = [];
+  if(!isLocal){
+    try { items = await adminFetch("/admin/bookings/pending-settlement-refunds"); }
+    catch(e){ isLocal = true; }
+  }
+  if(isLocal){
+    c.innerHTML = '<div class="page-title">Deposit Refunds</div><div class="page-sub">Could not load — please log in again.</div>';
+    return;
+  }
+
+  var cards = items.map(function(b){
+    var s = b.settlement || {};
+    var deductions = (s.damageAmount||0) + (s.fastagAmount||0) + (s.fuelAmount||0) + (s.extensionAmount||0);
+    return '<div class="v-card">' +
+      '<div class="v-body">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
+          '<div><span class="bk-id">'+b.bookingId+'</span> <span style="font-weight:700;margin-left:6px">'+esc(b.carName||"")+'</span></div>' +
+        '</div>' +
+        '<div style="font-size:.8rem;color:var(--ts);margin-bottom:8px">'+esc(b.customer||"")+' &middot; '+esc(b.phone||"")+'</div>' +
+        '<div style="font-size:.78rem;margin-bottom:4px">Deposit paid: <strong>'+inr(b.depositAmount||0)+'</strong></div>' +
+        (s.lateHours > 0 ? '<div style="font-size:.78rem;color:#a16207;margin-bottom:4px">⏱ Returned '+s.lateHours+'h late</div>' : '') +
+        (deductions > 0 ? '<div style="font-size:.78rem;color:#b91c1c;margin-bottom:4px">Deductions: '+inr(deductions)+' (damage '+inr(s.damageAmount||0)+', FASTag '+inr(s.fastagAmount||0)+', fuel '+inr(s.fuelAmount||0)+', late/ext '+inr(s.extensionAmount||0)+')</div>' : '') +
+        (s.notes ? '<div style="font-size:.76rem;color:var(--ts);margin-bottom:6px">Note: '+esc(s.notes)+'</div>' : '') +
+        '<div style="background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:10px;margin:8px 0">' +
+          '<div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Suggested Refund</div>' +
+          '<div style="font-weight:800;font-size:1.1rem;color:var(--yd)">'+inr(s.suggestedRefund||0)+'</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+          '<input class="inp" type="number" id="settle-amt-'+b._id+'" value="'+(s.suggestedRefund||0)+'" style="flex:1" min="0">' +
+          '<button class="btn btn-y btn-sm" onclick="initiateSettleRefund(\''+b._id+'\')">Refund →</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  c.innerHTML =
+    '<div class="page-title">Deposit Refunds</div>' +
+    '<div class="page-sub" style="margin-bottom:16px">'+items.length+' trip'+(items.length!==1?'s':'')+' awaiting a deposit refund decision</div>' +
+    '<div class="v-grid">'+(cards || '<div class="page-sub">Nothing pending — all settled trips have been refunded.</div>')+'</div>';
+}
+
+async function initiateSettleRefund(id){
+  var inp = document.getElementById("settle-amt-"+id);
+  var amount = parseFloat(inp.value) || 0;
+  if(!confirm("Refund "+inr(amount)+" to this customer's original payment method via Razorpay?")) return;
+  try {
+    await adminFetch("/admin/bookings/"+id+"/deposit/settle-refund", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ amount: amount })
+    });
+    toast("Refund initiated.", "success");
+    navTo("settlements", document.querySelector('[data-tab="settlements"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
 // ── COUPONS ──
 var COUPONS_CACHE = [];
 var _couponShowPrivate = false;
@@ -1965,7 +2028,8 @@ function openBkDetailsModal(id){
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
     '<div style="font-weight:700;font-size:.88rem;margin-bottom:4px">📸 Check-Out Photos</div>' +
     (co.checkedOutAt ? '<div style="font-size:.72rem;color:var(--ts)">Checked out '+new Date(co.checkedOutAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div>' : '') +
-    bkdmPhotoGrid(preExistingCo, "No check-out photos uploaded yet.");
+    bkdmPhotoGrid(preExistingCo, "No check-out photos uploaded yet.") +
+    (b.status === "completed" ? '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' + settlementSectionHtml(b) : '');
 
   document.getElementById("bkdm-body").innerHTML = html;
   document.getElementById("bk-details-modal").classList.add("open");
@@ -1988,6 +2052,62 @@ function depositSectionHtml(b){
     '<div style="font-size:.78rem">'+statusHtml+'</div>' +
     markPaidBtn +
   '</div>';
+}
+
+function settlementSectionHtml(b){
+  if(!b.depositPaid) return '';
+  var s = b.settlement || {};
+  var lateNote = s.lateHours > 0
+    ? '<div style="font-size:.76rem;color:#a16207;margin-bottom:8px">⏱ Car was returned '+s.lateHours+' hour(s) after the scheduled drop time. If this wasn\'t covered by an in-app extension, add it as a deduction below.</div>'
+    : '';
+
+  if(s.filledAt){
+    var deductions = (s.damageAmount||0)+(s.fastagAmount||0)+(s.fuelAmount||0)+(s.extensionAmount||0);
+    var refundLine = b.depositRefundStatus
+      ? '<div style="font-size:.78rem;margin-top:6px">'+(b.depositRefundStatus==="refunded"||b.depositRefundStatus==="refunded_manually" ? "✅ Refunded "+inr(b.depositRefundAmount||0) : "⚠️ Refund status: "+b.depositRefundStatus)+'</div>'
+      : '<div style="font-size:.78rem;color:var(--ts);margin-top:6px">Awaiting admin to review &amp; initiate refund (see Deposit Refunds tab).</div>';
+    return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
+      '<div style="font-weight:700;font-size:.88rem;margin-bottom:6px">🔒 Checkout Settlement — filled</div>' +
+      (deductions > 0
+        ? '<div style="font-size:.78rem">Deductions: '+inr(deductions)+' (damage '+inr(s.damageAmount||0)+', FASTag '+inr(s.fastagAmount||0)+', fuel '+inr(s.fuelAmount||0)+', late/ext '+inr(s.extensionAmount||0)+')</div>'
+        : '<div style="font-size:.78rem;color:#15803d">No deductions — full deposit refundable</div>') +
+      (s.notes ? '<div style="font-size:.76rem;color:var(--ts);margin-top:4px">Note: '+esc(s.notes)+'</div>' : '') +
+      '<div style="font-weight:700;margin-top:6px">Suggested refund: '+inr(s.suggestedRefund||0)+'</div>' +
+      refundLine +
+    '</div>';
+  }
+
+  if(currentRole !== "fleet" && currentRole !== "admin") return '';
+  return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:12px 14px;margin-bottom:14px">' +
+    '<div style="font-weight:700;font-size:.88rem;margin-bottom:6px">🔒 Checkout Settlement — deposit deductions</div>' +
+    lateNote +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">' +
+      '<div><label class="lbl">Damage (₹)</label><input class="inp" type="number" id="settle-damage-'+b._id+'" value="0" min="0"></div>' +
+      '<div><label class="lbl">FASTag dues (₹)</label><input class="inp" type="number" id="settle-fastag-'+b._id+'" value="0" min="0"></div>' +
+      '<div><label class="lbl">Fuel shortfall (₹)</label><input class="inp" type="number" id="settle-fuel-'+b._id+'" value="0" min="0"></div>' +
+      '<div><label class="lbl">Late return / unbilled extension (₹)</label><input class="inp" type="number" id="settle-ext-'+b._id+'" value="0" min="0"></div>' +
+    '</div>' +
+    '<label class="lbl">Notes (optional)</label>' +
+    '<textarea class="inp" id="settle-notes-'+b._id+'" rows="2" style="margin-bottom:8px"></textarea>' +
+    '<button class="btn btn-y btn-sm" style="width:100%" onclick="submitSettlement(\''+b._id+'\')">Submit Settlement</button>' +
+  '</div>';
+}
+
+async function submitSettlement(id){
+  var body = {
+    damageAmount: parseFloat(document.getElementById("settle-damage-"+id).value) || 0,
+    fastagAmount: parseFloat(document.getElementById("settle-fastag-"+id).value) || 0,
+    fuelAmount: parseFloat(document.getElementById("settle-fuel-"+id).value) || 0,
+    extensionAmount: parseFloat(document.getElementById("settle-ext-"+id).value) || 0,
+    notes: document.getElementById("settle-notes-"+id).value.trim(),
+  };
+  if(!confirm("Submit this checkout settlement? Admin will be notified to process the deposit refund.")) return;
+  try {
+    var updated = await adminFetch("/admin/bookings/"+id+"/settlement", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
+    window._bkDetailsMap[id] = updated;
+    openBkDetailsModal(id);
+    toast("Settlement submitted. Admin will process the refund.", "success");
+  } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
 async function markDepositPaid(id){
@@ -2588,6 +2708,17 @@ function updateBadges(){
   document.getElementById("nb-bookings").textContent = allBookings.length || "";
   document.getElementById("nb-active").textContent   = active   || "";
   document.getElementById("nb-upcoming").textContent = upcoming || "";
+  updateSettlementsBadge();
+}
+
+async function updateSettlementsBadge(){
+  if(currentRole === "fleet") return;
+  var el = document.getElementById("nb-settlements");
+  if(!el) return;
+  try {
+    var pending = await adminFetch("/admin/bookings/pending-settlement-refunds");
+    el.textContent = pending.length || "";
+  } catch(e){ /* ignore — not critical */ }
 }
 
 // ── INIT: auto-login if token exists ──

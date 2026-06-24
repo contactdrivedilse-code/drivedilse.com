@@ -2877,6 +2877,7 @@ async function renderProfile(){
           var reviewQuickBtn = (b.status === "completed")
             ? (b.hasReview ? reviewSummaryHtml(b) : '<button onclick="leaveReviewQuick(\''+b._id+'\')" style="display:block;width:100%;margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;cursor:pointer;font-family:\'Inter\',sans-serif" onmouseover="this.style.background=\'#fff3c4\'" onmouseout="this.style.background=\'#fffbe6\'">⭐ Leave a Review</button>')
             : (b.status === "cancelled" ? refundBadgeHtml(b) : '');
+          var depositSettleBadge = (b.status === "completed") ? depositSettlementBadgeHtml(b) : '';
           var extBadge = (b.extensions && b.extensions.length)
             ? '<span style="background:#e8f4fd;color:#1a6fa8;border-radius:20px;padding:2px 8px;font-size:.65rem;font-weight:700;margin-left:6px">+' + b.extensions.length + ' extension' + (b.extensions.length>1?'s':'') + '</span>'
             : '';
@@ -2890,6 +2891,7 @@ async function renderProfile(){
             checkinBtn +
             cancelBtn +
             secondaryRow +
+            depositSettleBadge +
             reviewQuickBtn +
           '</div>';
         }).join(""));
@@ -4857,6 +4859,16 @@ function refundReasonFallback(r){
   if(r.pct === 0) return "Cancelled less than 24 hours before pickup — the booking fee is non-refundable per our cancellation policy.";
   if(r.pct > 0) return "No payment is on record for this booking, so there's nothing to refund.";
   return "This cancellation was processed before refund tracking was added — contact support if you believe a refund is due.";
+}
+function depositSettlementBadgeHtml(b){
+  if(!b.depositPaid) return '';
+  if(b.depositRefundStatus === "refunded" || b.depositRefundStatus === "refunded_manually"){
+    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#1a7a3c;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:8px 10px;text-align:center">💸 '+inr(b.depositRefundAmount||0)+' deposit refunded</div>';
+  }
+  if(b.depositRefundStatus === "needs_manual" || b.depositRefundStatus === "failed_needs_manual"){
+    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;text-align:center">🔒 Deposit refund in progress — contact support if it doesn\'t arrive within a few days</div>';
+  }
+  return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#888;background:#f4f4f4;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;text-align:center">🔒 Refundable deposit is being reviewed post-trip — refund follows within a few days</div>';
 }
 function refundBadgeHtml(b){
   var r = b.refund;

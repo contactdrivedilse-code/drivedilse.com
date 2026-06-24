@@ -86,6 +86,13 @@ function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] 
     deposit: b.deposit, discount: b.discount, deliveryFee: b.delivery_fee ?? 0,
     depositAmount: b.deposit_amount ?? 0, depositChoice: b.deposit_choice ?? "later",
     depositPaid: b.deposit_paid ?? false, depositPaidAt: b.deposit_paid_at ?? null,
+    settlement: b.settlement_filled_at ? {
+      filledAt: b.settlement_filled_at, lateHours: b.settlement_late_hours ?? 0,
+      damageAmount: b.settlement_damage_amount ?? 0, fastagAmount: b.settlement_fastag_amount ?? 0,
+      fuelAmount: b.settlement_fuel_amount ?? 0, extensionAmount: b.settlement_extension_amount ?? 0,
+      notes: b.settlement_notes ?? "", suggestedRefund: b.settlement_suggested_refund ?? 0,
+    } : (b.checked_out_at ? { lateHours: b.settlement_late_hours ?? 0 } : null),
+    depositRefundAmount: b.deposit_refund_amount ?? null, depositRefundStatus: b.deposit_refund_status ?? null,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
       photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },
@@ -680,10 +687,17 @@ Deno.serve(async (req) => {
       // Compute the original base/GST split before we overwrite drop_date below
       const { base, gst, days } = calcPrice(b.price_per_day as number, new Date(b.pickup_date as string), new Date(b.drop_date as string));
 
+      // drop_date gets overwritten below for car-availability purposes, so
+      // capture how late the return was (vs the originally scheduled drop)
+      // right now — this is the only moment that original value is available.
+      const lateMs    = Date.now() - new Date(b.drop_date as string).getTime();
+      const lateHours = lateMs > 0 ? Math.ceil(lateMs / 3600000) : 0;
+
       await sb.from("bookings").update({
         checkout_otp_verified: true, checked_out_at: checkedOutAt,
         drop_date: availableAt, // overwrite original drop — car free after 4h
         status: "completed", updated_at: checkedOutAt,
+        settlement_late_hours: lateHours,
       }).eq("id", id);
 
       // Best-effort: raise a Zoho Books invoice for the completed trip.

@@ -5613,6 +5613,10 @@ async function applyCouponCode(code){
     appliedCoupon = found;
     updateDeliveryTotal();
     updateOfferAppliedMsg();
+    if(couponDiscount <= 0){
+      alert("\""+code+"\" is valid, but works out to ₹0 off on this booking amount.");
+      return;
+    }
     closeModal("offers-modal");
     return;
   }
@@ -5630,6 +5634,10 @@ async function applyCouponCode(code){
     appliedCoupon = { code: result.code, type: "flat", value: result.discount };
     updateDeliveryTotal();
     updateOfferAppliedMsg();
+    if(couponDiscount <= 0){
+      alert("\""+code+"\" is valid, but works out to ₹0 off on this booking amount.");
+      return;
+    }
     closeModal("offers-modal");
   } catch(e){
     alert(e.message || "Invalid or expired coupon code.");

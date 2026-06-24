@@ -64,6 +64,7 @@ function mapCoupon(c: Record<string, unknown>) {
     description: c.description ?? "", type: c.type, value: c.value,
     minAmount: c.min_amount ?? 0, active: c.active, createdAt: c.created_at,
     newCustomerOnly: c.new_customer_only ?? false,
+    isPublic: c.is_public ?? true, maxUses: c.max_uses ?? null, timesUsed: c.times_used ?? 0,
   };
 }
 
@@ -570,13 +571,14 @@ Deno.serve(async (req) => {
     // POST /coupons — create coupon (admin only)
     if (req.method === "POST" && path === "/coupons") {
       if (!isAdmin) return json({ error: "Admin access required" }, 403);
-      const { code, title, description, type, value, minAmount, active, newCustomerOnly } = await req.json();
+      const { code, title, description, type, value, minAmount, active, newCustomerOnly, isPublic } = await req.json();
       if (!code || !title || !value) return json({ error: "code, title and value required" }, 400);
       const { data, error } = await sb.from("coupons").insert({
         id: crypto.randomUUID(), code: String(code).toUpperCase().trim(), title,
         description: description ?? "", type: type === "flat" ? "flat" : "percent",
         value, min_amount: minAmount ?? 0, active: active !== false,
         new_customer_only: newCustomerOnly === true,
+        is_public: isPublic !== false,
       }).select("*").maybeSingle();
       if (error) throw error;
       return json(mapCoupon(data as Record<string, unknown>), 201);
@@ -596,6 +598,7 @@ Deno.serve(async (req) => {
       if (body.minAmount   !== undefined) updates.min_amount  = body.minAmount;
       if (body.active      !== undefined) updates.active      = body.active;
       if (body.newCustomerOnly !== undefined) updates.new_customer_only = body.newCustomerOnly === true;
+      if (body.isPublic    !== undefined) updates.is_public   = body.isPublic === true;
       const { data, error } = await sb.from("coupons").update(updates).eq("id", couponEditMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Coupon not found" }, 404);

@@ -451,7 +451,11 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       </div>
       <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:4px">
         <input type="checkbox" id="cpm-active" style="width:18px;height:18px" checked>
-        <label class="lbl" style="margin:0" for="cpm-active">Active (visible to customers)</label>
+        <label class="lbl" style="margin:0" for="cpm-active">Active (coupon can be applied at all)</label>
+      </div>
+      <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="cpm-public" style="width:18px;height:18px" checked>
+        <label class="lbl" style="margin:0" for="cpm-public">Show in public Offers list — uncheck for exclusive/one-time codes given out privately</label>
       </div>
       <div style="grid-column:1/-1;display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="cpm-new-customer" style="width:18px;height:18px">
@@ -1792,6 +1796,10 @@ function openEditCarModal(car){
 function closeCarModal(){ document.getElementById("car-modal").classList.remove("open"); }
 
 // ── COUPONS ──
+var COUPONS_CACHE = [];
+var _couponShowPrivate = false;
+var _couponSearch = "";
+
 async function renderCoupons(isLocal, c){
   var coupons = [];
   if(!isLocal){
@@ -1805,7 +1813,37 @@ async function renderCoupons(isLocal, c){
     return;
   }
 
-  var cards = coupons.map(function(cp){
+  COUPONS_CACHE = coupons;
+
+  c.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">' +
+      '<div><div class="page-title" style="margin-bottom:0">Coupons</div>' +
+      '<div class="page-sub" style="margin-top:2px" id="coupon-count-sub"></div></div>' +
+      '<button class="btn btn-y btn-sm" onclick="openAddCouponModal()" style="white-space:nowrap">+ Add Coupon</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;align-items:center;margin:14px 0;flex-wrap:wrap">' +
+      '<input class="inp" id="coupon-search-inp" placeholder="Search code or title…" style="max-width:260px" value="" oninput="onCouponSearchInput(this.value)">' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--ts);cursor:pointer">' +
+        '<input type="checkbox" id="coupon-show-private" onchange="onCouponShowPrivateToggle(this.checked)"> Show private/exclusive codes too' +
+      '</label>' +
+    '</div>' +
+    '<div class="v-grid" id="coupon-cards-container"></div>';
+
+  renderCouponCards();
+}
+
+function renderCouponCards(){
+  var container = document.getElementById("coupon-cards-container");
+  var subEl = document.getElementById("coupon-count-sub");
+  var coupons = COUPONS_CACHE;
+  var search = _couponSearch.trim().toUpperCase();
+  var visible = coupons.filter(function(cp){
+    if(search) return (cp.code||"").toUpperCase().indexOf(search) > -1 || (cp.title||"").toUpperCase().indexOf(search) > -1;
+    return _couponShowPrivate || cp.isPublic !== false;
+  });
+  var privateCount = coupons.filter(function(cp){ return cp.isPublic === false; }).length;
+
+  var cards = visible.map(function(cp){
     var valueLbl = cp.type === "percent" ? cp.value + "% OFF" : "₹" + cp.value + " OFF";
     return '<div class="v-card">' +
       '<div class="v-body">' +
@@ -1819,6 +1857,10 @@ async function renderCoupons(isLocal, c){
           '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">🏷️ '+valueLbl+'</span>' +
           (cp.minAmount ? '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">Min ₹'+cp.minAmount+'</span>' : '') +
           (cp.newCustomerOnly ? '<span style="font-size:.7rem;background:#eaf2ff;border:1px solid #b9d3f5;color:#1a5fa8;padding:3px 9px;border-radius:20px">🆕 New customers only</span>' : '') +
+          (cp.isPublic === false
+            ? '<span style="font-size:.7rem;background:#fff3e0;border:1px solid #ffd9a8;color:#a15c00;padding:3px 9px;border-radius:20px">🔒 Private</span>'
+            : '<span style="font-size:.7rem;background:#f0fdf4;border:1px solid #bbf0c9;color:#15803d;padding:3px 9px;border-radius:20px">🌐 Public</span>') +
+          (cp.maxUses ? '<span style="font-size:.7rem;background:var(--wg);border:1px solid var(--b);padding:3px 9px;border-radius:20px">'+cp.timesUsed+'/'+cp.maxUses+' used</span>' : '') +
         '</div>' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
           '<button class="btn '+(cp.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCouponActive(\''+cp._id+'\','+(!cp.active)+')">'+(cp.active?"Deactivate":"Activate")+'</button>' +
@@ -1829,14 +1871,12 @@ async function renderCoupons(isLocal, c){
     '</div>';
   }).join("");
 
-  c.innerHTML =
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
-      '<div><div class="page-title" style="margin-bottom:0">Coupons</div>' +
-      '<div class="page-sub" style="margin-top:2px">'+coupons.length+' coupon'+(coupons.length!==1?'s':'')+' total</div></div>' +
-      '<button class="btn btn-y btn-sm" onclick="openAddCouponModal()" style="white-space:nowrap">+ Add Coupon</button>' +
-    '</div>' +
-    '<div class="v-grid" style="margin-top:16px">'+(cards || '<div class="page-sub">No coupons yet. Click "+ Add Coupon" to create one.</div>')+'</div>';
+  subEl.textContent = coupons.length+' coupon'+(coupons.length!==1?'s':'')+' total · '+privateCount+' private/exclusive';
+  container.innerHTML = cards || '<div class="page-sub">No coupons match. '+(privateCount?'There are '+privateCount+' private/exclusive codes hidden — search by code or check the box above to see them.':'Click "+ Add Coupon" to create one.')+'</div>';
 }
+
+function onCouponSearchInput(v){ _couponSearch = v; renderCouponCards(); }
+function onCouponShowPrivateToggle(checked){ _couponShowPrivate = checked; renderCouponCards(); }
 
 function openAddCouponModal(){
   document.getElementById("coupon-modal-title").textContent = "Add Coupon";
@@ -1848,6 +1888,7 @@ function openAddCouponModal(){
   document.getElementById("cpm-value").value  = "";
   document.getElementById("cpm-min").value    = "";
   document.getElementById("cpm-active").checked = true;
+  document.getElementById("cpm-public").checked = true;
   document.getElementById("cpm-new-customer").checked = false;
   document.getElementById("coupon-modal").classList.add("open");
 }
@@ -1862,6 +1903,7 @@ function openEditCouponModal(cp){
   document.getElementById("cpm-value").value  = cp.value || "";
   document.getElementById("cpm-min").value    = cp.minAmount || "";
   document.getElementById("cpm-active").checked = !!cp.active;
+  document.getElementById("cpm-public").checked = cp.isPublic !== false;
   document.getElementById("cpm-new-customer").checked = !!cp.newCustomerOnly;
   document.getElementById("coupon-modal").classList.add("open");
 }
@@ -2021,6 +2063,7 @@ async function submitCouponForm(){
   var value  = parseFloat(document.getElementById("cpm-value").value);
   var min    = parseFloat(document.getElementById("cpm-min").value) || 0;
   var active = document.getElementById("cpm-active").checked;
+  var isPublic = document.getElementById("cpm-public").checked;
   var newCustomerOnly = document.getElementById("cpm-new-customer").checked;
 
   if(!code)  { toast("Coupon code is required.", "error"); return; }
@@ -2030,7 +2073,7 @@ async function submitCouponForm(){
   var btn = document.getElementById("cpm-submit-btn");
   btn.textContent = "Saving..."; btn.disabled = true;
   try {
-    var body = JSON.stringify({ code, title, description: desc, type, value, minAmount: min, active, newCustomerOnly });
+    var body = JSON.stringify({ code, title, description: desc, type, value, minAmount: min, active, newCustomerOnly, isPublic });
     if(id){
       await adminFetch("/admin/coupons/"+id, { method:"PUT", headers:{"Content-Type":"application/json"}, body });
     } else {

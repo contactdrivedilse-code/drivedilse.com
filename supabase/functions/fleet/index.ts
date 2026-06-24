@@ -48,9 +48,11 @@ Deno.serve(async (req) => {
       return json((cars ?? []).filter((c: Record<string, unknown>) => !blocked.has(c.id as string)).map(mapCar));
     }
 
-    // GET /coupons — active offers for guests
+    // GET /coupons — active, publicly-visible offers for guests. Exclusive/
+    // one-time codes (is_public = false) are intentionally left out here —
+    // they only work if the customer types the exact code in at checkout.
     if (req.method === "GET" && path === "/coupons") {
-      const { data, error } = await sb.from("coupons").select("*").eq("active", true).order("created_at", { ascending: false });
+      const { data, error } = await sb.from("coupons").select("*").eq("active", true).eq("is_public", true).order("created_at", { ascending: false });
       if (error) throw error;
       return json((data ?? []).map((c: Record<string, unknown>) => ({
         code: c.code, title: c.title, description: c.description ?? "",

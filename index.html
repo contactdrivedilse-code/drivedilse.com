@@ -5582,17 +5582,13 @@ function renderOffersList(){
     '</div>';
   }).join("");
 }
-function applyCouponCode(code){
+async function applyCouponCode(code){
   code = (code||"").trim().toUpperCase();
   if(!code){ alert("Enter a coupon code."); return; }
   if(!priceResult){ alert("Please calculate price first."); return; }
   var list = availableCoupons || [];
   var found = list.find(function(o){ return o.code.toUpperCase() === code; });
-  if(!found){ alert("Invalid or expired coupon code."); return; }
-  if(found.minAmount && priceResult.total < found.minAmount){
-    alert("This coupon requires a minimum booking value of ₹"+found.minAmount.toLocaleString("en-IN")+".");
-    return;
-  }
+
   // Any coupon now requires a real OTP-verified login (not guest checkout) — enforced server-side too
   if(!authToken || authToken.startsWith("demo_")){
     closeModal("offers-modal");
@@ -5600,18 +5596,44 @@ function applyCouponCode(code){
     openQuickLogin(function(){ applyCouponCode(code); });
     setTimeout(function(){
       var msg = document.getElementById("ql-msg");
-      if(msg) msg.innerHTML = found.newCustomerOnly
+      if(msg) msg.innerHTML = (found && found.newCustomerOnly)
         ? '<span style="color:#1a5fa8">🆕 "'+esc(code)+'" is for new customers — verify your phone with OTP to apply it.</span>'
         : '<span style="color:#1a5fa8">Please verify your phone with OTP to apply coupon "'+esc(code)+'".</span>';
     }, 50);
     return;
   }
-  var raw = found.type === "flat" ? found.value : Math.round(priceResult.total * found.value / 100);
-  couponDiscount = Math.max(0, Math.min(raw, priceResult.total));
-  appliedCoupon = found;
-  updateDeliveryTotal();
-  updateOfferAppliedMsg();
-  closeModal("offers-modal");
+
+  if(found){
+    if(found.minAmount && priceResult.total < found.minAmount){
+      alert("This coupon requires a minimum booking value of ₹"+found.minAmount.toLocaleString("en-IN")+".");
+      return;
+    }
+    var raw = found.type === "flat" ? found.value : Math.round(priceResult.total * found.value / 100);
+    couponDiscount = Math.max(0, Math.min(raw, priceResult.total));
+    appliedCoupon = found;
+    updateDeliveryTotal();
+    updateOfferAppliedMsg();
+    closeModal("offers-modal");
+    return;
+  }
+
+  // Not in the public offers list — could still be a real private/exclusive
+  // code, so ask the server (authoritative check) instead of rejecting it.
+  try {
+    var pickupISO = new Date(priceResult.pickup).toISOString();
+    var dropISO   = new Date(priceResult.drop).toISOString();
+    var result = await apiFetch("/payment/validate-coupon", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, couponCode: code })
+    });
+    couponDiscount = result.discount;
+    appliedCoupon = { code: result.code, type: "flat", value: result.discount };
+    updateDeliveryTotal();
+    updateOfferAppliedMsg();
+    closeModal("offers-modal");
+  } catch(e){
+    alert(e.message || "Invalid or expired coupon code.");
+  }
 }
 function removeCoupon(){
   appliedCoupon = null; couponDiscount = 0;

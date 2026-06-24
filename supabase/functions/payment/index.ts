@@ -176,6 +176,25 @@ Deno.serve(async (req) => {
       });
     }
 
+    // POST /validate-coupon — lets a customer type in a private/exclusive
+    // code that isn't in the public offers list and find out if it's real,
+    // without creating a Razorpay order. Read-only: never consumes a
+    // one-time code (that only happens for real at /verify).
+    if (req.method === "POST" && path === "/validate-coupon") {
+      const user = await getUser(req);
+      if (!user) return json({ error: "Unauthorized" }, 401);
+
+      const { carId, pickupDate, dropDate, couponCode } = await req.json();
+      const { data: car } = await sb.from("cars").select("price_per_day").eq("id", carId).maybeSingle();
+      const c = car as Record<string, unknown> | null;
+      if (!c) return json({ error: "Car not available" }, 404);
+
+      const { total: baseTotal } = calcPrice(c.price_per_day as number, new Date(pickupDate), new Date(dropDate));
+      const { discount, code } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
+      if (!code) return json({ error: "Invalid or expired coupon code." }, 400);
+      return json({ discount, code });
+    }
+
     // POST /order
     if (req.method === "POST" && path === "/order") {
       const user = await getUser(req);

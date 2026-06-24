@@ -4860,13 +4860,35 @@ function refundReasonFallback(r){
   if(r.pct > 0) return "No payment is on record for this booking, so there's nothing to refund.";
   return "This cancellation was processed before refund tracking was added — contact support if you believe a refund is due.";
 }
+function depositDeductionReasonHtml(b){
+  var s = b.settlement;
+  if(!s || !s.filledAt) return '';
+  var lines = [];
+  if(s.damageAmount > 0)    lines.push("Vehicle damage: " + inr(s.damageAmount));
+  if(s.fastagAmount > 0)    lines.push("FASTag dues: " + inr(s.fastagAmount));
+  if(s.fuelAmount > 0)      lines.push("Fuel shortfall: " + inr(s.fuelAmount));
+  if(s.extensionAmount > 0) lines.push("Late return" + (s.lateHours ? " (" + s.lateHours + "h)" : "") + ": " + inr(s.extensionAmount));
+  if(!lines.length) return '';
+  return '<div style="margin-top:4px;font-size:.7rem;font-weight:500;opacity:.85;text-align:left;display:inline-block">' +
+    lines.map(function(l){ return '• ' + l; }).join('<br>') +
+    (s.notes ? '<br>Note: ' + esc(s.notes) : '') +
+  '</div>';
+}
 function depositSettlementBadgeHtml(b){
   if(!b.depositPaid) return '';
+  var reasonHtml = depositDeductionReasonHtml(b);
   if(b.depositRefundStatus === "refunded" || b.depositRefundStatus === "refunded_manually"){
-    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#1a7a3c;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:8px 10px;text-align:center">💸 '+inr(b.depositRefundAmount||0)+' deposit refunded</div>';
+    var shortBy = (b.depositAmount||0) - (b.depositRefundAmount||0);
+    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#1a7a3c;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:8px 10px;text-align:center">' +
+      '💸 '+inr(b.depositRefundAmount||0)+' deposit refunded' + (shortBy > 0 ? ' (₹'+shortBy.toLocaleString("en-IN")+' deducted)' : '') +
+      reasonHtml +
+    '</div>';
   }
   if(b.depositRefundStatus === "needs_manual" || b.depositRefundStatus === "failed_needs_manual"){
-    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;text-align:center">🔒 Deposit refund in progress — contact support if it doesn\'t arrive within a few days</div>';
+    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;text-align:center">🔒 Deposit refund in progress — contact support if it doesn\'t arrive within a few days' + reasonHtml + '</div>';
+  }
+  if(reasonHtml){
+    return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#a16207;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:8px;padding:8px 10px;text-align:center">🔒 Some deductions noted on this trip — refund of ₹'+(b.settlement.suggestedRefund||0).toLocaleString("en-IN")+' pending admin review' + reasonHtml + '</div>';
   }
   return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#888;background:#f4f4f4;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;text-align:center">🔒 Refundable deposit is being reviewed post-trip — refund follows within a few days</div>';
 }

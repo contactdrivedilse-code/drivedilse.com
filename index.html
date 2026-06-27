@@ -3526,11 +3526,19 @@ function renderFleet(pickup, drop, searched, gridId, carsList){
           '<span class="pill">⛽ ' + car.fuel + '</span>' +
           '<span class="pill">💺 ' + car.seats + ' Seats</span>' +
         '</div>' +
-        '<div style="font-size:.7rem;font-weight:700;color:#1a7a3c;margin-bottom:14px">🚚 Doorstep Delivery Available</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;background:var(--ow);border:1px solid var(--b);border-radius:10px;padding:8px 10px">' +
+          '<span style="font-size:.74rem;font-weight:700;color:var(--t)">🚚 Doorstep Delivery</span>' +
+          '<label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;cursor:pointer">' +
+            '<input type="checkbox" class="card-delivery-toggle" onchange="onCardDeliveryToggle(this.checked)" style="opacity:0;width:0;height:0">' +
+            '<span class="card-delivery-track" style="position:absolute;inset:0;background:#ccc;border-radius:20px;transition:.3s"></span>' +
+            '<span class="card-delivery-thumb" style="position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2)"></span>' +
+          '</label>' +
+        '</div>' +
         '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>' +
       '</div>';
     g.appendChild(div);
   });
+  syncCardDeliveryToggles();
 }
 function hideSiteLoader(){
   var el = document.getElementById("site-loader");
@@ -5520,6 +5528,34 @@ function onHeroDeliveryToggle(){
     panel.style.display = "none";
     deliveryCharge=0; deliveryAddress=""; dropAddress=""; pickupDist=0; dropDist=0;
     calcAndShowDeliveryTotal();
+  }
+  syncCardDeliveryToggles();
+}
+
+// Doorstep delivery toggle shown directly on each fleet card — mirrors the
+// homepage hero toggle so the choice carries through regardless of which
+// one the customer flips first.
+function syncCardDeliveryToggles(){
+  document.querySelectorAll(".card-delivery-toggle").forEach(function(cb){
+    cb.checked = heroDeliveryWanted;
+    var track = cb.parentElement.querySelector(".card-delivery-track");
+    var thumb = cb.parentElement.querySelector(".card-delivery-thumb");
+    if(track) track.style.background = heroDeliveryWanted ? "var(--yd)" : "#ccc";
+    if(thumb) thumb.style.transform = heroDeliveryWanted ? "translateX(16px)" : "translateX(0)";
+  });
+}
+function onCardDeliveryToggle(checked){
+  var heroToggle = document.getElementById("hero-delivery-toggle");
+  if(heroToggle){
+    heroToggle.checked = checked;
+    onHeroDeliveryToggle();
+  } else {
+    heroDeliveryWanted = checked;
+    syncCardDeliveryToggles();
+  }
+  if(checked){
+    var panel = document.getElementById("hero-delivery-panel");
+    if(panel) panel.scrollIntoView({behavior:"smooth", block:"center"});
   }
 }
 

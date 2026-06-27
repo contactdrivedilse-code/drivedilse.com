@@ -17,6 +17,24 @@ function generateOtp(): string { return String(Math.floor(100000 + Math.random()
 const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 function resolveDepositChoice(raw: unknown): "now" | "later" { return raw === "now" ? "now" : "later"; }
 
+// Checks both real bookings AND fleet-manager pause periods for the
+// requested window. A car paused for maintenance/Zoomcar etc. must be
+// just as unbookable as one with an overlapping confirmed booking —
+// this was previously only checked at the /fleet/available listing
+// step, not at actual booking creation, so a paused car could still be
+// booked through it (e.g. via the homepage carousel, which deliberately
+// keeps unavailable cars visible/clickable).
+async function hasDateConflict(carId: string, pISO: string, dISO: string): Promise<boolean> {
+  const [{ data: bookingConflict }, { data: pauseConflict }] = await Promise.all([
+    sb.from("bookings").select("id").eq("car_id", carId)
+      .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle(),
+    sb.from("car_pauses").select("id").eq("car_id", carId)
+      .lt("from_date", dISO).gt("to_date", pISO).maybeSingle(),
+  ]);
+  return !!bookingConflict || !!pauseConflict;
+}
+const CONFLICT_MSG = "This car is paused or already booked for these dates. Please choose different dates or another car.";
+
 function calcMultiplier(hours: number): number {
   const days = hours / 24;
   if (hours <= 8)  return 1.30;
@@ -147,6 +165,7 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
+      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString())) return json({ error: CONFLICT_MSG }, 400);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof gdc === "number" && gdc > 0 ? gdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
@@ -207,9 +226,7 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pISO = new Date(pickupDate).toISOString(), dISO = new Date(dropDate).toISOString();
-      const { data: conflict } = await sb.from("bookings").select("id").eq("car_id", carId)
-        .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
-      if (conflict) return json({ error: "Car is already booked for these dates or in preparation (4-hour buffer after last trip)" }, 400);
+      if (await hasDateConflict(carId, pISO, dISO)) return json({ error: CONFLICT_MSG }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
@@ -245,6 +262,11 @@ Deno.serve(async (req) => {
       const c = car as Record<string, unknown>, p = profile as Record<string, unknown>;
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
+      // This is the endpoint that actually inserts the booking row — it
+      // previously had NO conflict check at all (only /order, the earlier
+      // preview step, did, and even that missed pauses). A booking made or
+      // a pause added between /order and /verify could slip through.
+      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString())) return json({ error: CONFLICT_MSG }, 400);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
@@ -305,9 +327,7 @@ Deno.serve(async (req) => {
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const pISO = pickup.toISOString(), dISO = drop.toISOString();
-      const { data: conflict } = await sb.from("bookings").select("id").eq("car_id", carId)
-        .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
-      if (conflict) return json({ error: "Car is already booked for these dates or in preparation (4-hour buffer after last trip)" }, 400);
+      if (await hasDateConflict(carId, pISO, dISO)) return json({ error: CONFLICT_MSG }, 400);
 
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
@@ -355,9 +375,7 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pISO2 = new Date(pickupDate).toISOString(), dISO2 = new Date(dropDate).toISOString();
-      const { data: conflict2 } = await sb.from("bookings").select("id").eq("car_id", carId)
-        .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO2).gt("drop_date", pISO2).maybeSingle();
-      if (conflict2) return json({ error: "Car is already booked for these dates or in preparation (4-hour buffer after last trip)" }, 400);
+      if (await hasDateConflict(carId, pISO2, dISO2)) return json({ error: CONFLICT_MSG }, 400);
 
       let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
       if (!prof) {

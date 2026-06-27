@@ -3521,11 +3521,12 @@ function renderFleet(pickup, drop, searched, gridId, carsList){
         '<div style="font-size:.98rem;font-weight:800;margin-bottom:4px">' + car.name + '</div>' +
         '<div style="font-size:.86rem;color:var(--yd);font-weight:700;margin-bottom:2px">' + inr(Math.round(car.rate/24)) + '/hr</div>' +
         '<div style="font-size:.66rem;color:var(--ts);margin-bottom:10px">incl. GST</div>' +
-        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">' +
           '<span class="pill">⚙️ ' + car.tm + '</span>' +
           '<span class="pill">⛽ ' + car.fuel + '</span>' +
           '<span class="pill">💺 ' + car.seats + ' Seats</span>' +
         '</div>' +
+        '<div style="font-size:.7rem;font-weight:700;color:#1a7a3c;margin-bottom:14px">🚚 Doorstep Delivery Available</div>' +
         '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>' +
       '</div>';
     g.appendChild(div);

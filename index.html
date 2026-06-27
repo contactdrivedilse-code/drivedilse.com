@@ -1044,7 +1044,10 @@ function csTick(){
               </div>
             </div>
           </div>
-          <!-- Doorstep delivery teaser -->
+          <!-- Doorstep delivery teaser + picker — this whole block gets
+               relocated into a modal when opened from the car detail page,
+               see openDeliveryPickerModal()/closeDeliveryPickerModal() -->
+          <div id="doorstep-delivery-block">
           <div style="margin-bottom:14px;background:#fffbe6;border:1.5px solid rgba(200,160,0,.3);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
             <div>
               <div style="font-weight:700;font-size:.82rem;color:var(--t)">🚗 Doorstep Delivery</div>
@@ -1093,6 +1096,7 @@ function csTick(){
             <div id="hero-fixed-drop-note" style="display:none;font-size:.78rem;color:var(--ts);background:#fff;border:1px solid var(--b);border-radius:10px;padding:8px 12px;margin-bottom:12px"></div>
 
             <div id="hero-delivery-result" style="font-size:.8rem"></div>
+          </div>
           </div>
           <button class="btn btn-y btn-lg" onclick="doSearch()" style="border-radius:12px;font-size:1rem">SEARCH</button>
         </div>
@@ -2010,6 +2014,14 @@ window.addEventListener('scroll',function(){
             <div id="delivery-summary" style="display:none;background:#fffbe6;border:1.5px solid rgba(200,160,0,.35);border-radius:14px;padding:14px 16px;margin-top:14px">
               <div style="font-weight:700;font-size:.9rem;margin-bottom:4px">🚗 Doorstep Delivery</div>
               <div id="delivery-summary-text" style="font-size:.78rem;color:var(--ts)"></div>
+              <button class="btn btn-g btn-sm" onclick="openDeliveryPickerModal()" style="margin-top:8px;width:100%">✏️ Edit Delivery</button>
+            </div>
+            <div id="delivery-add-card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--ow);border:1px solid var(--b);border-radius:14px;padding:12px 16px;margin-top:14px">
+              <div>
+                <div style="font-weight:700;font-size:.86rem">🚚 Doorstep Delivery</div>
+                <div style="font-size:.72rem;color:var(--ts);margin-top:2px">Get this car delivered to your door</div>
+              </div>
+              <button class="btn btn-y btn-sm" onclick="openDeliveryPickerModal()" style="white-space:nowrap">Add →</button>
             </div>
           </div>
           <div class="trip-protect-box">
@@ -2166,6 +2178,15 @@ window.addEventListener('scroll',function(){
       <button class="btn btn-g btn-sm" style="flex:1" onclick="closeModal('confirm-modal')">Go Back</button>
       <button class="btn btn-y btn-sm" style="flex:1" id="confirm-modal-ok">Confirm</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="delivery-picker-modal" onclick="if(event.target===this)closeDeliveryPickerModal()">
+  <div class="modal" style="width:520px;max-width:94vw;padding:24px 20px">
+    <button class="modal-close" onclick="closeDeliveryPickerModal()">✕</button>
+    <div style="font-weight:800;font-size:1.05rem;margin-bottom:14px">🚚 Doorstep Delivery</div>
+    <div id="delivery-picker-modal-body"></div>
+    <button class="btn btn-y btn-lg" onclick="closeDeliveryPickerModal()" style="width:100%;margin-top:6px">Done</button>
   </div>
 </div>
 
@@ -5773,17 +5794,47 @@ async function calcDeliveryCharge(which, ctx){
 function showDeliverySummary(){
   var box = document.getElementById("delivery-summary");
   var txt = document.getElementById("delivery-summary-text");
+  var addCard = document.getElementById("delivery-add-card");
   if(!box || !txt) return;
   if(deliveryCharge>0){
     var modeLabel = {same:"Same location (round trip)", flexi:"Flexi drop", airport:AIRPORT_LABEL, railway:STATION_LABEL}[deliveryMode] || "";
     box.style.display = "block";
+    if(addCard) addCard.style.display = "none";
     txt.innerHTML =
       (deliveryAddress ? '📍 <strong>'+esc(deliveryAddress.split(",").slice(0,2).join(","))+'</strong><br>' : '') +
       (modeLabel ? modeLabel+'<br>' : '') +
       '<span style="color:var(--yd);font-weight:700">₹'+deliveryCharge.toLocaleString("en-IN")+'</span> · included in total above';
   } else {
     box.style.display = "none";
+    if(addCard) addCard.style.display = "flex";
   }
+}
+
+// The interactive delivery toggle/map picker only exists once in the DOM
+// (inside the homepage hero card). Opening it from the car detail page
+// relocates that same block into a modal, then puts it back on close —
+// avoids duplicating the map/JS logic for a second "copy" of the picker.
+var _deliveryBlockOriginalParent = null;
+var _deliveryBlockOriginalNext = null;
+function openDeliveryPickerModal(){
+  var block = document.getElementById("doorstep-delivery-block");
+  var modalBody = document.getElementById("delivery-picker-modal-body");
+  if(!block || !modalBody) return;
+  _deliveryBlockOriginalParent = block.parentNode;
+  _deliveryBlockOriginalNext = block.nextSibling;
+  modalBody.appendChild(block);
+  openModal("delivery-picker-modal");
+  if(heroDeliveryWanted){ setTimeout(function(){ initHeroDeliveryMap(); }, 50); }
+}
+function closeDeliveryPickerModal(){
+  var block = document.getElementById("doorstep-delivery-block");
+  if(block && _deliveryBlockOriginalParent){
+    if(_deliveryBlockOriginalNext) _deliveryBlockOriginalParent.insertBefore(block, _deliveryBlockOriginalNext);
+    else _deliveryBlockOriginalParent.appendChild(block);
+  }
+  closeModal("delivery-picker-modal");
+  showDeliverySummary();
+  updateDeliveryTotal();
 }
 
 function updateDeliveryTotal(){

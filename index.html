@@ -2895,7 +2895,11 @@ function goTo(id){
 function showPage(id){
   document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
   document.getElementById(id).classList.add("active");
-  window.scrollTo({top:0,left:0,behavior:"smooth"});
+  // Instant, not smooth — html has a global scroll-behavior:smooth, so even
+  // a plain scrollTo(0,0) animates and can get interrupted by layout shifts
+  // as the new page's content/photos load in, leaving the viewport stuck
+  // partway down instead of at the top. behavior:"instant" bypasses that.
+  window.scrollTo({top:0, left:0, behavior:"instant"});
 }
 function toggleMobMenu(){
   var panel = document.getElementById("mob-menu-panel");

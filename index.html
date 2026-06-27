@@ -641,6 +641,18 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   .hero-inner{grid-template-columns:1.15fr .85fr;gap:36px;padding:90px 32px 70px}
   .hero h1{font-size:2.9rem}
 }
+/* Mobile hamburger menu — covers landscape phones too (some run up to
+   ~926px wide), so the full nav never has a chance to overflow the header */
+@media(max-width:980px){
+  .hdr nav .nav-link{display:none !important}
+  .hdr nav #hdr-signin-btn, .hdr nav #hdr-profile-btn, .hdr nav .mob-book-btn{display:none !important}
+  #mob-menu-btn{display:block !important}
+}
+@media(min-width:981px){
+  #mob-menu-panel, #mob-menu-backdrop{display:none !important}
+}
+.mob-menu-link{display:block;padding:12px 6px;font-size:.95rem;font-weight:700;color:var(--t);cursor:pointer;border-bottom:1px solid var(--b)}
+.mob-menu-link:hover{color:var(--yd)}
 @media(max-width:768px){
   .hero-inner,.detail-grid{grid-template-columns:1fr}
   .hdr,.detail-strip{padding-left:20px;padding-right:20px}
@@ -970,9 +982,28 @@ function csTick(){
       <button class="btn btn-g btn-sm" id="hdr-install-btn" onclick="installPwa()" style="display:none">&#8595; Install App</button>
       <button class="btn btn-y btn-sm" id="hdr-signin-btn" onclick="openQuickLogin(renderProfile)" style="display:none">&#128274; Sign In</button>
       <button class="btn btn-g btn-sm" id="hdr-profile-btn" onclick="showProfile()" style="display:none">&#128100; My Profile</button>
-      <button class="btn btn-y btn-sm" onclick="goTo('search-sec')">Book Now</button>
+      <button class="btn btn-y btn-sm mob-book-btn" onclick="goTo('search-sec')">Book Now</button>
+      <button id="mob-menu-btn" onclick="toggleMobMenu()" aria-label="Menu" style="display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:1.5rem;line-height:1;color:var(--t)">&#9776;</button>
     </nav>
   </header>
+
+  <!-- MOBILE MENU PANEL -->
+  <div id="mob-menu-backdrop" onclick="closeMobMenu()" style="display:none;position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.35)"></div>
+  <div id="mob-menu-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:78%;max-width:320px;z-index:99991;background:#fff;box-shadow:-8px 0 32px rgba(0,0,0,.18);padding:20px;flex-direction:column;gap:4px;overflow-y:auto">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button onclick="closeMobMenu()" aria-label="Close" style="background:none;border:none;font-size:1.6rem;cursor:pointer;color:var(--ts);line-height:1;padding:6px">&times;</button>
+    </div>
+    <a href="/cars" class="mob-menu-link" style="text-decoration:none">Fleet</a>
+    <span class="mob-menu-link" onclick="closeMobMenu();goTo('how-sec')">How It Works</span>
+    <span class="mob-menu-link" onclick="closeMobMenu();goTo('faq-sec')">FAQ</span>
+    <a href="/policy" class="mob-menu-link" style="text-decoration:none">Policies</a>
+    <a href="/blog" class="mob-menu-link" style="text-decoration:none">Blog</a>
+    <span class="mob-menu-link" onclick="closeMobMenu();showTrips()">My Trips</span>
+    <hr style="border:none;border-top:1px solid var(--b);margin:10px 0">
+    <button class="btn btn-y btn-sm" id="mob-menu-signin-btn" onclick="closeMobMenu();openQuickLogin(renderProfile)" style="display:none;width:100%;margin-bottom:8px">&#128274; Sign In</button>
+    <button class="btn btn-g btn-sm" id="mob-menu-profile-btn" onclick="closeMobMenu();showProfile()" style="display:none;width:100%;margin-bottom:8px">&#128100; My Profile</button>
+    <button class="btn btn-y btn-md" onclick="closeMobMenu();goTo('search-sec')" style="width:100%">Book Now</button>
+  </div>
 
   <!-- HERO -->
   <div class="hero">
@@ -2682,10 +2713,14 @@ function setAuthToken(token){
 function updateHeaderAuthUI(){
   var signinBtn = document.getElementById("hdr-signin-btn");
   var profileBtn = document.getElementById("hdr-profile-btn");
+  var mobSigninBtn = document.getElementById("mob-menu-signin-btn");
+  var mobProfileBtn = document.getElementById("mob-menu-profile-btn");
   if(!signinBtn || !profileBtn) return;
   var loggedIn = !!authToken;
   signinBtn.style.display  = loggedIn ? "none" : "";
   profileBtn.style.display = loggedIn ? "" : "none";
+  if(mobSigninBtn)  mobSigninBtn.style.display  = loggedIn ? "none" : "";
+  if(mobProfileBtn) mobProfileBtn.style.display = loggedIn ? "" : "none";
 }
 function initCookieConsent(){
   if(hasCookieConsent()){
@@ -2797,6 +2832,25 @@ function showPage(id){
   document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
   document.getElementById(id).classList.add("active");
   window.scrollTo({top:0,left:0,behavior:"smooth"});
+}
+function toggleMobMenu(){
+  var panel = document.getElementById("mob-menu-panel");
+  if(panel && panel.style.display === "flex") closeMobMenu();
+  else openMobMenu();
+}
+function openMobMenu(){
+  var panel = document.getElementById("mob-menu-panel");
+  var backdrop = document.getElementById("mob-menu-backdrop");
+  if(panel) panel.style.display = "flex";
+  if(backdrop) backdrop.style.display = "block";
+  document.documentElement.style.overflow = "hidden";
+}
+function closeMobMenu(){
+  var panel = document.getElementById("mob-menu-panel");
+  var backdrop = document.getElementById("mob-menu-backdrop");
+  if(panel) panel.style.display = "none";
+  if(backdrop) backdrop.style.display = "none";
+  document.documentElement.style.overflow = "";
 }
 function openModal(id){ document.getElementById(id).classList.add("open"); }
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }

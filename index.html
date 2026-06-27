@@ -30,6 +30,12 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/assets/favicons/favicon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/assets/favicons/favicon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/favicon-180.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#f5c518">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="DriveDilSe">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <script type="application/ld+json">
 {
@@ -673,6 +679,11 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   .cta-band-title{font-size:1.7rem}
   .hero-trip-row{grid-template-columns:1fr}
   .hero-feature-grid{grid-template-columns:1fr}
+  .hdr{padding-left:14px;padding-right:14px}
+  .hdr nav{gap:6px !important}
+  .hdr .btn{padding:6px 10px !important;font-size:.68rem !important;border-radius:8px;white-space:nowrap}
+  .logo-img{height:38px}
+  .logo-brand{font-size:.92rem}
 }
 
 /* ============================================================
@@ -949,11 +960,19 @@ function csTick(){
       <a class="nav-link" href="/policy" style="text-decoration:none">Policies</a>
       <a class="nav-link" href="/blog" style="text-decoration:none">Blog</a>
       <span class="nav-link" onclick="showTrips()">My Trips</span>
+      <button class="btn btn-g btn-sm" id="hdr-install-btn" onclick="installPwa()" style="display:none">&#8595; Install App</button>
       <button class="btn btn-y btn-sm" id="hdr-signin-btn" onclick="openQuickLogin(renderProfile)" style="display:none">&#128274; Sign In</button>
       <button class="btn btn-g btn-sm" id="hdr-profile-btn" onclick="showProfile()" style="display:none">&#128100; My Profile</button>
       <button class="btn btn-y btn-sm" onclick="goTo('search-sec')">Book Now</button>
     </nav>
   </header>
+
+  <!-- iOS "Add to Home Screen" hint banner -->
+  <div id="ios-install-banner" style="display:none;position:fixed;left:12px;right:12px;bottom:16px;z-index:99998;background:#161616;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.25);align-items:center;gap:12px">
+    <span style="font-size:1.6rem">📲</span>
+    <div style="flex:1;font-size:.82rem;line-height:1.4">Install DriveDilSe: tap <strong>Share</strong> <span style="font-size:1.1em">⬆️</span> then <strong>"Add to Home Screen"</strong>.</div>
+    <button onclick="dismissIosInstallBanner()" style="background:none;border:none;color:#aaa;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>
+  </div>
 
   <!-- HERO -->
   <div class="hero">
@@ -3462,6 +3481,48 @@ loadFleet().finally(hideSiteLoader);
 setTimeout(hideSiteLoader, 4000); // safety net if the fleet fetch hangs
 initCookieConsent();
 preloadUserProfile();
+initPwaInstall();
+
+// ── "ADD TO HOME SCREEN" / PWA INSTALL ──
+var _pwaDeferredPrompt = null;
+function initPwaInstall(){
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("/sw.js").catch(function(){ /* non-critical */ });
+  }
+  var isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if(isStandalone) return; // already installed/running as an app
+
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    _pwaDeferredPrompt = e;
+    var btn = document.getElementById("hdr-install-btn");
+    if(btn) btn.style.display = "";
+  });
+
+  // iOS Safari has no beforeinstallprompt — show a manual instruction banner instead
+  var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var dismissed = false;
+  try { dismissed = localStorage.getItem("dds_ios_install_dismissed") === "1"; } catch(e){}
+  if(isIos && !dismissed){
+    setTimeout(function(){
+      var b = document.getElementById("ios-install-banner");
+      if(b) b.style.display = "flex";
+    }, 3000);
+  }
+}
+async function installPwa(){
+  if(!_pwaDeferredPrompt) return;
+  _pwaDeferredPrompt.prompt();
+  await _pwaDeferredPrompt.userChoice;
+  _pwaDeferredPrompt = null;
+  var btn = document.getElementById("hdr-install-btn");
+  if(btn) btn.style.display = "none";
+}
+function dismissIosInstallBanner(){
+  var b = document.getElementById("ios-install-banner");
+  if(b) b.style.display = "none";
+  try { localStorage.setItem("dds_ios_install_dismissed", "1"); } catch(e){}
+}
 
 // Signed-in customers shouldn't be asked to re-verify mid-booking just
 // because they went straight from the homepage to checkout without

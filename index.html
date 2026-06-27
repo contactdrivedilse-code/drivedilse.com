@@ -3730,7 +3730,7 @@ async function payNow(){
   }
 
   if(!isAvail(selCar, priceResult.pickup, priceResult.drop)){
-    alert("Sorry, this car is already booked for the selected dates. Please choose different dates.");
+    await alertNextAvailable(selCar.id, priceResult.pickup, "Sorry, this car is already booked for the selected dates.");
     return;
   }
 
@@ -3811,7 +3811,30 @@ async function payNow(){
   }
 
   try { await payViaRazorpay(); }
-  catch(e){ if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;} alert("Could not start payment: " + e.message); }
+  catch(e){
+    if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;}
+    if(e.message && e.message.toLowerCase().indexOf("already booked") > -1){
+      await alertNextAvailable(selCar.id, priceResult.pickup, "Sorry, this car was just booked by someone else for these dates.");
+    } else {
+      alert("Could not start payment: " + e.message);
+    }
+  }
+}
+
+// Tells the customer when a car next frees up, after an availability conflict.
+async function alertNextAvailable(carId, fromDate, prefixMsg){
+  try {
+    var res = await apiFetch("/fleet/"+carId+"/next-available?from="+encodeURIComponent(new Date(fromDate).toISOString()));
+    if(res.nextAvailable){
+      var d = new Date(res.nextAvailable);
+      var fmt = d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) + ", " + d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+      alert(prefixMsg + "\n\nThis car is next available from " + fmt + ". Please choose different dates or pick another car.");
+    } else {
+      alert(prefixMsg + " Please choose different dates.");
+    }
+  } catch(e){
+    alert(prefixMsg + " Please choose different dates.");
+  }
 }
 // ── VERIFY MODAL ──
 function goToVerify(){ showPage("pg-profile"); openVerifyModal(); }

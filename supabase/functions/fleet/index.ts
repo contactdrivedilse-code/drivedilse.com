@@ -48,6 +48,43 @@ Deno.serve(async (req) => {
       return json((cars ?? []).filter((c: Record<string, unknown>) => !blocked.has(c.id as string)).map(mapCar));
     }
 
+    // GET /:id/next-available?from=ISO — when a car is booked/paused over the
+    // requested dates, tells the customer the earliest moment it's free again.
+    const nextAvailMatch = path.match(/^\/([^/]+)\/next-available$/);
+    if (req.method === "GET" && nextAvailMatch) {
+      const fromParam = url.searchParams.get("from");
+      const from = fromParam ? new Date(fromParam) : new Date();
+      const fromISO = from.toISOString();
+
+      const [{ data: pauses }, { data: booked }] = await Promise.all([
+        sb.from("car_pauses").select("from_date, to_date").eq("car_id", nextAvailMatch[1]).gt("to_date", fromISO),
+        sb.from("bookings").select("pickup_date, drop_date").eq("car_id", nextAvailMatch[1])
+          .in("status", ["confirmed", "active"]).gt("drop_date", fromISO),
+      ]);
+
+      const intervals = [
+        ...(pauses ?? []).map((p: Record<string, string>) => ({ start: new Date(p.from_date), end: new Date(p.to_date) })),
+        ...(booked ?? []).map((b: Record<string, string>) => ({ start: new Date(b.pickup_date), end: new Date(b.drop_date) })),
+      ].sort((a, b) => a.start.getTime() - b.start.getTime());
+
+      // Walk forward from `from`, extending past any interval that covers
+      // the current candidate moment, until we land in a free gap.
+      let candidate = from;
+      let movedForward = true;
+      while (movedForward) {
+        movedForward = false;
+        for (const iv of intervals) {
+          if (iv.start <= candidate && iv.end > candidate) {
+            candidate = iv.end;
+            movedForward = true;
+          }
+        }
+      }
+
+      const isFree = candidate.getTime() === from.getTime();
+      return json({ nextAvailable: isFree ? null : candidate.toISOString() });
+    }
+
     // GET /coupons — active, publicly-visible offers for guests. Exclusive/
     // one-time codes (is_public = false) are intentionally left out here —
     // they only work if the customer types the exact code in at checkout.

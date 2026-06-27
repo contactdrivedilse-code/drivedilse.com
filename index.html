@@ -838,7 +838,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
     <div style="font-family:'Playfair Display',serif;font-weight:900;font-size:clamp(1.8rem,6vw,2.6rem);color:#fff;line-height:1.15;margin-bottom:10px">
       We're <span style="color:#f5c518">Launching Soon</span>
     </div>
-    <div style="color:#cbb98a;font-size:.95rem;margin-bottom:34px">DriveDilSe goes live on <strong style="color:#f5c518">27 June, 3:15 PM</strong>. Self-drive cars in Pune, booked your way.</div>
+    <div style="color:#cbb98a;font-size:.95rem;margin-bottom:34px">DriveDilSe goes live on <strong style="color:#f5c518">27 June, 3:20 PM</strong>. Self-drive cars in Pune, booked your way.</div>
     <div id="csCountdown" style="display:flex;gap:12px;justify-content:center;margin-bottom:36px">
       <div class="cs-unit"><div class="cs-num" id="csDays">00</div><div class="cs-label">Days</div></div>
       <div class="cs-unit"><div class="cs-num" id="csHrs">00</div><div class="cs-label">Hrs</div></div>
@@ -854,25 +854,66 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
     .cs-label{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:#cbb98a;margin-top:6px}
   </style>
 </div>
+<!-- ======== LAUNCH CELEBRATION (plays once, on the real unlock moment) ======== -->
+<div id="launchCelebration" style="position:fixed;inset:0;z-index:100001;background:radial-gradient(circle,#fff8e1,#ffe9a8);display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;font-family:'Inter',sans-serif;overflow:hidden">
+  <div id="confettiWrap" style="position:absolute;inset:0;pointer-events:none"></div>
+  <div style="font-size:4.2rem;animation:celebBounce .6s ease infinite">🎉</div>
+  <div style="font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:2.3rem;margin-top:12px;color:#161616">We're <span style="color:#f5c518">Live!</span></div>
+  <div style="font-size:1rem;color:#555;margin-top:8px">Welcome to DriveDilSe — let's get you driving.</div>
+</div>
+<style>
+@keyframes celebBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes confettiFall{to{transform:translateY(110vh) rotate(360deg);opacity:0}}
+</style>
 <script>
 var csOverlay = document.getElementById('comingSoonOverlay');
 var csTimer;
-function csUnlock(){
+function showLaunchCelebration(onDone){
+  var el = document.getElementById('launchCelebration');
+  var wrap = document.getElementById('confettiWrap');
+  if(!el || !wrap){ onDone(); return; }
+  var colors = ['#f5c518','#ff6b6b','#4ecdc4','#a78bfa','#fb923c'];
+  for(var i=0;i<46;i++){
+    var p = document.createElement('div');
+    var c = colors[i%colors.length];
+    var left = Math.random()*100;
+    var delay = Math.random()*0.6;
+    var dur = 1.6 + Math.random()*1.2;
+    p.style.cssText = 'position:absolute;top:-20px;left:'+left+'%;width:8px;height:8px;background:'+c+';opacity:.9;border-radius:2px;animation:confettiFall '+dur+'s linear '+delay+'s forwards';
+    wrap.appendChild(p);
+  }
+  el.style.display = 'flex';
+  el.style.opacity = '1';
+  setTimeout(function(){
+    el.style.transition = 'opacity .5s ease';
+    el.style.opacity = '0';
+    setTimeout(function(){
+      el.style.display = 'none';
+      wrap.innerHTML = '';
+      onDone();
+    }, 500);
+  }, 1800);
+}
+function csUnlock(celebrate){
   try{ localStorage.setItem('dds_preview','1'); }catch(e){}
-  csOverlay.style.display = 'none';
-  document.documentElement.style.overflow = '';
   if(csTimer) clearInterval(csTimer);
+  function reveal(){
+    csOverlay.style.display = 'none';
+    document.documentElement.style.overflow = '';
+  }
+  if(celebrate) showLaunchCelebration(reveal);
+  else reveal();
 }
 function csAdminLogin(){
   var p = prompt('Admin password:');
   if(p === null) return;
-  if(p === '77092'){ csUnlock(); }
+  if(p === '77092'){ csUnlock(true); }
   else { alert('Incorrect password'); }
 }
 function csTick(){
-  var LAUNCH = new Date("2026-06-27T15:15:00+05:30").getTime();
+  var LAUNCH = new Date("2026-06-27T15:20:00+05:30").getTime();
   var diff = LAUNCH - Date.now();
-  if(diff <= 0){ csUnlock(); return; }
+  if(diff <= 0){ csUnlock(true); return; }
   var d = Math.floor(diff/86400000);
   var h = Math.floor(diff%86400000/3600000);
   var m = Math.floor(diff%3600000/60000);
@@ -886,7 +927,7 @@ function csTick(){
 (function(){
   var alreadyUnlocked = false;
   try{ alreadyUnlocked = localStorage.getItem('dds_preview') === '1'; }catch(e){}
-  if(alreadyUnlocked){ csUnlock(); return; }
+  if(alreadyUnlocked){ csUnlock(false); return; }
   document.documentElement.style.overflow = 'hidden';
   csTick();
   csTimer = setInterval(csTick, 1000);

@@ -556,10 +556,9 @@ Deno.serve(async (req) => {
       return json(mapCar(data as Record<string, unknown>));
     }
 
-    // POST /fleet/:id/pause — Fleet Manager only; Admin is read-only on the schedule
+    // POST /fleet/:id/pause — Admin or Fleet Manager can pause a car
     const pauseMatch = path.match(/^\/fleet\/([^/]+)\/pause$/);
     if (req.method === "POST" && pauseMatch) {
-      if (isAdmin) return json({ error: "Admin has view-only access to the schedule. Use a Fleet Manager account to add a pause." }, 403);
       const { from, to, note } = await req.json();
       const { data: car } = await sb.from("cars").select("id").eq("id", pauseMatch[1]).maybeSingle();
       if (!car) return json({ error: "Car not found" }, 404);
@@ -571,10 +570,9 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    // DELETE /fleet/:id/pause/:pauseId — Fleet Manager only
+    // DELETE /fleet/:id/pause/:pauseId — Admin or Fleet Manager
     const deletePauseMatch = path.match(/^\/fleet\/([^/]+)\/pause\/([^/]+)$/);
     if (req.method === "DELETE" && deletePauseMatch) {
-      if (isAdmin) return json({ error: "Admin has view-only access to the schedule. Use a Fleet Manager account to remove a pause." }, 403);
       const { error } = await sb.from("car_pauses").delete().eq("id", deletePauseMatch[2]).eq("car_id", deletePauseMatch[1]);
       if (error) throw error;
       return json({ success: true });

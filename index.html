@@ -842,6 +842,13 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <span style="max-width:560px">🍪 We use cookies to remember your name &amp; phone so your bookings and details are ready next time — no login needed.</span>
   <button class="btn btn-y btn-sm" onclick="acceptCookieConsent()" style="white-space:nowrap">Accept Cookies</button>
 </div>
+<!-- ======== "ADD TO HOME SCREEN" / INSTALL BANNER ======== -->
+<div id="ios-install-banner" style="display:none;position:fixed;left:12px;right:12px;bottom:16px;z-index:100001;background:#161616;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.25);align-items:center;gap:12px">
+  <span style="font-size:1.6rem">📲</span>
+  <div id="install-banner-text" style="flex:1;font-size:.82rem;line-height:1.4">Install DriveDilSe: tap <strong>Share</strong> <span style="font-size:1.1em">⬆️</span> then <strong>"Add to Home Screen"</strong>.</div>
+  <button id="install-banner-action-btn" onclick="installPwa()" style="display:none;background:var(--y);color:#161616;border:none;border-radius:8px;padding:7px 14px;font-size:.78rem;font-weight:800;cursor:pointer;white-space:nowrap">Install</button>
+  <button onclick="dismissIosInstallBanner()" style="background:none;border:none;color:#aaa;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>
+</div>
 <!-- ======== COMING SOON GATE ======== -->
 <div id="comingSoonOverlay" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#15110a,#241c0d 60%,#15110a);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:'Inter',sans-serif">
   <div style="max-width:480px;width:100%">
@@ -966,13 +973,6 @@ function csTick(){
       <button class="btn btn-y btn-sm" onclick="goTo('search-sec')">Book Now</button>
     </nav>
   </header>
-
-  <!-- iOS "Add to Home Screen" hint banner -->
-  <div id="ios-install-banner" style="display:none;position:fixed;left:12px;right:12px;bottom:16px;z-index:99998;background:#161616;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.25);align-items:center;gap:12px">
-    <span style="font-size:1.6rem">📲</span>
-    <div style="flex:1;font-size:.82rem;line-height:1.4">Install DriveDilSe: tap <strong>Share</strong> <span style="font-size:1.1em">⬆️</span> then <strong>"Add to Home Screen"</strong>.</div>
-    <button onclick="dismissIosInstallBanner()" style="background:none;border:none;color:#aaa;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>
-  </div>
 
   <!-- HERO -->
   <div class="hero">
@@ -2701,6 +2701,7 @@ function acceptCookieConsent(){
   if(authToken) setCookie("dds_token", authToken, 90);
   var bar = document.getElementById("cookie-consent-bar");
   if(bar) bar.style.display = "none";
+  if(typeof positionInstallBanner === "function") positionInstallBanner();
 }
 
 var authToken = localStorage.getItem("dds_token") || getCookie("dds_token") || "";
@@ -3483,8 +3484,16 @@ initCookieConsent();
 preloadUserProfile();
 initPwaInstall();
 
-// ── "ADD TO HOME SCREEN" / PWA INSTALL ──
+// ── "ADD TO HOME SCREEN" / PWA INSTALL — banner shown every time the
+// site opens (not just once), unless already running as an installed app ──
 var _pwaDeferredPrompt = null;
+function positionInstallBanner(){
+  var banner = document.getElementById("ios-install-banner");
+  if(!banner) return;
+  var cookieBar = document.getElementById("cookie-consent-bar");
+  var cookieVisible = cookieBar && getComputedStyle(cookieBar).display !== "none";
+  banner.style.bottom = cookieVisible ? (cookieBar.offsetHeight + 12) + "px" : "16px";
+}
 function initPwaInstall(){
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("/sw.js").catch(function(){ /* non-critical */ });
@@ -3492,36 +3501,50 @@ function initPwaInstall(){
   var isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
   if(isStandalone) return; // already installed/running as an app
 
+  var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var banner = document.getElementById("ios-install-banner");
+  var actionBtn = document.getElementById("install-banner-action-btn");
+  var textEl = document.getElementById("install-banner-text");
+
+  positionInstallBanner();
+  window.addEventListener("resize", positionInstallBanner);
+
   window.addEventListener("beforeinstallprompt", function(e){
     e.preventDefault();
     _pwaDeferredPrompt = e;
-    var btn = document.getElementById("hdr-install-btn");
-    if(btn) btn.style.display = "";
+    var hdrBtn = document.getElementById("hdr-install-btn");
+    if(hdrBtn) hdrBtn.style.display = "";
+    // Chrome/Android — banner gets a real Install button instead of manual steps
+    if(textEl) textEl.textContent = "Install DriveDilSe on your device for faster access — no app store needed.";
+    if(actionBtn) actionBtn.style.display = "";
+    positionInstallBanner();
+    if(banner) banner.style.display = "flex";
   });
 
-  // iOS Safari has no beforeinstallprompt — show a manual instruction banner instead
-  var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  var dismissed = false;
-  try { dismissed = localStorage.getItem("dds_ios_install_dismissed") === "1"; } catch(e){}
-  if(isIos && !dismissed){
-    setTimeout(function(){
-      var b = document.getElementById("ios-install-banner");
-      if(b) b.style.display = "flex";
-    }, 3000);
+  // Show immediately on every visit, on every platform — not gated behind
+  // beforeinstallprompt, since Chrome only fires that event under its own
+  // engagement heuristics and may never fire it on a fresh visit. iOS gets
+  // manual "Add to Home Screen" steps; everyone else gets a generic
+  // instruction that upgrades to a real Install button if/when
+  // beforeinstallprompt does fire.
+  if(banner && !isIos && textEl){
+    textEl.textContent = "Install DriveDilSe: open your browser menu and choose \"Add to Home Screen\" or \"Install App\".";
   }
+  positionInstallBanner();
+  if(banner) banner.style.display = "flex";
 }
 async function installPwa(){
   if(!_pwaDeferredPrompt) return;
   _pwaDeferredPrompt.prompt();
   await _pwaDeferredPrompt.userChoice;
   _pwaDeferredPrompt = null;
-  var btn = document.getElementById("hdr-install-btn");
-  if(btn) btn.style.display = "none";
+  var hdrBtn = document.getElementById("hdr-install-btn");
+  if(hdrBtn) hdrBtn.style.display = "none";
+  dismissIosInstallBanner();
 }
 function dismissIosInstallBanner(){
   var b = document.getElementById("ios-install-banner");
   if(b) b.style.display = "none";
-  try { localStorage.setItem("dds_ios_install_dismissed", "1"); } catch(e){}
 }
 
 // Signed-in customers shouldn't be asked to re-verify mid-booking just

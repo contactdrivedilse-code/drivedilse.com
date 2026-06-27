@@ -41,6 +41,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 #admin-page{display:none;min-height:100vh;flex-direction:column}
 .top-bar{background:#1a1a1a;color:#fff;padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .top-bar-left{display:flex;align-items:center;gap:14px}
+.panel-hamburger{display:none;background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:4px 8px;line-height:1}
+.sidebar-backdrop{display:none}
 .top-logo{font-family:Georgia,serif;font-size:1rem;font-weight:900;color:var(--y)}
 .top-badge{font-size:.62rem;background:rgba(245,197,24,.15);color:var(--y);padding:3px 9px;border-radius:20px;font-weight:700;letter-spacing:1px}
 .top-bar-right{display:flex;align-items:center;gap:12px}
@@ -166,7 +168,14 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 
 /* ── RESPONSIVE ── */
 @media(max-width:900px){
-  .sidebar{display:none}
+  .panel-hamburger{display:block}
+  .sidebar{
+    position:fixed;top:58px;left:0;height:calc(100vh - 58px);z-index:200;
+    transform:translateX(-100%);transition:transform .2s ease;
+    box-shadow:2px 0 16px rgba(0,0,0,.18);
+  }
+  .sidebar.open{display:block;transform:translateX(0)}
+  .sidebar-backdrop.open{display:block;position:fixed;top:58px;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:190}
   .content-area{padding:20px 16px}
 }
 @media(max-width:600px){
@@ -232,6 +241,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   <!-- Top bar -->
   <div class="top-bar">
     <div class="top-bar-left">
+      <button class="panel-hamburger" id="panel-hamburger-btn" onclick="togglePanelSidebar()" aria-label="Menu">☰</button>
       <div class="top-logo">DriveDilSe</div>
       <span class="top-badge" id="top-role-badge">ADMIN</span>
     </div>
@@ -267,6 +277,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
       <div class="nav-item" data-tab="tickets"   onclick="navTo('tickets',this)">   <span class="nav-icon">🎫</span>Support Tickets <span class="nav-badge" id="nb-tickets">0</span></div>
     </div>
+
+    <div class="sidebar-backdrop" id="panel-sidebar-backdrop" onclick="closePanelSidebar()"></div>
 
     <!-- Content area -->
     <div class="content-area" id="content"></div>
@@ -767,6 +779,16 @@ function navTo(tab, el){
   document.querySelectorAll(".nav-item").forEach(function(n){ n.classList.remove("on"); });
   if(el) el.classList.add("on");
   renderTab(tab);
+  closePanelSidebar();
+}
+
+function togglePanelSidebar(){
+  document.querySelector(".sidebar").classList.toggle("open");
+  document.getElementById("panel-sidebar-backdrop").classList.toggle("open");
+}
+function closePanelSidebar(){
+  document.querySelector(".sidebar").classList.remove("open");
+  document.getElementById("panel-sidebar-backdrop").classList.remove("open");
 }
 
 // ── API HELPER ──

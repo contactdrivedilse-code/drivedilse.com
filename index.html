@@ -653,6 +653,11 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .mob-menu-link{display:block;padding:12px 6px;font-size:.95rem;font-weight:700;color:var(--t);cursor:pointer;border-bottom:1px solid var(--b)}
 .mob-menu-link:hover{color:var(--yd)}
 @media(max-width:768px){
+  /* Sitewide: iOS Safari zooms the whole page in when a focused form
+     control has font-size below 16px. .inp (every text field: name,
+     phone, email, OTP, address search...) was 14.4px, so tapping almost
+     any input on the site triggered an unwanted zoom/jump. */
+  .inp, select, textarea, input{font-size:16px !important}
   .hero-inner,.detail-grid{grid-template-columns:1fr}
   .hdr,.detail-strip{padding-left:20px;padding-right:20px}
   .hdr{height:64px}
@@ -703,12 +708,17 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   #booking-form > div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important}
   .dt-pair{padding:10px 12px}
   .dt-controls{flex-wrap:wrap}
-  .dt-date-inp{flex:1 1 auto;min-width:108px;font-size:.85rem}
-  .dt-hour-sel{font-size:.82rem;padding:5px 24px 5px 8px}
+  /* iOS Safari auto-zooms the whole page when a focused input/select has
+     font-size below 16px — that's what caused the page to "jump" zoomed
+     in when tapping the date field. Never go below 16px on any tappable
+     form control on mobile. */
+  .dt-date-inp{flex:1 1 auto;min-width:108px;font-size:16px}
+  .dt-hour-sel{font-size:16px;padding:5px 24px 5px 8px}
   .rate-box{padding:14px 16px;margin-bottom:14px}
   #d-rate{font-size:1.5rem !important}
   #bf-signedin-badge{font-size:.74rem !important;padding:8px 10px !important}
   #booking-form .btn-lg, .detail-right .btn-lg{padding:13px;font-size:.88rem}
+  #d-name{font-size:1.5rem !important}
 }
 
 /* ============================================================

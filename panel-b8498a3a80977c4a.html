@@ -1690,7 +1690,7 @@ function pdrSelectDate(year,month,day){
   var d=new Date(year,month,day);
   if(!pdrStart || (pdrStart && pdrEnd)){
     pdrStart=d; pdrEnd=null;
-  } else if(d.getTime()<=pdrStart.getTime()){
+  } else if(d.getTime()<pdrStart.getTime()){
     pdrStart=d; pdrEnd=null;
   } else {
     pdrEnd=d;

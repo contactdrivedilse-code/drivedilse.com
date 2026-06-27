@@ -3172,7 +3172,7 @@ function drmSelectDate(year,month,day){
   var d=new Date(year,month,day);
   if(!drmStart || (drmStart && drmEnd)){
     drmStart=d; drmEnd=null;
-  } else if(d.getTime()<=drmStart.getTime()){
+  } else if(d.getTime()<drmStart.getTime()){
     drmStart=d; drmEnd=null;
   } else {
     drmEnd=d;

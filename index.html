@@ -882,7 +882,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <span style="font-size:1.6rem">📲</span>
   <div id="install-banner-text" style="flex:1;font-size:.82rem;line-height:1.4">Install DriveDilSe: tap <strong>Share</strong> <span style="font-size:1.1em">⬆️</span> then <strong>"Add to Home Screen"</strong>.</div>
   <button id="install-banner-action-btn" onclick="installPwa()" style="display:none;background:var(--y);color:#161616;border:none;border-radius:8px;padding:7px 14px;font-size:.78rem;font-weight:800;cursor:pointer;white-space:nowrap">Install</button>
-  <button onclick="dismissIosInstallBanner()" style="background:none;border:none;color:#aaa;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>
+  <button onclick="dismissIosInstallBanner()" title="Don't show this again" style="background:none;border:none;color:#aaa;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>
 </div>
 <!-- ======== COMING SOON GATE ======== -->
 <div id="comingSoonOverlay" style="position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#15110a,#241c0d 60%,#15110a);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:'Inter',sans-serif">
@@ -3640,11 +3640,16 @@ function initPwaInstall(){
   positionInstallBanner();
   window.addEventListener("resize", positionInstallBanner);
 
+  function isDismissedForGood(){
+    try { return localStorage.getItem("dds_install_dismissed") === "1"; } catch(e){ return false; }
+  }
+
   window.addEventListener("beforeinstallprompt", function(e){
     e.preventDefault();
     _pwaDeferredPrompt = e;
     var hdrBtn = document.getElementById("hdr-install-btn");
     if(hdrBtn) hdrBtn.style.display = "";
+    if(isDismissedForGood()) return; // header button still appears; banner stays hidden
     // Chrome/Android — banner gets a real Install button instead of manual steps
     if(textEl) textEl.textContent = "Install DriveDilSe on your device for faster access — no app store needed.";
     if(actionBtn) actionBtn.style.display = "";
@@ -3652,12 +3657,14 @@ function initPwaInstall(){
     if(banner) banner.style.display = "flex";
   });
 
-  // Show immediately on every visit, on every platform — not gated behind
-  // beforeinstallprompt, since Chrome only fires that event under its own
-  // engagement heuristics and may never fire it on a fresh visit. iOS gets
-  // manual "Add to Home Screen" steps; everyone else gets a generic
-  // instruction that upgrades to a real Install button if/when
-  // beforeinstallprompt does fire.
+  // Show on every visit by default — not gated behind beforeinstallprompt,
+  // since Chrome only fires that event under its own engagement heuristics
+  // and may never fire it on a fresh visit. iOS gets manual "Add to Home
+  // Screen" steps; everyone else gets a generic instruction that upgrades
+  // to a real Install button if/when beforeinstallprompt does fire.
+  // Permanently dismissible via the ✕ — once someone says no, stop asking.
+  if(isDismissedForGood()) return;
+
   if(banner && !isIos && textEl){
     textEl.textContent = "Install DriveDilSe: open your browser menu and choose \"Add to Home Screen\" or \"Install App\".";
   }
@@ -3676,6 +3683,7 @@ async function installPwa(){
 function dismissIosInstallBanner(){
   var b = document.getElementById("ios-install-banner");
   if(b) b.style.display = "none";
+  try { localStorage.setItem("dds_install_dismissed", "1"); } catch(e){}
 }
 
 // Signed-in customers shouldn't be asked to re-verify mid-booking just

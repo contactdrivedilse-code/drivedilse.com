@@ -528,6 +528,11 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .faq-item.open .faq-arrow{transform:rotate(180deg)}
 @media(max-width:900px){.detail-right{position:static}}
 .file-drop{display:flex;align-items:center;gap:12px;background:var(--ow);border:1.5px dashed var(--y);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .2s}
+/* Visually hidden but NOT display:none — some iOS Safari versions don't
+   reliably forward a <label> click to a display:none file input, which
+   silently breaks document upload. This pattern stays in the layout
+   (so the label-click association is unambiguous) but is invisible. */
+.file-input-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;opacity:0}
 .file-drop.ok{border-color:#16a34a;border-style:solid}
 .file-drop.verifying{border-color:#1a5fa8}
 .dl-bar{font-size:.75rem;margin-top:6px;padding:8px 12px;border-radius:8px;display:none}
@@ -1775,7 +1780,7 @@ window.addEventListener('scroll',function(){
           <button class="btn btn-y btn-sm" onclick="openProfileSelfieCamera()">📷 Take Photo</button>
           <label class="btn btn-g btn-sm" style="cursor:pointer">
             📁 Upload
-            <input type="file" accept="image/*" id="prof-photo-file" onchange="setProfilePhotoFromFile(this)" style="display:none">
+            <input type="file" accept="image/*" id="prof-photo-file" onchange="setProfilePhotoFromFile(this)" class="file-input-hidden">
           </label>
         </div>
         <div id="prof-photo-status" style="font-size:.75rem;color:#15803d;margin-top:10px;font-weight:600"></div>
@@ -2293,7 +2298,7 @@ window.addEventListener('scroll',function(){
         <label class="file-drop" id="aadhaar-drop">
           <span id="aadhaar-icon" style="font-size:1.3rem">📎</span>
           <div><div style="font-size:.84rem;font-weight:500" id="aadhaar-txt">Upload Aadhaar Card</div><div style="font-size:.7rem;color:var(--ts)">JPG, PNG or PDF · Front side</div></div>
-          <input id="aadhaar-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="setAadhaar(this)" style="display:none">
+          <input id="aadhaar-input" type="file" accept="image/jpeg,image/png,application/pdf" onchange="setAadhaar(this)" class="file-input-hidden">
         </label>
       </div>
       <div style="margin-bottom:6px">
@@ -2301,7 +2306,7 @@ window.addEventListener('scroll',function(){
         <label class="file-drop" id="dl-drop">
           <span id="dl-icon" style="font-size:1.3rem">📎</span>
           <div><div style="font-size:.84rem;font-weight:500" id="dl-txt">Upload Driving Licence</div><div style="font-size:.7rem;color:var(--ts)">Age auto-verified from your licence · JPG, PNG or PDF</div></div>
-          <input id="dl-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="vmVerifyDL(this)" style="display:none">
+          <input id="dl-input" type="file" accept="image/jpeg,image/png,application/pdf" onchange="vmVerifyDL(this)" class="file-input-hidden">
         </label>
         <div class="dl-bar" id="dl-bar"></div>
       </div>
@@ -2387,7 +2392,7 @@ window.addEventListener('scroll',function(){
         <button class="btn btn-y btn-lg" onclick="openSelfieCamera()">📷 Open Camera</button>
         <label class="btn btn-g btn-sm" style="cursor:pointer;display:flex;align-items:center">
           📁 Upload Selfie
-          <input type="file" accept="image/*" id="selfie-file-input" onchange="setSelfieFromFile(this)" style="display:none">
+          <input type="file" accept="image/*" id="selfie-file-input" onchange="setSelfieFromFile(this)" class="file-input-hidden">
         </label>
       </div>
       <div style="display:none;gap:10px;justify-content:center;margin-top:14px" id="selfie-capture-btns">
@@ -2404,7 +2409,7 @@ window.addEventListener('scroll',function(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div class="ci-photo-box" id="ci-front-box">
-          <input type="file" accept="image/*" id="ci-front" onchange="ciPhotoSet('front',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-front" onchange="ciPhotoSet('front',this)" class="file-input-hidden">
           <div class="ci-photo-icon" id="ci-front-icon">📸</div>
           <div class="ci-photo-lbl">Front of Car</div>
           <div class="ci-photo-status" id="ci-front-status"></div>
@@ -2414,7 +2419,7 @@ window.addEventListener('scroll',function(){
           </div>
         </div>
         <div class="ci-photo-box" id="ci-rear-box">
-          <input type="file" accept="image/*" id="ci-rear" onchange="ciPhotoSet('rear',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-rear" onchange="ciPhotoSet('rear',this)" class="file-input-hidden">
           <div class="ci-photo-icon" id="ci-rear-icon">📸</div>
           <div class="ci-photo-lbl">Rear of Car</div>
           <div class="ci-photo-status" id="ci-rear-status"></div>
@@ -2424,7 +2429,7 @@ window.addEventListener('scroll',function(){
           </div>
         </div>
         <div class="ci-photo-box" id="ci-passengerSide-box">
-          <input type="file" accept="image/*" id="ci-passengerSide" onchange="ciPhotoSet('passengerSide',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-passengerSide" onchange="ciPhotoSet('passengerSide',this)" class="file-input-hidden">
           <div class="ci-photo-icon" id="ci-passengerSide-icon">📸</div>
           <div class="ci-photo-lbl">Passenger Side</div>
           <div class="ci-photo-status" id="ci-passengerSide-status"></div>
@@ -2434,7 +2439,7 @@ window.addEventListener('scroll',function(){
           </div>
         </div>
         <div class="ci-photo-box" id="ci-driverSide-box">
-          <input type="file" accept="image/*" id="ci-driverSide" onchange="ciPhotoSet('driverSide',this)" style="display:none">
+          <input type="file" accept="image/*" id="ci-driverSide" onchange="ciPhotoSet('driverSide',this)" class="file-input-hidden">
           <div class="ci-photo-icon" id="ci-driverSide-icon">📸</div>
           <div class="ci-photo-lbl">Driver Side</div>
           <div class="ci-photo-status" id="ci-driverSide-status"></div>
@@ -4691,7 +4696,7 @@ function retakeSelfie(){
   document.getElementById("selfie-placeholder").style.display = "block";
   document.getElementById("selfie-btns").innerHTML =
     '<button class="btn btn-y btn-lg" onclick="openSelfieCamera()">📷 Open Camera</button>' +
-    '<label class="btn btn-g btn-sm" style="cursor:pointer;display:flex;align-items:center">📁 Upload Selfie<input type="file" accept="image/*" id="selfie-file-input" onchange="setSelfieFromFile(this)" style="display:none"></label>';
+    '<label class="btn btn-g btn-sm" style="cursor:pointer;display:flex;align-items:center">📁 Upload Selfie<input type="file" accept="image/*" id="selfie-file-input" onchange="setSelfieFromFile(this)" class="file-input-hidden"></label>';
 }
 
 var selfieVerifyPoll = null;
@@ -4837,7 +4842,7 @@ function openCheckin(bookingId, carName, pickupStr) {
   document.getElementById("selfie-capture-btns").style.display = "none";
   document.getElementById("selfie-btns").innerHTML =
     '<button class="btn btn-y btn-lg" onclick="openSelfieCamera()">📷 Open Camera</button>' +
-    '<label class="btn btn-g btn-sm" style="cursor:pointer;display:flex;align-items:center">📁 Upload Selfie<input type="file" accept="image/*" id="selfie-file-input" onchange="setSelfieFromFile(this)" style="display:none"></label>';
+    '<label class="btn btn-g btn-sm" style="cursor:pointer;display:flex;align-items:center">📁 Upload Selfie<input type="file" accept="image/*" id="selfie-file-input" onchange="setSelfieFromFile(this)" class="file-input-hidden"></label>';
 
   // Reset car photo steps
   ["front","rear","passengerSide","driverSide"].forEach(function(side) {
@@ -4981,7 +4986,7 @@ function makeDamageSlot(prefix, index){
   var div = document.createElement("div");
   div.style.cssText = "border:1.5px dashed var(--b);border-radius:12px;padding:10px;text-align:center;background:var(--ow);position:relative";
   div.innerHTML =
-    '<input type="file" accept="image/*" id="'+id+'" style="display:none" onchange="onDamageFile(\''+prefix+'\','+index+',this)">' +
+    '<input type="file" accept="image/*" id="'+id+'" class="file-input-hidden" onchange="onDamageFile(\''+prefix+'\','+index+',this)">' +
     '<label for="'+id+'" style="cursor:pointer;display:block">' +
       '<div style="font-size:1.6rem">📷</div>' +
       '<div style="font-size:.72rem;color:var(--ts);margin-top:4px">Tap to add</div>' +

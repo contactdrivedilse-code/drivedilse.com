@@ -174,6 +174,15 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   .stat-grid{grid-template-columns:repeat(2,1fr)}
   .v-grid{grid-template-columns:1fr}
 }
+.drm-month-title{text-align:center;font-weight:800;font-size:.9rem;margin-bottom:10px;color:var(--t)}
+.drm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.drm-dow{font-size:.62rem;font-weight:800;color:var(--ts);text-transform:uppercase;padding:4px 0}
+.drm-day{font-size:.8rem;font-weight:600;padding:7px 0;border-radius:8px;cursor:pointer;color:var(--t);transition:background .12s}
+.drm-day.empty{visibility:hidden}
+.drm-day.disabled{color:#ddd;cursor:default}
+.drm-day.in-range{background:rgba(245,197,24,.18)}
+.drm-day.selected{background:var(--yd);color:#fff;font-weight:800}
+.drm-day:not(.disabled):not(.selected):hover{background:rgba(245,197,24,.3)}
 </style>
 </head>
 <body>
@@ -267,14 +276,34 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 
 <!-- ── MODALS ── -->
 <div class="modal-overlay" id="pause-modal">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:620px;width:100%">
     <div class="modal-title">Pause Car — <span id="pm-car-name"></span></div>
-    <div style="display:flex;gap:12px;margin-bottom:16px">
-      <div style="flex:1"><label class="lbl">From</label><input class="inp" type="datetime-local" id="pm-from"></div>
-      <div style="flex:1"><label class="lbl">To</label><input class="inp" type="datetime-local" id="pm-to"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;font-weight:800;font-size:.85rem;color:var(--t)">
+        <span>📅 <span id="pdr-from-label">Select from</span></span>
+        <span style="color:var(--ts)">→</span>
+        <span>📅 <span id="pdr-to-label">Select to</span></span>
+      </div>
+      <span style="color:var(--yd);font-weight:800;font-size:.74rem;cursor:pointer;letter-spacing:.05em" onclick="pdrReset()">RESET</span>
     </div>
-    <div><label class="lbl">Note (optional)</label><input class="inp" type="text" id="pm-note" placeholder="e.g. Servicing"></div>
-    <div class="modal-footer">
+    <div style="display:flex;align-items:flex-start;gap:6px">
+      <button type="button" class="btn btn-g btn-sm" onclick="pdrNavMonth(-1)" style="padding:4px 10px;margin-top:30px">‹</button>
+      <div id="pdr-cal-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;min-width:0"></div>
+      <button type="button" class="btn btn-g btn-sm" onclick="pdrNavMonth(1)" style="padding:4px 10px;margin-top:30px">›</button>
+    </div>
+    <div style="margin-top:16px">
+      <div style="font-weight:800;font-size:.88rem;margin-bottom:2px">Select pause start &amp; end time</div>
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:.82rem;margin-bottom:6px"><span>From Time</span><span id="pdr-from-time-label">12:00 AM</span></div>
+        <input type="range" id="pdr-from-hour" min="0" max="23" step="1" value="0" style="width:100%;accent-color:var(--yd)" oninput="pdrOnSlider()">
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:.82rem;margin-bottom:6px"><span>To Time</span><span id="pdr-to-time-label">12:00 AM</span></div>
+        <input type="range" id="pdr-to-hour" min="0" max="23" step="1" value="0" style="width:100%;accent-color:var(--yd)" oninput="pdrOnSlider()">
+      </div>
+    </div>
+    <div style="margin-top:14px"><label class="lbl">Note (optional)</label><input class="inp" type="text" id="pm-note" placeholder="e.g. Servicing"></div>
+    <div class="modal-footer" style="margin-top:16px">
       <button class="btn btn-g btn-sm" style="flex:1" onclick="closePauseModal()">Cancel</button>
       <button class="btn btn-y btn-sm" style="flex:1" onclick="submitPause()">Add Pause</button>
     </div>
@@ -1601,25 +1630,97 @@ async function toggleCar(id){
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
+var MONTH_NAMES=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var HOUR_LABELS=["12:00 AM","1:00 AM","2:00 AM","3:00 AM","4:00 AM","5:00 AM","6:00 AM","7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM"];
+var pdrStart=null, pdrEnd=null, pdrViewYear=0, pdrViewMonth=0;
+
 function openPauseModal(carId, carName){
   pauseCarId = carId;
   document.getElementById("pm-car-name").textContent = carName;
-  document.getElementById("pm-from").value = "";
-  document.getElementById("pm-to").value   = "";
   document.getElementById("pm-note").value = "";
+  pdrStart = null; pdrEnd = null;
+  document.getElementById("pdr-from-hour").value = 0;
+  document.getElementById("pdr-to-hour").value = 0;
+  var ref = new Date();
+  pdrViewYear = ref.getFullYear();
+  pdrViewMonth = ref.getMonth();
+  pdrRender();
   document.getElementById("pause-modal").classList.add("open");
 }
 function closePauseModal(){ document.getElementById("pause-modal").classList.remove("open"); }
 
+function pdrReset(){ pdrStart=null; pdrEnd=null; pdrRender(); }
+function pdrNavMonth(delta){
+  pdrViewMonth += delta;
+  if(pdrViewMonth<0){ pdrViewMonth=11; pdrViewYear--; }
+  if(pdrViewMonth>11){ pdrViewMonth=0; pdrViewYear++; }
+  pdrRender();
+}
+function pdrSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function pdrBuildMonth(year,month){
+  var first=new Date(year,month,1);
+  var startDow=first.getDay();
+  var daysInMonth=new Date(year,month+1,0).getDate();
+  var today=new Date(); today.setHours(0,0,0,0);
+  var html='<div class="drm-month-title">'+MONTH_NAMES[month]+" '"+String(year).slice(2)+'</div><div class="drm-grid">';
+  ["S","M","T","W","T","F","S"].forEach(function(d){ html+='<div class="drm-dow">'+d+'</div>'; });
+  for(var i=0;i<startDow;i++) html+='<div class="drm-day empty"></div>';
+  for(var day=1;day<=daysInMonth;day++){
+    var cellDate=new Date(year,month,day);
+    var disabled=cellDate<today;
+    var cls="drm-day";
+    if(disabled) cls+=" disabled";
+    if(pdrStart && pdrSameDay(cellDate,pdrStart)) cls+=" selected";
+    if(pdrEnd && pdrSameDay(cellDate,pdrEnd)) cls+=" selected";
+    if(pdrStart && pdrEnd && cellDate>pdrStart && cellDate<pdrEnd) cls+=" in-range";
+    var onclick=disabled?"":' onclick="pdrSelectDate('+year+','+month+','+day+')"';
+    html+='<div class="'+cls+'"'+onclick+'>'+day+'</div>';
+  }
+  html+='</div>';
+  return html;
+}
+function pdrRender(){
+  var grid=document.getElementById("pdr-cal-grid");
+  var m2=pdrViewMonth+1, y2=pdrViewYear;
+  if(m2>11){ m2=0; y2++; }
+  grid.innerHTML='<div>'+pdrBuildMonth(pdrViewYear,pdrViewMonth)+'</div><div>'+pdrBuildMonth(y2,m2)+'</div>';
+  pdrUpdateLabels();
+}
+function pdrSelectDate(year,month,day){
+  var d=new Date(year,month,day);
+  if(!pdrStart || (pdrStart && pdrEnd)){
+    pdrStart=d; pdrEnd=null;
+  } else if(d.getTime()<=pdrStart.getTime()){
+    pdrStart=d; pdrEnd=null;
+  } else {
+    pdrEnd=d;
+  }
+  pdrRender();
+}
+function pdrOnSlider(){ pdrUpdateLabels(); }
+function pdrFmtShort(d,hour){
+  return d.getDate()+" "+MONTH_NAMES[d.getMonth()]+"'"+String(d.getFullYear()).slice(2)+", "+HOUR_LABELS[hour].replace(":00","");
+}
+function pdrUpdateLabels(){
+  var fh=parseInt(document.getElementById("pdr-from-hour").value);
+  var th=parseInt(document.getElementById("pdr-to-hour").value);
+  document.getElementById("pdr-from-time-label").textContent=HOUR_LABELS[fh];
+  document.getElementById("pdr-to-time-label").textContent=HOUR_LABELS[th];
+  document.getElementById("pdr-from-label").textContent = pdrStart ? pdrFmtShort(pdrStart,fh) : "Select from";
+  document.getElementById("pdr-to-label").textContent   = pdrEnd   ? pdrFmtShort(pdrEnd,th)   : "Select to";
+}
+
 async function submitPause(){
-  var from = document.getElementById("pm-from").value;
-  var to   = document.getElementById("pm-to").value;
+  if(!pdrStart || !pdrEnd){ toast("Select both from and to dates.", "error"); return; }
+  var fh = parseInt(document.getElementById("pdr-from-hour").value);
+  var th = parseInt(document.getElementById("pdr-to-hour").value);
+  var from = new Date(pdrStart); from.setHours(fh,0,0,0);
+  var to   = new Date(pdrEnd);   to.setHours(th,0,0,0);
+  if(to <= from){ toast("To date/time must be after from date/time.", "error"); return; }
   var note = document.getElementById("pm-note").value;
-  if(!from||!to){ toast("Select from and to dates.", "error"); return; }
-  if(new Date(to) <= new Date(from)){ toast("To date must be after from date.", "error"); return; }
   if(adminToken === "local"){
     var car = DEMO_FLEET.find(function(c){ return c._id===pauseCarId; });
-    if(car) car.pauses.push({ _id:"p_"+Date.now(), from:from, to:to, note:note });
+    if(car) car.pauses.push({ _id:"p_"+Date.now(), from:from.toISOString(), to:to.toISOString(), note:note });
     toast("Pause added.", "success");
     closePauseModal();
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
@@ -1629,7 +1730,7 @@ async function submitPause(){
     await adminFetch("/admin/fleet/"+pauseCarId+"/pause", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ from: from, to: to, note: note })
+      body: JSON.stringify({ from: from.toISOString(), to: to.toISOString(), note: note })
     });
     toast("Pause added.", "success");
     closePauseModal();

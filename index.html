@@ -695,6 +695,20 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   .hdr .btn{padding:6px 10px !important;font-size:.68rem !important;border-radius:8px;white-space:nowrap}
   .logo-img{height:38px}
   .logo-brand{font-size:.92rem}
+
+  /* Booking form (car detail page) — date input was getting squeezed to
+     near-zero width next to the hour dropdown in a 2-column grid; stack
+     them instead. Also tighten overall sizing so it feels hand-sized on
+     a phone rather than blown up. */
+  #booking-form > div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important}
+  .dt-pair{padding:10px 12px}
+  .dt-controls{flex-wrap:wrap}
+  .dt-date-inp{flex:1 1 auto;min-width:108px;font-size:.85rem}
+  .dt-hour-sel{font-size:.82rem;padding:5px 24px 5px 8px}
+  .rate-box{padding:14px 16px;margin-bottom:14px}
+  #d-rate{font-size:1.5rem !important}
+  #bf-signedin-badge{font-size:.74rem !important;padding:8px 10px !important}
+  #booking-form .btn-lg, .detail-right .btn-lg{padding:13px;font-size:.88rem}
 }
 
 /* ============================================================

@@ -814,6 +814,18 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 </style>
 </head>
 <body>
+<!-- ======== SITE LOADER ======== -->
+<div id="site-loader" style="position:fixed;inset:0;z-index:1000000;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .4s ease,visibility .4s ease">
+  <div style="font-size:3.4rem;animation:loaderDrive 1.1s ease-in-out infinite">🚗</div>
+  <div style="font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:1.3rem;margin-top:14px;color:#161616">Drive<span style="color:#f5c518">DilSe</span></div>
+  <div style="width:120px;height:4px;background:#f0ede4;border-radius:4px;margin-top:18px;overflow:hidden">
+    <div style="width:40%;height:100%;background:#f5c518;border-radius:4px;animation:loaderBar 1.1s ease-in-out infinite"></div>
+  </div>
+</div>
+<style>
+@keyframes loaderDrive{0%,100%{transform:translateX(-10px) rotate(-2deg)}50%{transform:translateX(10px) rotate(2deg)}}
+@keyframes loaderBar{0%{transform:translateX(-60px)}100%{transform:translateX(180px)}}
+</style>
 <!-- ======== COOKIE CONSENT BANNER ======== -->
 <div id="cookie-consent-bar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:100000;background:#161616;color:#fff;padding:14px 18px;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;font-size:.82rem">
   <span style="max-width:560px">🍪 We use cookies to remember your name &amp; phone so your bookings and details are ready next time — no login needed.</span>
@@ -3398,7 +3410,15 @@ function renderFleet(pickup, drop, searched, gridId, carsList){
     g.appendChild(div);
   });
 }
-loadFleet();
+function hideSiteLoader(){
+  var el = document.getElementById("site-loader");
+  if(!el) return;
+  el.style.opacity = "0";
+  el.style.visibility = "hidden";
+  setTimeout(function(){ el.remove(); }, 450);
+}
+loadFleet().finally(hideSiteLoader);
+setTimeout(hideSiteLoader, 4000); // safety net if the fleet fetch hangs
 initCookieConsent();
 preloadUserProfile();
 

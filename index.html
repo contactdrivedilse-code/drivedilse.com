@@ -3368,17 +3368,15 @@ function pauseFleetAutoSlideThenResume(){
   g.addEventListener("touchstart", pauseFleetAutoSlideThenResume, {passive:true});
   g.addEventListener("wheel", pauseFleetAutoSlideThenResume, {passive:true});
 })();
-function renderFleet(pickup, drop, searched, gridId){
+function renderFleet(pickup, drop, searched, gridId, carsList){
   var g = document.getElementById(gridId || "fleet-grid");
   g.innerHTML = "";
-  FLEET.forEach(function(car){
-    var avail = searched ? isAvail(car, pickup, drop) : true;
+  (carsList || FLEET).forEach(function(car){
+    var avail = searched ? (car.availableNow !== undefined ? car.availableNow : isAvail(car, pickup, drop)) : true;
     var div = document.createElement("div");
     div.className = "car-card";
-    if(!avail) div.style.opacity = "0.6";
-    var badge = searched ? (avail ? '<div class="avail-tag">Available ✓</div>' : '<div class="unavail-tag">Unavailable</div>') : "";
-    var btnClass = avail ? "btn-y" : "btn-gr";
-    var btnTxt = avail ? (searched ? "Book This Car →" : "View & Book →") : "Unavailable";
+    var badge = searched ? (avail ? '<div class="avail-tag">Available ✓</div>' : '<div class="unavail-tag">Check dates</div>') : "";
+    var btnTxt = searched ? "Book This Car →" : "View & Book →";
     var hasPhoto = !!car.imageUrl;
     div.innerHTML =
       '<div class="car-img" style="' + (hasPhoto ? 'background:#000;background-image:url(\'' + car.imageUrl + '\');background-size:cover;background-position:center' : 'background:linear-gradient(135deg,' + car.color + ',' + car.color + '55)') + '">' +
@@ -3395,9 +3393,7 @@ function renderFleet(pickup, drop, searched, gridId){
           '<span class="pill">⛽ ' + car.fuel + '</span>' +
           '<span class="pill">💺 ' + car.seats + ' Seats</span>' +
         '</div>' +
-        (avail
-          ? '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>'
-          : '<button class="btn btn-gr btn-lg" style="opacity:.5;cursor:not-allowed" disabled>' + btnTxt + '</button>') +
+        '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>' +
       '</div>';
     g.appendChild(div);
   });
@@ -3438,15 +3434,17 @@ async function doSearch(){
   document.getElementById("results-sub").textContent     = "";
   showPage("pg-results");
   try {
-    var cars = await apiFetch("/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d));
-    FLEET = cars.map(mapApiCar);
-    document.getElementById("results-heading").textContent = FLEET.length + " cars available for your dates";
-    document.getElementById("results-sub").textContent = "Click a car to view details and book.";
-    renderFleet(p, d, true, "results-grid");
+    var availableCars = await apiFetch("/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d));
+    var availableIds = new Set(availableCars.map(function(c){ return String(c._id || c.id); }));
+    FLEET.forEach(function(car){ car.availableNow = availableIds.has(String(car.id)); });
+    var availCount = FLEET.filter(function(c){ return c.availableNow; }).length;
+    document.getElementById("results-heading").textContent = availCount + " of " + FLEET.length + " cars available for your dates";
+    document.getElementById("results-sub").textContent = "All cars are shown — unavailable ones will tell you so when you try to book.";
+    renderFleet(p, d, true, "results-grid", FLEET);
   } catch(e){
     document.getElementById("results-heading").textContent = FLEET.length + " cars (offline mode)";
     document.getElementById("results-sub").textContent = "Live availability check failed. Shown cars may not reflect real-time status.";
-    renderFleet(p, d, true, "results-grid");
+    renderFleet(p, d, true, "results-grid", FLEET);
   }
 }
 

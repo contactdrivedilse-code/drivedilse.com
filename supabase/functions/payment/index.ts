@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
+import { sendBookingConfirmationEmail } from "../_shared/email.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -275,6 +276,14 @@ Deno.serve(async (req) => {
       }).select("*").maybeSingle();
       if (error) throw error;
 
+      if (isConfirmed && p.email) {
+        sendBookingConfirmationEmail({
+          to: p.email as string, customerName: p.name as string, bookingId,
+          carName: c.name as string, pickupDate: pickup.toISOString(), dropDate: drop.toISOString(),
+          pickupLocation: (pickupLocation as string) ?? "Pune", total,
+        }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
+      }
+
       const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>), token });
     }
@@ -323,6 +332,14 @@ Deno.serve(async (req) => {
         checkin_otp: isConfirmedDirect ? generateOtp() : null,
       }).select("*").maybeSingle();
       if (error) throw error;
+
+      if (isConfirmedDirect && p.email) {
+        sendBookingConfirmationEmail({
+          to: p.email as string, customerName: p.name as string, bookingId,
+          carName: c.name as string, pickupDate: pISO, dropDate: dISO,
+          pickupLocation: (pickupLocation as string) ?? "Katraj Hub, Pune", total,
+        }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
+      }
 
       const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>), token });
@@ -376,6 +393,14 @@ Deno.serve(async (req) => {
         checkin_otp: isConfirmedGuest ? generateOtp() : null,
       }).select("*").maybeSingle();
       if (error) throw error;
+
+      if (isConfirmedGuest && p.email) {
+        sendBookingConfirmationEmail({
+          to: p.email as string, customerName: p.name as string, bookingId,
+          carName: c.name as string, pickupDate: pISO2, dropDate: dISO2,
+          pickupLocation: (pickupLocation as string) ?? "Pune", total,
+        }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
+      }
 
       const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>), token });

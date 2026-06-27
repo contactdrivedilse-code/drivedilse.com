@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
-import { sendEmail, escapeHtml } from "../_shared/email.ts";
+import { sendEmail, escapeHtml, sendBookingConfirmationEmail } from "../_shared/email.ts";
 import { putFile, deleteFile } from "../_shared/github.ts";
 import { slugify, buildBlogPostHtml, buildBlogIndexHtml, buildSitemapXml, type BlogPost } from "../_shared/blog.ts";
 
@@ -400,11 +400,20 @@ Deno.serve(async (req) => {
       // When KYC is verified, confirm all pending_kyc bookings for this user
       // Match by BOTH user_id AND phone to handle profile recreations
       if (status === "verified") {
-        const { data: toConfirm } = await sb.from("bookings").select("id")
+        const { data: toConfirm } = await sb.from("bookings").select("id, booking_id, car_name, pickup_date, drop_date, pickup_location, total")
           .or(`user_id.eq.${kycMatch[1]},phone.eq.${p2.phone as string}`)
           .eq("status", "pending_kyc");
         // Each booking gets its own OTP — generated now so the fleet manager
         // has it ready as soon as the booking is confirmed, not after photos.
+        if (p2.email) {
+          ((toConfirm ?? []) as Record<string, unknown>[]).forEach((row) => {
+            sendBookingConfirmationEmail({
+              to: p2.email as string, customerName: p2.name as string, bookingId: row.booking_id as string,
+              carName: row.car_name as string, pickupDate: row.pickup_date as string, dropDate: row.drop_date as string,
+              pickupLocation: row.pickup_location as string, total: row.total as number,
+            }).catch((e) => console.error("Booking confirmation email failed", row.booking_id, (e as Error).message));
+          });
+        }
         await Promise.all(((toConfirm ?? []) as Record<string, unknown>[]).map((row) =>
           sb.from("bookings").update({
             status: "confirmed", checkin_otp: generateOtp(), updated_at: new Date().toISOString(),

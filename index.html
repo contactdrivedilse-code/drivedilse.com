@@ -3017,7 +3017,7 @@ async function renderProfile(){
         var cached = localStorage.getItem("dds_profile_photo");
         if(cached) renderProfilePhoto(cached);
       }
-      v = apiUser.phoneVerified;
+      v = apiUser.phoneVerified && p.kycStatus === "verified";
       userProfile = p; userVerified = v;
       // Render bookings from API
       if(apiBookings.length){
@@ -3708,7 +3708,7 @@ async function preloadUserProfile(){
     userProfile.dlUploaded      = !!(apiUser.kyc && apiUser.kyc.dlUrl);
     userProfile.dlVerified      = !!(apiUser.kyc && apiUser.kyc.dlVerified);
     userProfile.kycStatus       = apiUser.kyc && apiUser.kyc.status;
-    userVerified = userProfile.phoneVerified;
+    userVerified = userProfile.phoneVerified && userProfile.kycStatus === "verified";
   } catch(e){ /* offline — booking flow falls back to its own checks */ }
 }
 
@@ -4319,7 +4319,10 @@ async function vmSubmit(){
       });
       if(!kycResp.ok){ var ke = await kycResp.json(); throw new Error(ke.error || "Upload failed"); }
       var kycData = await kycResp.json();
-      if(kycData.user) userProfile = Object.assign(userProfile, kycData.user);
+      if(kycData.user){
+        userProfile = Object.assign(userProfile, kycData.user);
+        if(kycData.user.kyc) userProfile.kycStatus = kycData.user.kyc.status;
+      }
       if(kycData.token){ authToken = kycData.token; localStorage.setItem("dds_token", authToken); updateHeaderAuthUI(); }
     } catch(e){
       errEl.innerHTML = "⚠️ " + esc(e.message || "KYC upload failed. Check your connection.");
@@ -4329,9 +4332,9 @@ async function vmSubmit(){
     }
   }
 
-  userVerified = true;
   userProfile.name=name; userProfile.phone=phone; userProfile.dob=dob;
   userProfile.phoneVerified=vmOtpVerified; userProfile.aadhaarUploaded=aadhaarSet; userProfile.dlVerified=dlVerified;
+  userVerified = vmOtpVerified && userProfile.kycStatus === "verified";
 
   window._lastVerifyMsg = "Profile Verification - DriveDilSe\n\nName: "+name+"\nPhone: "+phone+"\nDOB: "+dob+"\nAadhaar: Uploaded\nDriving Licence: Verified (18+)\n\nPlease verify and send Check-In OTP.";
   document.getElementById("vm-form-wrap").style.display = "none";

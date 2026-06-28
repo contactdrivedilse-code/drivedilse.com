@@ -1819,7 +1819,6 @@ window.addEventListener('scroll',function(){
           <button class="btn btn-g btn-lg" onclick="showTrips()">&#128197; View My Trips &#8594;</button>
           <a class="btn btn-green btn-lg" href="https://wa.me/917709209765" target="_blank" style="text-decoration:none;display:block;text-align:center;padding:14px">&#128172; Contact Support on WhatsApp</a>
           <button class="btn btn-g btn-lg" onclick="goHome()">&#8592; Back to Fleet</button>
-          <button class="btn btn-lg" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:12px;padding:14px 20px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif" onclick="clearMyProfile()">🗑 Clear My Data &amp; Start Fresh</button>
         </div>
       </div>
     </div>
@@ -2972,17 +2971,6 @@ function showConfirm(title, body, onConfirm){
 }
 function goHome(){ showPage("pg-home"); }
 
-function clearMyProfile(){
-  if(!confirm("This will clear all your local bookings, profile data and login. Continue?")) return;
-  // Clear all local storage keys
-  ["dds_token","dds_bk_cache","dds_profile_photo","dds_pending_selfie","dds_my_bk_ids"].forEach(function(k){ localStorage.removeItem(k); });
-  setCookie("dds_token", "", -1);
-  // Reset in-memory state
-  authToken = ""; userProfile = { name:"", phone:"", phoneVerified:false, kyc:{} };
-  myBookingIds = []; allCars = [];
-  goHome();
-  setTimeout(function(){ location.reload(); }, 100);
-}
 function showProfile(){ renderProfile(); showPage("pg-profile"); window.scrollTo(0,0); }
 function showTrips(){ showPage("pg-trips"); window.scrollTo(0,0); renderProfile(); }
 function setBkListHtml(html){

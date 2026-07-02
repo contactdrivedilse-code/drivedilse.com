@@ -303,6 +303,7 @@ Deno.serve(async (req) => {
           to: p.email as string, customerName: p.name as string, bookingId,
           carName: c.name as string, pickupDate: pickup.toISOString(), dropDate: drop.toISOString(),
           pickupLocation: (pickupLocation as string) ?? "Pune", total,
+          customerPhone: p.phone as string | undefined,
         }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
       }
 
@@ -358,6 +359,7 @@ Deno.serve(async (req) => {
           to: p.email as string, customerName: p.name as string, bookingId,
           carName: c.name as string, pickupDate: pISO, dropDate: dISO,
           pickupLocation: (pickupLocation as string) ?? "Katraj Hub, Pune", total,
+          customerPhone: p.phone as string | undefined,
         }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
       }
 
@@ -417,6 +419,7 @@ Deno.serve(async (req) => {
           to: p.email as string, customerName: p.name as string, bookingId,
           carName: c.name as string, pickupDate: pISO2, dropDate: dISO2,
           pickupLocation: (pickupLocation as string) ?? "Pune", total,
+          customerPhone: p.phone as string | undefined,
         }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
       }
 

@@ -411,6 +411,7 @@ Deno.serve(async (req) => {
               to: p2.email as string, customerName: p2.name as string, bookingId: row.booking_id as string,
               carName: row.car_name as string, pickupDate: row.pickup_date as string, dropDate: row.drop_date as string,
               pickupLocation: row.pickup_location as string, total: row.total as number,
+              customerPhone: p2.phone as string | undefined,
             }).catch((e) => console.error("Booking confirmation email failed", row.booking_id, (e as Error).message));
           });
         }

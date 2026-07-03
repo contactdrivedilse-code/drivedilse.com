@@ -5,6 +5,7 @@ import { signStorageUrl } from "../_shared/storage.ts";
 import { sendEmail, escapeHtml, sendBookingConfirmationEmail } from "../_shared/email.ts";
 import { putFile, deleteFile } from "../_shared/github.ts";
 import { slugify, buildBlogPostHtml, buildBlogIndexHtml, buildSitemapXml, type BlogPost } from "../_shared/blog.ts";
+import { fetchInvoicePdf } from "../_shared/zoho.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -100,6 +101,7 @@ function mapBooking(b: Record<string, unknown>) {
     source: b.source ?? "website", pickupDone: b.pickup_done ?? false, dropDone: b.drop_done ?? false,
     createdAt: b.created_at, updatedAt: b.updated_at,
     extensions: [],
+    invoiceId: b.zoho_invoice_id ?? null,
   };
 }
 
@@ -365,6 +367,17 @@ Deno.serve(async (req) => {
       if (!bk) return json({ error: "Booking not found" }, 404);
       if (bk.status !== "active") return json({ error: "Booking is not active" }, 400);
       return json({ otp: bk.checkout_otp });
+    }
+
+    // GET /bookings/:id/invoice — admin download of Zoho invoice PDF (no user_id check)
+    const adminInvMatch = path.match(/^\/bookings\/([^/]+)\/invoice$/);
+    if (req.method === "GET" && adminInvMatch) {
+      const { data: b } = await sb.from("bookings").select("zoho_invoice_id, booking_id").eq("id", adminInvMatch[1]).maybeSingle();
+      const bk = b as Record<string, unknown> | null;
+      if (!bk) return json({ error: "Booking not found" }, 404);
+      if (!bk.zoho_invoice_id) return json({ error: "Invoice not available" }, 404);
+      const pdf = await fetchInvoicePdf(bk.zoho_invoice_id as string);
+      return new Response(pdf, { headers: { ...corsHeaders, "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="invoice-${bk.booking_id}.pdf"` } });
     }
 
     // GET /customers

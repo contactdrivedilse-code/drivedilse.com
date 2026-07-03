@@ -1556,10 +1556,18 @@ function _revRender(c){
       '</div>'
     : "";
 
+  var withInvoice = _revBookings.filter(function(b){ return !!b.invoiceId; });
+  var dlBtnHtml = '<button id="dl-all-inv-btn" onclick="downloadAllInvoices()" style="font-size:.8rem;font-weight:700;padding:8px 18px;border-radius:20px;border:1.5px solid var(--yd);background:var(--y);color:var(--t);cursor:pointer;white-space:nowrap">'+
+    '📥 Download All Invoices ('+withInvoice.length+')</button>';
+
   c.innerHTML =
-    '<div class="page-title">Revenue</div>'+
-    '<div class="page-sub">Per-car revenue, GST collected and total — all non-cancelled bookings.</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">'+filters+'</div>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;flex-wrap:wrap;gap:10px">'+
+      '<div><div class="page-title" style="margin-bottom:0">Revenue</div>'+
+      '<div class="page-sub" style="margin-top:2px">Per-car revenue, GST collected and total — all non-cancelled bookings.</div></div>'+
+      dlBtnHtml+
+    '</div>'+
+    '<div id="dl-inv-progress" style="display:none;margin:10px 0;padding:10px 14px;background:#fffde8;border:1.5px solid var(--yd);border-radius:10px;font-size:.82rem;font-weight:600;color:var(--t)"></div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;margin-bottom:4px">'+filters+'</div>'+
     customHtml+
     '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:20px 0 24px">'+summaryHtml+'</div>'+
     '<div class="card">'+
@@ -1568,6 +1576,43 @@ function _revRender(c){
         '<span style="font-size:.72rem;color:var(--ts);font-weight:500">GST 18% · SAC 9966 · Motor Vehicle Lease</span>'+
       '</div>'+tableHtml+
     '</div>';
+}
+
+async function downloadAllInvoices(){
+  var withInvoice = _revBookings.filter(function(b){ return !!b.invoiceId; });
+  if(!withInvoice.length){ toast("No invoices available for the current filter.", "error"); return; }
+  var btn = document.getElementById("dl-all-inv-btn");
+  var prog = document.getElementById("dl-inv-progress");
+  if(btn) btn.disabled = true;
+  if(prog) prog.style.display = "";
+  var ok = 0, fail = 0;
+  for(var i = 0; i < withInvoice.length; i++){
+    var b = withInvoice[i];
+    if(prog) prog.textContent = "Downloading " + (i+1) + " / " + withInvoice.length + " — " + (b.bookingId||b._id||"");
+    try {
+      var resp = await fetch(API + "/admin/bookings/" + (b._id||b.id) + "/invoice", {
+        headers: { "Authorization": "Bearer " + ANON_KEY, "x-admin-token": adminToken }
+      });
+      if(!resp.ok) throw new Error("HTTP " + resp.status);
+      var blob = await resp.blob();
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement("a");
+      a.href   = url;
+      a.download = "invoice-" + (b.bookingId||b._id||i+1) + ".pdf";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+      document.body.removeChild(a);
+      ok++;
+    } catch(e){
+      fail++;
+      console.warn("Invoice download failed for", b.bookingId, e.message);
+    }
+    if(i < withInvoice.length - 1) await new Promise(function(r){ setTimeout(r, 600); });
+  }
+  if(prog){ prog.textContent = "Done — " + ok + " downloaded" + (fail ? ", " + fail + " failed" : "") + "."; setTimeout(function(){ if(prog) prog.style.display="none"; }, 5000); }
+  if(btn) btn.disabled = false;
+  toast("Downloaded " + ok + " invoice" + (ok!==1?"s":"") + (fail?" ("+fail+" failed)":"") + ".", ok?"success":"error");
 }
 
 async function renderRevenue(isLocal, c){

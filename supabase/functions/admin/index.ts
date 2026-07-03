@@ -5,7 +5,7 @@ import { signStorageUrl } from "../_shared/storage.ts";
 import { sendEmail, escapeHtml, sendBookingConfirmationEmail } from "../_shared/email.ts";
 import { putFile, deleteFile } from "../_shared/github.ts";
 import { slugify, buildBlogPostHtml, buildBlogIndexHtml, buildSitemapXml, type BlogPost } from "../_shared/blog.ts";
-import { fetchInvoicePdf } from "../_shared/zoho.ts";
+import { fetchInvoicePdf, raiseInvoiceForBooking } from "../_shared/zoho.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -413,7 +413,7 @@ Deno.serve(async (req) => {
       // When KYC is verified, confirm all pending_kyc bookings for this user
       // Match by BOTH user_id AND phone to handle profile recreations
       if (status === "verified") {
-        const { data: toConfirm } = await sb.from("bookings").select("id, booking_id, car_name, pickup_date, drop_date, pickup_location, total")
+        const { data: toConfirm } = await sb.from("bookings").select("id, booking_id, car_name, pickup_date, drop_date, pickup_location, total, days, delivery_fee, coupon_discount, price_per_day")
           .or(`user_id.eq.${kycMatch[1]},phone.eq.${p2.phone as string}`)
           .eq("status", "pending_kyc");
         // Each booking gets its own OTP — generated now so the fleet manager
@@ -433,6 +433,20 @@ Deno.serve(async (req) => {
             status: "confirmed", checkin_otp: generateOtp(), updated_at: new Date().toISOString(),
           }).eq("id", row.id as string)
         ));
+        // Raise Zoho invoices for newly confirmed bookings (best-effort, non-blocking)
+        ((toConfirm ?? []) as Record<string, unknown>[]).forEach((row) => {
+          const deliveryFee = (row.delivery_fee as number) ?? 0;
+          const couponDiscount = (row.coupon_discount as number) ?? 0;
+          const invoiceTotal = (row.total as number) - couponDiscount;
+          raiseInvoiceForBooking({
+            bookingId: row.booking_id as string, carName: row.car_name as string,
+            customer: p2.name as string, phone: p2.phone as string,
+            email: (p2.email as string) ?? "", base: row.total as number, gst: 0,
+            deliveryFee, couponDiscount, total: invoiceTotal,
+            days: (row.days as number) ?? 1, extensions: [], checkedOutAt: new Date().toISOString(),
+          }).then(({ invoiceId }) => sb.from("bookings").update({ zoho_invoice_id: invoiceId }).eq("id", row.id as string))
+            .catch((e) => console.error("Zoho invoice failed (KYC approval)", row.booking_id, (e as Error).message));
+        });
       }
       const p = data as Record<string, unknown>;
       return json({

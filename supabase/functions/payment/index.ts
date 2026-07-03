@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { sendBookingConfirmationEmail } from "../_shared/email.ts";
+import { raiseInvoiceForBooking } from "../_shared/zoho.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -307,6 +308,17 @@ Deno.serve(async (req) => {
         }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
       }
 
+      if (isConfirmed) {
+        const invoiceTotal = baseTotal + deliveryFee - couponDiscount;
+        raiseInvoiceForBooking({
+          bookingId, carName: c.name as string, customer: (p.name as string) ?? "", phone: p.phone as string,
+          email: (p.email as string) ?? "", base: baseTotal, gst: 0,
+          deliveryFee, couponDiscount, total: invoiceTotal, days,
+          extensions: [], checkedOutAt: new Date().toISOString(),
+        }).then(({ invoiceId }) => sb.from("bookings").update({ zoho_invoice_id: invoiceId }).eq("booking_id", bookingId))
+          .catch((e) => console.error("Zoho invoice failed for booking", bookingId, (e as Error).message));
+      }
+
       const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>), token });
     }
@@ -361,6 +373,17 @@ Deno.serve(async (req) => {
           pickupLocation: (pickupLocation as string) ?? "Katraj Hub, Pune", total,
           customerPhone: p.phone as string | undefined,
         }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
+      }
+
+      if (isConfirmedDirect) {
+        const invoiceTotal = baseTotal + deliveryFee - couponDiscount;
+        raiseInvoiceForBooking({
+          bookingId, carName: c.name as string, customer: (p.name as string) ?? "", phone: p.phone as string,
+          email: (p.email as string) ?? "", base: baseTotal, gst: 0,
+          deliveryFee, couponDiscount, total: invoiceTotal, days,
+          extensions: [], checkedOutAt: new Date().toISOString(),
+        }).then(({ invoiceId }) => sb.from("bookings").update({ zoho_invoice_id: invoiceId }).eq("booking_id", bookingId))
+          .catch((e) => console.error("Zoho invoice failed for booking", bookingId, (e as Error).message));
       }
 
       const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
@@ -421,6 +444,17 @@ Deno.serve(async (req) => {
           pickupLocation: (pickupLocation as string) ?? "Pune", total,
           customerPhone: p.phone as string | undefined,
         }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
+      }
+
+      if (isConfirmedGuest) {
+        const invoiceTotalG = baseTotal2 + deliveryFee2 - couponDiscount;
+        raiseInvoiceForBooking({
+          bookingId, carName: c.name as string, customer: (p.name as string) ?? "", phone: p.phone as string,
+          email: (p.email as string) ?? "", base: baseTotal2, gst: 0,
+          deliveryFee: deliveryFee2, couponDiscount, total: invoiceTotalG, days,
+          extensions: [], checkedOutAt: new Date().toISOString(),
+        }).then(({ invoiceId }) => sb.from("bookings").update({ zoho_invoice_id: invoiceId }).eq("booking_id", bookingId))
+          .catch((e) => console.error("Zoho invoice failed for booking", bookingId, (e as Error).message));
       }
 
       const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);

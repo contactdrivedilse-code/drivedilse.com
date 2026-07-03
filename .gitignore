@@ -7,3 +7,7 @@ node_modules/
 # Supabase CLI local cache
 supabase/.temp/
 .branches
+bulk-invoices*.csv
+bulk-invoices*.js
+bulk-invoices*.json
+.env.zoho

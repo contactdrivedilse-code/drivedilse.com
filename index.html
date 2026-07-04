@@ -2143,7 +2143,8 @@ window.addEventListener('scroll',function(){
             <div class="stb-sub">Incl. GST &middot; <a onclick="scrollToPriceDetails()">View Details</a></div>
           </div>
         </div>
-        <button class="btn btn-green btn-lg" style="width:100%" onclick="payNow()">&#128179; Pay &amp; Confirm Booking</button>
+        <div id="unavail-banner" style="display:none;background:#fff3cd;border:1.5px solid #e0a800;border-radius:10px;padding:10px 14px;font-size:.82rem;font-weight:700;color:#7a5a00;margin-bottom:10px;text-align:center">🚫 Car is unavailable for these dates</div>
+        <button class="btn btn-green btn-lg" style="width:100%" id="pay-now-btn" onclick="payNow()">&#128179; Pay &amp; Confirm Booking</button>
       </div>
       <div id="success-section" style="display:none">
         <div class="success-box">
@@ -3945,6 +3946,25 @@ function calcPrice(){
   else { db.style.display = "none"; }
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");
+  // Reset unavailability state for this calculation, then check live
+  var unavailBanner = document.getElementById("unavail-banner");
+  var payBtn = document.getElementById("pay-now-btn");
+  if(unavailBanner) unavailBanner.style.display = "none";
+  if(payBtn) payBtn.disabled = false;
+  if(selCar && selCar.id && pv && dv){
+    apiFetch("/fleet/available?pickup="+encodeURIComponent(pv)+"&drop="+encodeURIComponent(dv))
+      .then(function(avCars){
+        var isAvailable = avCars.some(function(c){ return String(c._id||c.id) === String(selCar.id); });
+        if(!isAvailable){
+          if(unavailBanner){ unavailBanner.style.display = "block"; unavailBanner.textContent = "🚫 Car is unavailable for these dates — already booked or paused"; }
+          if(payBtn){ payBtn.disabled = true; payBtn.style.opacity = "0.5"; payBtn.style.cursor = "not-allowed"; }
+        } else {
+          if(unavailBanner) unavailBanner.style.display = "none";
+          if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; }
+        }
+      })
+      .catch(function(){}); // silent — backend will enforce at payment time anyway
+  }
   // Reset applied coupon for this calculation
   appliedCoupon = null; couponDiscount = 0;
   updateOfferAppliedMsg();

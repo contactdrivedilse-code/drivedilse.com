@@ -1985,7 +1985,8 @@ window.addEventListener('scroll',function(){
       <div class="rate-box">
         <div style="font-size:.67rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px">Base Rate</div>
         <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.9rem;font-weight:900;color:var(--yd)" id="d-rate"></div>
-        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Discounts on longer bookings</div>
+        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Dynamic pricing based on day type</div>
+        <div id="d-rate-grid" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
       </div>
       <div class="tag" id="booking-tag">Book This Car</div>
       <div id="booking-form">
@@ -2061,6 +2062,7 @@ window.addEventListener('scroll',function(){
               <div id="r-coupon-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:#15803d">🎁 Coupon (<span id="r-coupon-code"></span>)</span><span style="font-size:.8rem;font-weight:700;color:#15803d" id="r-coupon-amt"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;font-weight:700">Total Payable</span><span style="font-size:.85rem;font-weight:800;color:var(--yd)" id="r-fin"></span></div>
             </div>
+            <div id="r-day-breakdown" style="display:none;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
             <div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:10px">GST inclusive · No hidden charges</div>
 
             <div class="offers-card" id="explore-offers-card" onclick="openOffersModal()">
@@ -3424,6 +3426,73 @@ function drmContinue(){
 }
 
 // ── FLEET ──
+// ── DYNAMIC PRICING ──────────────────────────────────────────────────────────
+var HOLIDAYS = new Set([
+  // 2026
+  "2026-01-01","2026-01-14","2026-01-26",
+  "2026-03-23","2026-03-30","2026-04-02","2026-04-03","2026-04-06","2026-04-14",
+  "2026-05-01","2026-05-23",
+  "2026-06-07","2026-07-27",
+  "2026-08-15","2026-08-19",
+  "2026-09-04","2026-09-18",
+  "2026-10-02","2026-10-21",
+  "2026-11-08","2026-11-26",
+  "2026-12-25",
+  // 2027
+  "2027-01-01","2027-01-14","2027-01-26",
+  "2027-03-12","2027-03-19","2027-03-31","2027-04-14","2027-04-26",
+  "2027-05-01","2027-05-13",
+  "2027-06-27",
+  "2027-08-15","2027-08-28",
+  "2027-09-24",
+  "2027-10-02","2027-10-10","2027-10-28",
+  "2027-11-18",
+  "2027-12-25",
+]);
+
+function getDayType(dateStr){
+  if(HOLIDAYS.has(dateStr)) return "holiday";
+  var d = new Date(dateStr + "T00:00:00");
+  var dow = d.getDay();
+  if(dow === 0 || dow === 6) return "weekend";
+  return "weekday";
+}
+function getDayMult(type){
+  if(type === "holiday") return 1.10;
+  if(type === "weekend") return 1.20;
+  return 0.90;
+}
+// Returns the local YYYY-MM-DD for a JS Date (user's timezone = IST on Indian devices)
+function toLocalDateStr(dt){
+  var y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,"0"), d2 = String(dt.getDate()).padStart(2,"0");
+  return y+"-"+m+"-"+d2;
+}
+function calcDynamicPrice(baseRate, pickupISO, dropISO){
+  var pickup = new Date(pickupISO), drop = new Date(dropISO);
+  var totalMs = drop - pickup, hrs = totalMs / 3600000;
+  if(hrs <= 0) return {base:0,gst:0,total:0,hours:0,days:0,breakdown:[]};
+  var rawBase = 0, breakdown = [], cur = pickup.getTime();
+  while(cur < drop.getTime()){
+    var chunkEnd  = Math.min(cur + 24*3600000, drop.getTime());
+    var chunkHrs  = (chunkEnd - cur) / 3600000;
+    var dateStr   = toLocalDateStr(new Date(cur));
+    var type      = getDayType(dateStr);
+    var mult      = getDayMult(type);
+    rawBase += (baseRate * mult / 24) * chunkHrs;
+    // Group consecutive same-type chunks for display
+    if(breakdown.length && breakdown[breakdown.length-1].type === type){
+      breakdown[breakdown.length-1].hours += chunkHrs;
+    } else {
+      breakdown.push({date:dateStr, type:type, mult:mult, hours:chunkHrs, rate:Math.round(baseRate*mult)});
+    }
+    cur = chunkEnd;
+  }
+  var base = Math.round(rawBase);
+  var gst  = Math.round(base * 0.18);
+  return {base:base, gst:gst, total:base+gst, hours:hrs, days:Math.max(1,Math.ceil(hrs/24)), breakdown:breakdown};
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function isAvail(car, pickup, drop){
   if(!car.active) return false;
   var p = new Date(pickup), d = new Date(drop);
@@ -3758,6 +3827,15 @@ function openCar(id){
   priceResult = null;
   document.getElementById("d-name").textContent = selCar.name;
   document.getElementById("d-rate").innerHTML   = inr(Math.round(selCar.rate/24)) + '<span style="font-size:.9rem;color:var(--ts);font-weight:400">/hr</span>';
+  // Show per-day-type rates
+  var rg = document.getElementById("d-rate-grid");
+  if(rg){
+    var wdRate = Math.round(selCar.rate * 0.90), weRate = Math.round(selCar.rate * 1.20), hlRate = Math.round(selCar.rate * 1.10);
+    rg.innerHTML =
+      '<span style="font-size:.7rem;font-weight:700;background:#f0f4ff;color:#1a3c6a;border:1px solid #b0c4de;border-radius:16px;padding:3px 10px">Mon–Fri '+inr(wdRate)+'/day</span>'+
+      '<span style="font-size:.7rem;font-weight:700;background:#fffde8;color:var(--yd);border:1px solid var(--yd);border-radius:16px;padding:3px 10px">Sat–Sun '+inr(weRate)+'/day</span>'+
+      '<span style="font-size:.7rem;font-weight:700;background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;border-radius:16px;padding:3px 10px">Holiday '+inr(hlRate)+'/day</span>';
+  }
   document.getElementById("d-pills").innerHTML  =
     '<span class="pill">⚙️ ' + selCar.tm + '</span>' +
     '<span class="pill">⛽ ' + selCar.fuel + '</span>' +
@@ -3942,20 +4020,14 @@ function calcPrice(){
   if(d <= p){ alert("Drop must be after pickup."); return; }
   var hrs = (d - p) / 3600000;
   if(hrs < 6){ alert("Minimum booking is 6 hours."); return; }
-  var days = hrs / 24, rate = selCar.rate, r, disc = "";
-  if(hrs <= 8)       { r = rate * 1.30; }
-  else if(hrs <= 12) { r = rate * 1.15; }
-  else if(days <= 1) { r = rate; }
-  else if(days <= 3) { r = rate * 0.95; disc = "5% off"; }
-  else if(days <= 5) { r = rate * 0.92; disc = "8% off"; }
-  else if(days <= 7) { r = rate * 0.90; disc = "10% off"; }
-  else if(days <= 14){ r = rate * 0.85; disc = "15% off"; }
-  else if(days <= 21){ r = rate * 0.80; disc = "20% off"; }
-  else               { r = rate * 0.75; disc = "25% off"; }
-  var base = Math.round(r * days), gst = Math.round(base * 0.18), total = base + gst;
+
+  var pr = calcDynamicPrice(selCar.rate, pv, dv);
+  var base = pr.base, gst = pr.gst, total = pr.total;
   var perhr = Math.round(total / hrs), h = Math.round(hrs);
-  var dlbl = days >= 1 ? (days % 1 === 0 ? Math.round(days) + " days" : days.toFixed(1) + " days") : h + " hrs";
-  priceResult = {base:base, gst:gst, total:total, perhr:perhr, h:h, dlbl:dlbl, disc:disc, pickup:pv, drop:dv};
+  var days = pr.days;
+  var dlbl = days >= 1 ? (days % 1 === 0 ? Math.round(days) + (days===1?" day":" days") : days.toFixed(1) + " days") : h + " hrs";
+  priceResult = {base:base, gst:gst, total:total, perhr:perhr, h:h, dlbl:dlbl, disc:"", pickup:pv, drop:dv};
+
   document.getElementById("r-total").textContent = inr(total);
   document.getElementById("r-dur").textContent   = dlbl;
   document.getElementById("r-perhr").textContent = inr(perhr) + "/hr";
@@ -3965,16 +4037,42 @@ function calcPrice(){
   document.getElementById("r-fin").textContent   = inr(total);
   document.getElementById("stb-total").textContent = inr(total);
   document.getElementById("tpc-total").textContent = inr(total);
+
+  // Show day-type breakdown badge
   var db = document.getElementById("r-disc");
-  if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
-  else { db.style.display = "none"; }
+  var typeLabels = {weekday:"Weekday −10%", weekend:"Weekend +20%", holiday:"Holiday +10%"};
+  var types = pr.breakdown.map(function(c){ return typeLabels[c.type]; });
+  var uniq = types.filter(function(v,i,a){ return a.indexOf(v)===i; });
+  if(uniq.length){
+    db.textContent = uniq.join(" · ");
+    db.style.display = "inline-block";
+    db.style.background = "#e8f5e9";
+    db.style.color = "#1b5e20";
+    db.style.border = "1px solid #a5d6a7";
+  } else { db.style.display = "none"; }
+
+  // Show per-day-type breakdown below price
+  var bkEl = document.getElementById("r-day-breakdown");
+  if(bkEl){
+    var bkHtml = pr.breakdown.map(function(c){
+      var label = {weekday:"Weekday",weekend:"Weekend",holiday:"Holiday"}[c.type];
+      var color = {weekday:"#555",weekend:"#b8860b",holiday:"#1a5c2a"}[c.type];
+      var chunkDays = c.hours/24;
+      var daysLabel = chunkDays < 1 ? Math.round(c.hours)+"hr" : (Number.isInteger(chunkDays)?chunkDays:chunkDays.toFixed(1))+(chunkDays===1?" day":" days");
+      return '<span style="font-size:.74rem;font-weight:600;color:'+color+';background:var(--ow);border:1px solid var(--b);border-radius:16px;padding:3px 10px;white-space:nowrap">'+label+' · '+inr(c.rate)+'/day · '+daysLabel+'</span>';
+    }).join(" ");
+    bkEl.innerHTML = bkHtml;
+    bkEl.style.display = bkHtml ? "flex" : "none";
+  }
+
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");
-  // Reset unavailability state for this calculation, then check live
+
+  // Availability check — disable pay if paused/booked
   var unavailBanner = document.getElementById("unavail-banner");
   var payBtn = document.getElementById("pay-now-btn");
   if(unavailBanner) unavailBanner.style.display = "none";
-  if(payBtn) payBtn.disabled = false;
+  if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; }
   if(selCar && selCar.id && pv && dv){
     apiFetch("/fleet/available?pickup="+encodeURIComponent(pv)+"&drop="+encodeURIComponent(dv))
       .then(function(avCars){
@@ -3982,19 +4080,15 @@ function calcPrice(){
         if(!isAvailable){
           if(unavailBanner){ unavailBanner.style.display = "block"; unavailBanner.textContent = "🚫 Car is unavailable for these dates — already booked or paused"; }
           if(payBtn){ payBtn.disabled = true; payBtn.style.opacity = "0.5"; payBtn.style.cursor = "not-allowed"; }
-        } else {
-          if(unavailBanner) unavailBanner.style.display = "none";
-          if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; }
         }
       })
-      .catch(function(){}); // silent — backend will enforce at payment time anyway
+      .catch(function(){});
   }
-  // Reset applied coupon for this calculation
+
+  // Reset coupon, deposit, trip protection
   appliedCoupon = null; couponDiscount = 0;
   updateOfferAppliedMsg();
-  // Reset Refundable Deposit choice to default (Pay Later)
   selectDeposit("later");
-  // Reset Trip Protection choice for this calculation
   tripProtectionChoice = null; tripProtectionFee = 0;
   var tpYes = document.getElementById("tp-opt-yes"), tpNo = document.getElementById("tp-opt-no");
   if(tpYes) tpYes.classList.remove("on");

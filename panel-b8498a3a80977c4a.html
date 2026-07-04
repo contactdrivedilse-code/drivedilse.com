@@ -401,11 +401,14 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         <input class="inp" type="number" id="cm-seats" min="2" max="9" value="5">
       </div>
       <div style="grid-column:1/-1">
+        <label class="lbl">Monthly Earning Target (₹) — optional helper</label>
+        <input class="inp" type="number" id="cm-monthly-target" min="1000" placeholder="e.g. 60000" oninput="onMonthlyTargetInput()" style="margin-bottom:8px">
         <label class="lbl">Base Price per Day (₹) — before GST *</label>
         <input class="inp" type="number" id="cm-price" min="100" placeholder="e.g. 1526" oninput="updatePricingPreview()">
         <div id="cm-pricing-preview" style="margin-top:10px;background:#faf9f6;border:1px solid #ede9db;border-radius:10px;padding:12px;font-size:.78rem;display:none">
-          <div style="font-weight:700;margin-bottom:6px;color:#333">Dynamic Pricing Preview</div>
-          <div id="cm-price-rows" style="display:grid;grid-template-columns:1fr 1fr;gap:3px 16px"></div>
+          <div style="font-weight:700;margin-bottom:8px;color:#333">Dynamic Pricing (per day incl. GST)</div>
+          <div id="cm-price-rows" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 12px"></div>
+          <div id="cm-monthly-est" style="margin-top:10px;font-size:.74rem;color:var(--ts)"></div>
         </div>
       </div>
     </div>
@@ -2538,25 +2541,35 @@ async function deleteBlogPost(id){
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
+function onMonthlyTargetInput(){
+  var target = parseInt(document.getElementById("cm-monthly-target").value) || 0;
+  if(!target) return;
+  // Avg month: ~22 weekdays ×0.90 + ~8 weekends ×1.20 = 29.4 effective rate-days
+  var base = Math.round(target / 29.4);
+  document.getElementById("cm-price").value = base;
+  updatePricingPreview();
+}
+
 function updatePricingPreview(){
   var price = parseInt(document.getElementById("cm-price").value) || 0;
   var prev  = document.getElementById("cm-pricing-preview");
   var rows  = document.getElementById("cm-price-rows");
+  var estEl = document.getElementById("cm-monthly-est");
   if(!price){ prev.style.display = "none"; return; }
   prev.style.display = "block";
-  var tiers = [
-    ["6–8 hrs",   price * 1.30 / 24 * 8],
-    ["1 day",     price],
-    ["2–3 days",  price * 0.95],
-    ["4–5 days",  price * 0.92],
-    ["6–7 days",  price * 0.90],
-    ["8–14 days", price * 0.85],
-    ["15–21 days",price * 0.80],
-    ["22+ days",  price * 0.75],
-  ];
-  rows.innerHTML = tiers.map(function(t){
-    return '<div style="color:var(--ts)">'+t[0]+'</div><div style="font-weight:700;color:#222">₹'+Math.round(t[1]).toLocaleString("en-IN")+(t[0]==="1 day"?"/day":t[0].includes("hrs")?"/trip":"/day")+'</div>';
-  }).join("");
+  var wdRate = Math.round(price * 0.90 * 1.18); // incl GST
+  var weRate = Math.round(price * 1.20 * 1.18);
+  var hlRate = Math.round(price * 1.10 * 1.18);
+  rows.innerHTML =
+    '<div style="color:var(--ts);font-weight:600">Mon–Fri</div>'+
+    '<div style="color:var(--ts);font-weight:600">Sat–Sun</div>'+
+    '<div style="color:var(--ts);font-weight:600">Holiday</div>'+
+    '<div style="font-weight:800;color:#1a3c6a">₹'+wdRate.toLocaleString("en-IN")+'</div>'+
+    '<div style="font-weight:800;color:var(--yd)">₹'+weRate.toLocaleString("en-IN")+'</div>'+
+    '<div style="font-weight:800;color:#1b5e20">₹'+hlRate.toLocaleString("en-IN")+'</div>';
+  // Monthly earning estimate
+  var monthlyEst = Math.round(price * 29.4);
+  if(estEl) estEl.textContent = "Estimated monthly earning (full occupancy): ₹" + monthlyEst.toLocaleString("en-IN");
 }
 
 function previewCoverPhoto(){

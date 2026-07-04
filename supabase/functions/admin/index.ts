@@ -633,9 +633,14 @@ Deno.serve(async (req) => {
       if (!(drop > pickup)) return json({ error: "Drop date must be after pickup date" }, 400);
       const pISO = pickup.toISOString(), dISO = drop.toISOString();
 
-      const { data: conflict } = await sb.from("bookings").select("id").eq("car_id", carId)
-        .in("status", ["confirmed", "active", "completed", "pending_kyc"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle();
+      const [{ data: conflict }, { data: pauseConflict }] = await Promise.all([
+        sb.from("bookings").select("id").eq("car_id", carId)
+          .in("status", ["confirmed", "active", "completed", "pending_kyc"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle(),
+        sb.from("car_pauses").select("id").eq("car_id", carId)
+          .lt("from_date", dISO).gt("to_date", pISO).maybeSingle(),
+      ]);
       if (conflict) return json({ error: "Car is already booked for these dates" }, 400);
+      if (pauseConflict) return json({ error: "Car is paused for these dates (maintenance/other platform)" }, 400);
 
       const days = Math.max(1, Math.ceil((drop.getTime() - pickup.getTime()) / (24 * 3600000)));
       const { data: booking, error } = await sb.from("bookings").insert({

@@ -36,6 +36,20 @@ async function hasDateConflict(carId: string, pISO: string, dISO: string): Promi
 }
 const CONFLICT_MSG = "This car is paused or already booked for these dates. Please choose different dates or another car.";
 
+// Base tier hourly rates calibrated for a ₹50k/month car (pricePerDay ≈ ₹1701).
+// Any car scales proportionally: actual_rate = TIER_RATE × (car.pricePerDay / BASE_PPD)
+const BASE_PPD    = 1701; // price_per_day that yields ~₹50k/month
+const TIER_RATES  = { lt12: 200, lt24: 150, lt48: 130, lt168: 100, gte168: 100 };
+
+function getTierHourlyRate(pricePerDay: number, totalHours: number): number {
+  const factor = pricePerDay / BASE_PPD;
+  if (totalHours < 12)  return TIER_RATES.lt12   * factor;
+  if (totalHours < 24)  return TIER_RATES.lt24   * factor;
+  if (totalHours < 48)  return TIER_RATES.lt48   * factor;
+  if (totalHours < 168) return TIER_RATES.lt168  * factor;
+  return TIER_RATES.gte168 * factor;
+}
+
 // Indian national / public holidays — update annually.
 // Dates that are also weekends get the HIGHER of the two rates (holiday wins if >= weekend).
 const HOLIDAYS = new Set([
@@ -85,7 +99,10 @@ function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
   const hours   = totalMs / 3600000;
   if (hours <= 0) return { base: 0, gst: 0, total: 0, discount: 0, days: 0 };
 
-  // Walk in 24-hour chunks from pickup, applying the day-type rate for each chunk.
+  // Select per-hour rate based on total booking duration, scaled to this car's pricePerDay.
+  const hourlyRate = getTierHourlyRate(pricePerDay, hours);
+
+  // Walk in 24-hour chunks applying day-type multiplier (weekday×0.9, weekend×1.2, holiday×1.1).
   let rawBase = 0;
   let cur = pickup.getTime();
   while (cur < drop.getTime()) {
@@ -93,13 +110,13 @@ function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
     const chunkHrs  = (chunkEnd - cur) / 3600000;
     const dateStr   = toISTDate(cur);
     const mult      = getDayMultiplier(getDayType(dateStr));
-    rawBase += (pricePerDay * mult / 24) * chunkHrs;
+    rawBase += hourlyRate * mult * chunkHrs;
     cur = chunkEnd;
   }
-  const base     = Math.round(rawBase);
-  const gst      = Math.round(base * 0.18);
-  const total    = base + gst;
-  const days     = Math.max(1, Math.ceil(hours / 24));
+  const base  = Math.round(rawBase);
+  const gst   = Math.round(base * 0.18);
+  const total = base + gst;
+  const days  = Math.max(1, Math.ceil(hours / 24));
   return { base, gst, total, discount: 0, days };
 }
 

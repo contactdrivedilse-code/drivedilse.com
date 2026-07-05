@@ -3485,10 +3485,25 @@ function toLocalDateStr(dt){
   var y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,"0"), d2 = String(dt.getDate()).padStart(2,"0");
   return y+"-"+m+"-"+d2;
 }
+// Tier hourly rates calibrated for a ₹50k/month car (baseRate ≈ ₹1701/day).
+// All other cars scale proportionally via their baseRate.
+var BASE_PPD_REF = 1701;
+var TIER_RATES_HR = {lt12:200, lt24:150, lt48:130, lt168:100, gte168:100};
+function getTierHourlyRate(baseRate, hrs){
+  var factor = baseRate / BASE_PPD_REF;
+  if(hrs < 12)  return TIER_RATES_HR.lt12  * factor;
+  if(hrs < 24)  return TIER_RATES_HR.lt24  * factor;
+  if(hrs < 48)  return TIER_RATES_HR.lt48  * factor;
+  if(hrs < 168) return TIER_RATES_HR.lt168 * factor;
+  return TIER_RATES_HR.gte168 * factor;
+}
+
 function calcDynamicPrice(baseRate, pickupISO, dropISO){
   var pickup = new Date(pickupISO), drop = new Date(dropISO);
   var totalMs = drop - pickup, hrs = totalMs / 3600000;
   if(hrs <= 0) return {base:0,gst:0,total:0,hours:0,days:0,breakdown:[]};
+  // Select hourly rate by booking duration tier
+  var hourlyRate = getTierHourlyRate(baseRate, hrs);
   var rawBase = 0, breakdown = [], cur = pickup.getTime();
   while(cur < drop.getTime()){
     var chunkEnd  = Math.min(cur + 24*3600000, drop.getTime());
@@ -3496,12 +3511,12 @@ function calcDynamicPrice(baseRate, pickupISO, dropISO){
     var dateStr   = toLocalDateStr(new Date(cur));
     var type      = getDayType(dateStr);
     var mult      = getDayMult(type);
-    rawBase += (baseRate * mult / 24) * chunkHrs;
+    rawBase += hourlyRate * mult * chunkHrs;
     // Group consecutive same-type chunks for display
     if(breakdown.length && breakdown[breakdown.length-1].type === type){
       breakdown[breakdown.length-1].hours += chunkHrs;
     } else {
-      breakdown.push({date:dateStr, type:type, mult:mult, hours:chunkHrs, rate:Math.round(baseRate*mult)});
+      breakdown.push({date:dateStr, type:type, mult:mult, hours:chunkHrs, rate:Math.round(hourlyRate*mult*24)});
     }
     cur = chunkEnd;
   }

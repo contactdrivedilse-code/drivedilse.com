@@ -406,8 +406,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         <label class="lbl">Base Price per Day (₹) — before GST *</label>
         <input class="inp" type="number" id="cm-price" min="100" placeholder="e.g. 1526" oninput="updatePricingPreview()">
         <div id="cm-pricing-preview" style="margin-top:10px;background:#faf9f6;border:1px solid #ede9db;border-radius:10px;padding:12px;font-size:.78rem;display:none">
-          <div style="font-weight:700;margin-bottom:8px;color:#333">Dynamic Pricing (per day incl. GST)</div>
-          <div id="cm-price-rows" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 12px"></div>
+          <div style="font-weight:700;margin-bottom:8px;color:#333">Tiered Pricing Preview</div>
+          <div id="cm-price-rows" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px 8px"></div>
           <div id="cm-monthly-est" style="margin-top:10px;font-size:.74rem;color:var(--ts)"></div>
         </div>
       </div>
@@ -2557,16 +2557,31 @@ function updatePricingPreview(){
   var estEl = document.getElementById("cm-monthly-est");
   if(!price){ prev.style.display = "none"; return; }
   prev.style.display = "block";
-  var wdRate = Math.round(price * 0.90 * 1.18); // incl GST
-  var weRate = Math.round(price * 1.20 * 1.18);
-  var hlRate = Math.round(price * 1.10 * 1.18);
+  // Tier hourly rates scaled from BASE_PPD_REF (₹1701/day = ₹50k/month)
+  var BASE_PPD_REF = 1701;
+  var factor = price / BASE_PPD_REF;
+  var r12  = Math.round(200 * factor); // < 12 hrs
+  var r24  = Math.round(150 * factor); // 12–24 hrs
+  var r48  = Math.round(130 * factor); // 1–2 days
+  var r7d  = Math.round(100 * factor); // 2–7 days
+  // For 7+ days show weekday/weekend/holiday daily totals (24hr rate × day-type mult × 1.18 GST)
+  var wdDay = Math.round(r7d * 24 * 0.90 * 1.18);
+  var weDay = Math.round(r7d * 24 * 1.20 * 1.18);
+  var hlDay = Math.round(r7d * 24 * 1.10 * 1.18);
   rows.innerHTML =
-    '<div style="color:var(--ts);font-weight:600">Mon–Fri</div>'+
-    '<div style="color:var(--ts);font-weight:600">Sat–Sun</div>'+
-    '<div style="color:var(--ts);font-weight:600">Holiday</div>'+
-    '<div style="font-weight:800;color:#1a3c6a">₹'+wdRate.toLocaleString("en-IN")+'</div>'+
-    '<div style="font-weight:800;color:var(--yd)">₹'+weRate.toLocaleString("en-IN")+'</div>'+
-    '<div style="font-weight:800;color:#1b5e20">₹'+hlRate.toLocaleString("en-IN")+'</div>';
+    '<div style="color:var(--ts);font-weight:600;grid-column:1/-1;margin-bottom:4px;font-size:12px">Hourly rates (incl. GST)</div>'+
+    '<div style="color:var(--ts);font-size:12px">under 12 hrs</div>'+
+    '<div style="color:var(--ts);font-size:12px">12–24 hrs</div>'+
+    '<div style="color:var(--ts);font-size:12px">1–2 days</div>'+
+    '<div style="color:var(--ts);font-size:12px">2–7 days</div>'+
+    '<div style="font-weight:800;color:#1a3c6a">₹'+Math.round(r12*1.18)+'/hr</div>'+
+    '<div style="font-weight:800;color:#1a3c6a">₹'+Math.round(r24*1.18)+'/hr</div>'+
+    '<div style="font-weight:800;color:#1a3c6a">₹'+Math.round(r48*1.18)+'/hr</div>'+
+    '<div style="font-weight:800;color:#1a3c6a">₹'+Math.round(r7d*1.18)+'/hr</div>'+
+    '<div style="color:var(--ts);font-weight:600;grid-column:1/-1;margin-top:8px;margin-bottom:4px;font-size:12px">7+ day rate per day (weekday / weekend / holiday)</div>'+
+    '<div style="font-weight:800;color:#555;grid-column:1/2">₹'+wdDay.toLocaleString("en-IN")+'/day</div>'+
+    '<div style="font-weight:800;color:var(--yd);grid-column:2/3">₹'+weDay.toLocaleString("en-IN")+'/day</div>'+
+    '<div style="font-weight:800;color:#1b5e20;grid-column:3/4">₹'+hlDay.toLocaleString("en-IN")+'/day</div>';
   // Monthly earning estimate
   var monthlyEst = Math.round(price * 29.4);
   if(estEl) estEl.textContent = "Estimated monthly earning (full occupancy): ₹" + monthlyEst.toLocaleString("en-IN");

@@ -883,6 +883,14 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <div class="maint-title">We'll be back shortly!</div>
   <div class="maint-sub">Our site is currently under maintenance. We're working hard to improve your experience — check back soon.</div>
   <a class="maint-wa" href="https://wa.me/919999999999" target="_blank">&#128172; WhatsApp Us for Urgent Bookings</a>
+  <div style="margin-top:28px">
+    <button onclick="document.getElementById('maint-early-access').style.display='block';this.style.display='none'" style="background:none;border:1.5px solid #ccc;border-radius:20px;padding:8px 20px;font-size:.78rem;font-weight:600;color:#888;cursor:pointer">Early Access</button>
+    <div id="maint-early-access" style="display:none;margin-top:12px">
+      <input id="maint-code-inp" type="password" placeholder="Enter access code" style="padding:10px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:.85rem;width:200px;outline:none">
+      <button onclick="checkEarlyAccess()" style="margin-left:8px;background:#f5c518;border:none;border-radius:10px;padding:10px 18px;font-weight:800;font-size:.85rem;cursor:pointer">Go →</button>
+      <div id="maint-code-err" style="color:#c0392b;font-size:.75rem;margin-top:6px"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ======== SITE LOADER ======== -->
@@ -2753,6 +2761,17 @@ window.addEventListener('scroll',function(){
 // ── API CONFIG ──
 // ── MAINTENANCE MODE — set to false to bring site back online ──
 var MAINTENANCE = true;
+var EARLY_ACCESS_CODE = "dilse2026";
+function checkEarlyAccess(){
+  var code = document.getElementById("maint-code-inp").value.trim();
+  if(code === EARLY_ACCESS_CODE){
+    localStorage.setItem("dds_early_access","1");
+    document.getElementById("maintenance-screen").classList.remove("on");
+  } else {
+    document.getElementById("maint-code-err").textContent = "Incorrect code. Try again.";
+  }
+}
+if(localStorage.getItem("dds_early_access") === "1") MAINTENANCE = false;
 if(MAINTENANCE){ document.getElementById("maintenance-screen").classList.add("on"); }
 
 var API = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";

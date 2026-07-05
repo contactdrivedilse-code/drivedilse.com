@@ -4049,7 +4049,7 @@ function calcPrice(){
   var base = pr.base, gst = pr.gst, total = pr.total;
   var perhr = Math.round(total / hrs), h = Math.round(hrs);
   var days = pr.days;
-  var dlbl = days >= 1 ? (days % 1 === 0 ? Math.round(days) + (days===1?" day":" days") : days.toFixed(1) + " days") : h + " hrs";
+  var dlbl = hrs < 24 ? (h + " hr" + (h===1?"":"s")) : (Math.round(days) + (days===1?" day":" days"));
   priceResult = {base:base, gst:gst, total:total, perhr:perhr, h:h, dlbl:dlbl, disc:"", pickup:pv, drop:dv};
 
   document.getElementById("r-total").textContent = inr(total);
@@ -4192,7 +4192,7 @@ async function payNow(){
       amount: Math.round(order.amount * 100),
       currency: order.currency || "INR",
       name: "DriveDilSe",
-      description: selCar.name + " — " + (priceResult.days || order.days) + " day(s)",
+      description: selCar.name + " — " + (priceResult.dlbl || (priceResult.days || order.days) + " day(s)"),
       order_id: order.orderId,
       prefill: {
         name: bfName || userProfile.name || "",

@@ -1993,8 +1993,7 @@ window.addEventListener('scroll',function(){
       <div class="rate-box">
         <div style="font-size:.67rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px">Base Rate</div>
         <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.9rem;font-weight:900;color:var(--yd)" id="d-rate"></div>
-        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Dynamic pricing based on day type</div>
-        <div id="d-rate-grid" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Incl. all taxes</div>
       </div>
       <div class="tag" id="booking-tag">Book This Car</div>
       <div id="booking-form">
@@ -3846,15 +3845,6 @@ function openCar(id){
   priceResult = null;
   document.getElementById("d-name").textContent = selCar.name;
   document.getElementById("d-rate").innerHTML   = inr(Math.round(selCar.rate/24)) + '<span style="font-size:.9rem;color:var(--ts);font-weight:400">/hr</span>';
-  // Show per-day-type rates
-  var rg = document.getElementById("d-rate-grid");
-  if(rg){
-    var wdRate = Math.round(selCar.rate * 0.90), weRate = Math.round(selCar.rate * 1.20), hlRate = Math.round(selCar.rate * 1.10);
-    rg.innerHTML =
-      '<span style="font-size:.7rem;font-weight:700;background:#f0f4ff;color:#1a3c6a;border:1px solid #b0c4de;border-radius:16px;padding:3px 10px">Mon–Fri '+inr(wdRate)+'/day</span>'+
-      '<span style="font-size:.7rem;font-weight:700;background:#fffde8;color:var(--yd);border:1px solid var(--yd);border-radius:16px;padding:3px 10px">Sat–Sun '+inr(weRate)+'/day</span>'+
-      '<span style="font-size:.7rem;font-weight:700;background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;border-radius:16px;padding:3px 10px">Holiday '+inr(hlRate)+'/day</span>';
-  }
   document.getElementById("d-pills").innerHTML  =
     '<span class="pill">⚙️ ' + selCar.tm + '</span>' +
     '<span class="pill">⛽ ' + selCar.fuel + '</span>' +
@@ -4057,32 +4047,8 @@ function calcPrice(){
   document.getElementById("stb-total").textContent = inr(total);
   document.getElementById("tpc-total").textContent = inr(total);
 
-  // Show day-type breakdown badge
   var db = document.getElementById("r-disc");
-  var typeLabels = {weekday:"Weekday −10%", weekend:"Weekend +20%", holiday:"Holiday +10%"};
-  var types = pr.breakdown.map(function(c){ return typeLabels[c.type]; });
-  var uniq = types.filter(function(v,i,a){ return a.indexOf(v)===i; });
-  if(uniq.length){
-    db.textContent = uniq.join(" · ");
-    db.style.display = "inline-block";
-    db.style.background = "#e8f5e9";
-    db.style.color = "#1b5e20";
-    db.style.border = "1px solid #a5d6a7";
-  } else { db.style.display = "none"; }
-
-  // Show per-day-type breakdown below price
-  var bkEl = document.getElementById("r-day-breakdown");
-  if(bkEl){
-    var bkHtml = pr.breakdown.map(function(c){
-      var label = {weekday:"Weekday",weekend:"Weekend",holiday:"Holiday"}[c.type];
-      var color = {weekday:"#555",weekend:"#b8860b",holiday:"#1a5c2a"}[c.type];
-      var chunkDays = c.hours/24;
-      var daysLabel = chunkDays < 1 ? Math.round(c.hours)+"hr" : (Number.isInteger(chunkDays)?chunkDays:chunkDays.toFixed(1))+(chunkDays===1?" day":" days");
-      return '<span style="font-size:.74rem;font-weight:600;color:'+color+';background:var(--ow);border:1px solid var(--b);border-radius:16px;padding:3px 10px;white-space:nowrap">'+label+' · '+inr(c.rate)+'/day · '+daysLabel+'</span>';
-    }).join(" ");
-    bkEl.innerHTML = bkHtml;
-    bkEl.style.display = bkHtml ? "flex" : "none";
-  }
+  if(db) db.style.display = "none";
 
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");

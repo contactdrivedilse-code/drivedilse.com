@@ -883,9 +883,62 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .hero h1{letter-spacing:-.5px;text-shadow:0 2px 24px rgba(0,0,0,.12)}
 .section-title,.feat-title,#how-sec h2,.cta-band-title,.faq-sec h2{letter-spacing:-.2px}
 
+/* ── INTRO SECTION ── */
+.intro-sec{
+  min-height:100vh;padding-top:80px;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;background:#fff;position:relative;overflow:hidden
+}
+.intro-sec::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(201,160,16,.13) 1.5px,transparent 1.5px);
+  background-size:28px 28px;pointer-events:none;z-index:0
+}
+.intro-sec::after{
+  content:'';position:absolute;top:-50%;left:50%;transform:translateX(-50%);
+  width:1000px;height:1000px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,197,24,.07) 0%,transparent 60%);
+  pointer-events:none;z-index:0
+}
+.intro-eyebrow,.intro-headline,.intro-sub,.intro-cta-row,.intro-scroll-cue{position:relative;z-index:1}
+.intro-eyebrow{
+  font-size:.62rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+  color:var(--ts);margin-bottom:28px;
+  animation:heroFadeUp .5s cubic-bezier(.2,.8,.2,1) .3s both
+}
+.intro-headline{
+  font-family:'Playfair Display',Georgia,serif;font-weight:700;
+  font-size:5rem;line-height:1.08;color:var(--t);margin:0 0 28px;
+  animation:heroFadeUp .68s cubic-bezier(.2,.8,.2,1) .5s both
+}
+.intro-gold{color:var(--yd);font-style:italic}
+.intro-sub{
+  font-size:.98rem;color:#999;max-width:380px;line-height:1.85;
+  margin:0 0 36px;
+  animation:heroFadeUp .55s cubic-bezier(.2,.8,.2,1) .75s both
+}
+.intro-cta-row{
+  display:flex;gap:12px;justify-content:center;flex-wrap:wrap;
+  animation:heroFadeUp .5s cubic-bezier(.2,.8,.2,1) .95s both
+}
+.intro-scroll-cue{
+  position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  pointer-events:none;transition:opacity .4s ease;
+  animation:scrollCueDrift 2.2s ease-in-out 1.5s infinite
+}
+.intro-scroll-label{font-size:.58rem;font-weight:700;letter-spacing:2.8px;text-transform:uppercase;color:rgba(0,0,0,.22)}
+.intro-scroll-chevron{
+  width:16px;height:16px;border-right:1.5px solid rgba(0,0,0,.18);
+  border-bottom:1.5px solid rgba(0,0,0,.18);transform:rotate(45deg);
+  animation:chevronPulse 2.2s ease-in-out 1.5s infinite
+}
+@media(max-width:768px){.intro-headline{font-size:3.5rem}.intro-sub{max-width:280px}}
+@media(max-width:480px){.intro-headline{font-size:2.8rem}}
+
 /* ══════════ HERO REDESIGN ══════════ */
 .hero{
-  min-height:100vh !important;
+  min-height:auto !important;
   background:#fff !important;
   display:flex !important;flex-direction:column !important;justify-content:center !important;
   padding:0 !important;overflow:hidden !important
@@ -904,7 +957,7 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   background:radial-gradient(circle,rgba(245,197,24,.06) 0%,transparent 60%) !important;
   width:700px !important;height:700px !important
 }
-.hero-inner{padding:96px 48px 72px !important}
+.hero-inner{padding:56px 48px 48px !important}
 /* Refined headline — Playfair italic, elegant weight */
 .hero h1{
   font-family:'Playfair Display',Georgia,serif !important;
@@ -1271,6 +1324,21 @@ function csTick(){
     <button class="btn btn-y btn-md" onclick="closeMobMenu();goTo('search-sec')" style="width:100%">Book Now</button>
   </div>
 
+  <!-- INTRO -->
+  <section class="intro-sec">
+    <div class="intro-eyebrow">&#10022; Pune &middot; Self-Drive &amp; Monthly Lease</div>
+    <h2 class="intro-headline">Drive<br><span class="intro-gold">Dil Se.</span></h2>
+    <p class="intro-sub">Well-maintained cars on your schedule.<br>No driver. No hidden charges. Just the open road.</p>
+    <div class="intro-cta-row">
+      <button class="btn btn-y btn-md" onclick="goTo('search-sec')">Book a Car &rarr;</button>
+      <button class="btn btn-g btn-md" onclick="showLease()">Monthly Lease</button>
+    </div>
+    <div class="intro-scroll-cue" id="intro-scroll-cue">
+      <div class="intro-scroll-label">scroll to explore</div>
+      <div class="intro-scroll-chevron"></div>
+    </div>
+  </section>
+
   <!-- HERO -->
   <div class="hero">
     <div class="hero-bg-overlay"></div>
@@ -1405,10 +1473,6 @@ function csTick(){
           </div>
         </div>
       </div>
-    </div>
-    <div class="hero-scroll-cue" id="hero-scroll-cue">
-      <div class="hero-scroll-cue-label">scroll to explore</div>
-      <div class="hero-scroll-chevron"></div>
     </div>
   </div>
 
@@ -2069,10 +2133,10 @@ document.addEventListener("DOMContentLoaded", async function(){
     },290);
     setTimeout(cycle,2600);
   },3000);
-  // Hide scroll cue once user scrolls
+  // Hide intro scroll cue once user scrolls
   window.addEventListener('scroll',function hideCue(){
     if(window.scrollY>60){
-      var cue=document.getElementById('hero-scroll-cue');
+      var cue=document.getElementById('intro-scroll-cue');
       if(cue) cue.style.opacity='0';
       window.removeEventListener('scroll',hideCue);
     }

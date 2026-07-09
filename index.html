@@ -2004,10 +2004,16 @@ window.addEventListener('scroll',function(){
     <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:4px">Book Monthly Lease</div>
     <div style="font-size:.82rem;color:var(--ts);margin-bottom:20px" id="lbm-car-name">—</div>
 
-    <!-- Start date -->
+    <!-- Start date + time -->
     <div class="lbm-field">
-      <label>Lease Start Date</label>
-      <input class="inp" type="date" id="lbm-start-date" onchange="lbmCalc()">
+      <label>Lease Start Date &amp; Time</label>
+      <div class="dt-pair" style="margin-top:4px">
+        <div class="dt-controls">
+          <input type="date" class="dt-date-inp" id="lbm-start-date" onchange="lbmCalc()">
+          <span class="dt-divider">@</span>
+          <select class="dt-hour-sel" id="lbm-start-hour" onchange="lbmCalc()"></select>
+        </div>
+      </div>
     </div>
 
     <!-- Duration in months -->
@@ -6965,6 +6971,7 @@ function openLeaseForm(carId){
   // Default start date = tomorrow 10 AM
   var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(10,0,0,0);
   document.getElementById("lbm-start-date").value = tomorrow.toISOString().slice(0,10);
+  buildHourOpts(document.getElementById("lbm-start-hour"), 10);
 
   // Highlight default month selection
   lbmSetMonths(1);
@@ -6989,10 +6996,10 @@ function lbmSetMonths(n){
 
 function lbmCalc(){
   if(!_leaseCar) return;
-  var startVal = document.getElementById("lbm-start-date").value;
-  if(!startVal) return;
+  var startISO = getDt("lbm-start");
+  if(!startISO) return;
 
-  var startDate = new Date(startVal + "T10:00:00");
+  var startDate = new Date(startISO);
   var endDate   = new Date(startDate);
   endDate.setMonth(endDate.getMonth() + _leaseMonths);
 

@@ -223,7 +223,11 @@ Deno.serve(async (req) => {
   const path = url.pathname.replace("/payment", "") || "/";
 
   try {
-    // POST /hold — temporarily reserves a car for the customer's session
+    // POST /hold — temporarily reserves a car for the customer's session.
+    // The car_holds table has UNIQUE(car_id) so only ONE hold can exist per
+    // car at a time. The atomic INSERT is what prevents the race condition —
+    // two concurrent requests that both clear the way and then INSERT will
+    // have only one succeed; the other gets a unique-violation (23505) → 409.
     if (req.method === "POST" && path === "/hold") {
       const { carId, pickupDate, dropDate, sessionId } = await req.json();
       if (!carId || !pickupDate || !dropDate || !sessionId)
@@ -234,11 +238,19 @@ Deno.serve(async (req) => {
       const nowISO  = new Date().toISOString();
       const expires = new Date(Date.now() + HOLD_MINUTES * 60000).toISOString();
 
-      // Block if someone else already holds or booked these dates
-      if (await hasDateConflict(carId, pISO, dISO, sessionId))
-        return json({ error: "Car is already held or booked for these dates." }, 409);
+      // Block if there's a real booking or pause conflict (not holds — handled below)
+      const [{ data: bookingConflict }, { data: pauseConflict }] = await Promise.all([
+        sb.from("bookings").select("id").eq("car_id", carId)
+          .in("status", ["confirmed", "active", "pending_kyc", "pending", "completed"])
+          .lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle(),
+        sb.from("car_pauses").select("id").eq("car_id", carId)
+          .lt("from_date", dISO).gt("to_date", pISO).maybeSingle(),
+      ]);
+      if (bookingConflict || pauseConflict) return json({ error: CONFLICT_MSG }, 400);
 
-      // Remove previous hold by same session for this car + clean expired holds
+      // Remove our own previous hold + any expired holds for this car,
+      // then attempt the atomic insert. The UNIQUE(car_id) constraint
+      // means exactly one of any concurrent inserts will succeed.
       await Promise.all([
         sb.from("car_holds").delete().eq("car_id", carId).eq("session_id", sessionId),
         sb.from("car_holds").delete().eq("car_id", carId).lt("expires_at", nowISO),
@@ -249,7 +261,13 @@ Deno.serve(async (req) => {
         pickup_date: pISO, drop_date: dISO,
         session_id: sessionId, expires_at: expires,
       }).select("id, expires_at").maybeSingle();
-      if (error) throw error;
+
+      if (error) {
+        // 23505 = unique_violation — another customer grabbed this car first
+        if (error.code === "23505")
+          return json({ error: "This car is currently on hold by another customer. Please check back in a few minutes." }, 409);
+        throw error;
+      }
 
       return json({ holdId: (hold as Record<string, unknown>).id, expiresAt: expires, minutesLeft: HOLD_MINUTES });
     }

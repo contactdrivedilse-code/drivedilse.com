@@ -28,7 +28,7 @@ function resolveDepositChoice(raw: unknown): "now" | "later" { return raw === "n
 async function hasDateConflict(carId: string, pISO: string, dISO: string): Promise<boolean> {
   const [{ data: bookingConflict }, { data: pauseConflict }] = await Promise.all([
     sb.from("bookings").select("id").eq("car_id", carId)
-      .in("status", ["confirmed", "active", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle(),
+      .in("status", ["confirmed", "active", "pending_kyc", "pending", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle(),
     sb.from("car_pauses").select("id").eq("car_id", carId)
       .lt("from_date", dISO).gt("to_date", pISO).maybeSingle(),
   ]);

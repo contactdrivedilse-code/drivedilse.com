@@ -281,6 +281,59 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .hold-tag{position:absolute;top:12px;right:12px;background:#f59e0b;color:#fff;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(245,158,11,.35)}
 .hold-btn{width:100%;padding:14px;border-radius:12px;border:1.5px solid #f59e0b;background:#fffbeb;color:#92400e;font-weight:700;font-size:.82rem;cursor:default;text-align:center}
 
+/* ── TWO-PATH CHOICE SECTION (homepage) ── */
+.dual-path-sec{padding:56px 48px 60px;background:#fff}
+.dual-path-inner{max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.dp-card{border-radius:20px;padding:34px 30px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.dp-card-self{background:#fff;border:1.5px solid var(--b)}
+.dp-card-self::after{content:'';position:absolute;top:0;left:0;right:0;height:3.5px;background:linear-gradient(90deg,var(--y),var(--yd))}
+.dp-card-lease{background:linear-gradient(145deg,#1a1a2e 0%,#16213e 55%,#0f3460 100%)}
+.dp-tag{font-size:.6rem;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:14px}
+.dp-card-self .dp-tag{color:var(--ts)}
+.dp-card-lease .dp-tag{color:rgba(255,255,255,.45)}
+.dp-title{font-family:'Playfair Display',Georgia,serif;font-size:1.95rem;font-weight:900;line-height:1.12;margin-bottom:8px;letter-spacing:-.5px}
+.dp-card-self .dp-title{color:var(--t)}
+.dp-card-lease .dp-title{color:#fff}
+.dp-price-row{margin-bottom:16px}
+.dp-price-amt{font-family:'Playfair Display',Georgia,serif;font-size:1.6rem;font-weight:900}
+.dp-card-self .dp-price-amt{color:var(--yd)}
+.dp-card-lease .dp-price-amt{color:var(--y)}
+.dp-price-suffix{font-size:.78rem;font-weight:600}
+.dp-card-self .dp-price-suffix{color:var(--ts)}
+.dp-card-lease .dp-price-suffix{color:rgba(255,255,255,.55)}
+.dp-desc{font-size:.84rem;line-height:1.72;margin-bottom:20px;flex:1}
+.dp-card-self .dp-desc{color:#666}
+.dp-card-lease .dp-desc{color:rgba(255,255,255,.68)}
+.dp-pills{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:22px}
+.dp-pill{font-size:.67rem;font-weight:700;padding:4px 11px;border-radius:20px}
+.dp-card-self .dp-pill{background:#fffbe6;color:var(--yd);border:1px solid rgba(201,160,16,.22)}
+.dp-card-lease .dp-pill{background:rgba(245,197,24,.12);color:rgba(255,255,255,.85);border:1px solid rgba(245,197,24,.25)}
+.dp-cta{width:100%;padding:13px 20px;border-radius:11px;font-weight:800;font-size:.9rem;cursor:pointer;border:none;transition:opacity .18s,transform .18s}
+.dp-cta:hover{opacity:.9;transform:translateY(-1px)}
+.dp-cta-self{background:linear-gradient(135deg,var(--y),var(--yd));color:var(--t)}
+.dp-cta-lease{background:var(--y);color:#1a1407}
+@media(max-width:768px){.dual-path-sec{padding:40px 20px 44px}.dual-path-inner{grid-template-columns:1fr}.dp-title{font-size:1.6rem}.dp-card{padding:24px 20px}}
+
+/* ── HOME LEASE BAND (homepage spotlight) ── */
+.home-lease-band{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 55%,#0f3460 100%);padding:80px 48px;color:#fff}
+.hlb-inner{max-width:960px;margin:0 auto;display:grid;grid-template-columns:1.1fr 1fr;gap:60px;align-items:center}
+.hlb-eyebrow{font-size:.62rem;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:rgba(245,197,24,.7);margin-bottom:12px}
+.hlb-title{font-family:'Playfair Display',Georgia,serif;font-size:2.3rem;font-weight:900;line-height:1.12;letter-spacing:-.5px;margin-bottom:14px;color:#fff}
+.hlb-sub{font-size:.9rem;color:rgba(255,255,255,.65);line-height:1.75;margin-bottom:28px;max-width:420px}
+.hlb-feats{display:flex;flex-direction:column;gap:11px;margin-bottom:32px}
+.hlb-feat{display:flex;align-items:flex-start;gap:10px;font-size:.83rem;color:rgba(255,255,255,.8);font-weight:600}
+.hlb-feat-icon{font-size:1rem;flex-shrink:0;margin-top:.1em}
+.hlb-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:28px}
+.hlb-from{font-size:.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px}
+.hlb-price-big{font-family:'Playfair Display',Georgia,serif;font-size:2.8rem;font-weight:900;color:var(--y);line-height:1}
+.hlb-price-note{font-size:.75rem;color:rgba(255,255,255,.45);margin-bottom:20px;margin-top:4px}
+.hlb-price-rows{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.hlb-price-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem}
+.hlb-price-row span:first-child{color:rgba(255,255,255,.6)}
+.hlb-price-row strong{color:#fff;font-weight:700}
+@media(max-width:900px){.hlb-inner{grid-template-columns:1fr;gap:36px}}
+@media(max-width:768px){.home-lease-band{padding:56px 20px}.hlb-title{font-size:1.75rem}}
+
 /* ── MONTHLY LEASE PAGE ── */
 .lease-hero{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:56px 20px 44px;text-align:center}
 .lease-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2.4rem;font-weight:900;margin:0 0 10px;letter-spacing:-.5px}
@@ -1114,8 +1167,8 @@ function csTick(){
       <!-- LEFT: Check-availability search card -->
       <div>
         <div class="hero-search-card">
-          <div class="hero-search-eyebrow">Looking for the best car Leases?</div>
-          <div class="hero-search-heading">Book Self-Drive Cars in Pune</div>
+          <div class="hero-search-eyebrow">Self-Drive &amp; Monthly Lease in Pune</div>
+          <div class="hero-search-heading">Check Car Availability</div>
           <div class="hero-city-row">📍 Pune</div>
           <div class="hero-trip-row">
             <div class="hero-trip-field" onclick="startDateFlow()">
@@ -1205,12 +1258,12 @@ function csTick(){
       </div>
       <!-- RIGHT: Headline + feature highlights -->
       <div>
-        <div class="hero-badge">&#10022; Leasing Platform</div>
+        <div class="hero-badge">&#10022; Self-Drive &amp; Monthly Lease</div>
         <h1>Drive on your<br>terms. <span class="gold">Your car.<br>Your freedom.</span></h1>
-        <p class="hero-sub">Well-maintained self-drive cars across Pune. No driver, no hidden charges — pick your dates and take the wheel.</p>
+        <p class="hero-sub">Self-drive cars across Pune — by the hour, by the day, or lease for months. No driver, no hidden charges.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px">
           <button class="btn btn-g btn-md" onclick="goTo('fleet-sec')">View Fleet</button>
-          <button class="btn btn-hero-outline btn-md" onclick="goTo('how-sec')">How It Works</button>
+          <button class="btn btn-y btn-md" onclick="showLease()">Monthly Lease →</button>
         </div>
         <div class="hero-feature-grid">
           <div class="hero-feature-item">
@@ -1250,20 +1303,64 @@ function csTick(){
     <span><strong>OTP-Verified</strong> Handover</span>
     <span class="ts-sep">•</span>
     <span><strong>Doorstep</strong> Delivery</span>
+    <span class="ts-sep">•</span>
+    <span>Monthly Lease <strong>from ₹38k</strong></span>
   </div>
 
   <!-- TICKER STRIP -->
   <div class="ticker-wrap">
     <div class="ticker">
-      <div class="ticker-item"><span class="ticker-dot">★</span> Pickup &amp; Drop Available</div>
+      <div class="ticker-item"><span class="ticker-dot">★</span> Self-Drive From ₹480/day</div>
+      <div class="ticker-item"><span class="ticker-dot">★</span> Monthly Lease From ₹38,000</div>
+      <div class="ticker-item"><span class="ticker-dot">★</span> Doorstep Delivery Available</div>
       <div class="ticker-item"><span class="ticker-dot">★</span> No Hidden Charges</div>
       <div class="ticker-item"><span class="ticker-dot">★</span> Longer Trips Save More</div>
       <!-- duplicate set for seamless loop -->
-      <div class="ticker-item"><span class="ticker-dot">★</span> Pickup &amp; Drop Available</div>
+      <div class="ticker-item"><span class="ticker-dot">★</span> Self-Drive From ₹480/day</div>
+      <div class="ticker-item"><span class="ticker-dot">★</span> Monthly Lease From ₹38,000</div>
+      <div class="ticker-item"><span class="ticker-dot">★</span> Doorstep Delivery Available</div>
       <div class="ticker-item"><span class="ticker-dot">★</span> No Hidden Charges</div>
       <div class="ticker-item"><span class="ticker-dot">★</span> Longer Trips Save More</div>
     </div>
   </div>
+
+  <!-- TWO WAYS TO DRIVE -->
+  <section class="dual-path-sec">
+    <div class="dual-path-inner">
+      <!-- Self-Drive card -->
+      <div class="dp-card dp-card-self">
+        <div class="dp-tag">Flexible Rentals</div>
+        <h3 class="dp-title">Self-Drive<br>Trips</h3>
+        <div class="dp-price-row">
+          <span class="dp-price-amt">₹480</span>
+          <span class="dp-price-suffix">/day onwards &nbsp;·&nbsp; GST incl.</span>
+        </div>
+        <p class="dp-desc">Pick your dates and check instant availability. Pay per hour or per day — perfect for weekend getaways, outstation drives, or daily commute cover.</p>
+        <div class="dp-pills">
+          <span class="dp-pill">⏱ From 6 hours</span>
+          <span class="dp-pill">📍 Doorstep delivery</span>
+          <span class="dp-pill">✅ No hidden fees</span>
+        </div>
+        <button class="dp-cta dp-cta-self" onclick="window.scrollTo({top:0,behavior:'smooth'})">Check Availability →</button>
+      </div>
+      <!-- Monthly Lease card -->
+      <div class="dp-card dp-card-lease">
+        <div class="dp-tag">Long-Term Leasing</div>
+        <h3 class="dp-title">Monthly<br>Lease</h3>
+        <div class="dp-price-row">
+          <span class="dp-price-amt">₹38,000</span>
+          <span class="dp-price-suffix">/month onwards &nbsp;·&nbsp; all inclusive</span>
+        </div>
+        <p class="dp-desc">Your dedicated car for 15 days to months. One fixed rate, zero daily re-booking — the freedom of ownership without the burden of owning.</p>
+        <div class="dp-pills">
+          <span class="dp-pill">📅 15+ days</span>
+          <span class="dp-pill">🚗 Dedicated car</span>
+          <span class="dp-pill">💰 Best monthly rate</span>
+        </div>
+        <button class="dp-cta dp-cta-lease" onclick="showLease()">Explore Monthly Lease →</button>
+      </div>
+    </div>
+  </section>
 
   <!-- FLEET -->
   <section id="fleet-sec" class="section" style="padding:80px 48px;background:var(--ow)">
@@ -1283,6 +1380,37 @@ function csTick(){
         <div class="carousel-arrow right" onclick="carouselScroll(1)">&#8250;</div>
       </div>
       <a href="/cars" style="display:block;text-align:center;margin-top:18px;font-weight:700;color:var(--yd);text-decoration:none;font-size:.9rem">View All Cars →</a>
+    </div>
+  </section>
+
+  <!-- MONTHLY LEASE SPOTLIGHT -->
+  <section class="home-lease-band">
+    <div class="hlb-inner">
+      <div>
+        <div class="hlb-eyebrow">Monthly Lease</div>
+        <h2 class="hlb-title">Your car, every day.<br>No daily bookings.</h2>
+        <p class="hlb-sub">Lease a self-drive car for 15 days to months. It's dedicated to you — no availability battles, no re-booking windows, just your car, always ready.</p>
+        <div class="hlb-feats">
+          <div class="hlb-feat"><span class="hlb-feat-icon">🚗</span><span>Your dedicated car for the entire period</span></div>
+          <div class="hlb-feat"><span class="hlb-feat-icon">💸</span><span>Up to 35% cheaper than booking day-by-day</span></div>
+          <div class="hlb-feat"><span class="hlb-feat-icon">📅</span><span>Flexible start &amp; end — any date, any time</span></div>
+          <div class="hlb-feat"><span class="hlb-feat-icon">🚚</span><span>Doorstep delivery &amp; pickup included</span></div>
+        </div>
+        <button class="btn btn-y btn-md" onclick="showLease()" style="border-radius:11px;padding:14px 28px">Explore Monthly Lease →</button>
+      </div>
+      <div>
+        <div class="hlb-card">
+          <div class="hlb-from">Starting from</div>
+          <div class="hlb-price-big">₹38,000</div>
+          <div class="hlb-price-note">per month &nbsp;·&nbsp; GST inclusive &nbsp;·&nbsp; all-in</div>
+          <div class="hlb-price-rows">
+            <div class="hlb-price-row"><span>Hatchback</span><strong>₹38k – 44k / mo</strong></div>
+            <div class="hlb-price-row"><span>SUV</span><strong>₹55k – 72k / mo</strong></div>
+            <div class="hlb-price-row"><span>MPV</span><strong>₹60k – 75k / mo</strong></div>
+          </div>
+          <button class="btn btn-y btn-lg" onclick="showLease()" style="border-radius:10px;font-size:.9rem">See All Lease Cars →</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1346,9 +1474,10 @@ function csTick(){
   <!-- DARK CTA BAND -->
   <section class="cta-band">
     <div class="cta-band-title">The road is waiting.<br><em>Your car is ready.</em></div>
-    <p class="cta-band-sub">Leasing Platform — pick up your keys, go wherever you want, return when you're done.</p>
+    <p class="cta-band-sub">Self-drive trips by the hour or day — or lease for months. No driver, no hassle, full freedom.</p>
     <div class="cta-band-btns">
-      <button class="btn btn-y btn-md" onclick="goTo('fleet-sec')" style="min-width:180px;font-size:.95rem;padding:15px 32px">View Fleet</button>
+      <button class="btn btn-y btn-md" onclick="goTo('fleet-sec')" style="min-width:180px;font-size:.95rem;padding:15px 32px">Book Self-Drive</button>
+      <button class="btn btn-g btn-md" onclick="showLease()" style="min-width:180px;font-size:.95rem;padding:15px 32px">Monthly Lease</button>
       <a class="btn btn-green btn-md" href="https://wa.me/917709209765" target="_blank" style="text-decoration:none;min-width:180px;font-size:.95rem;padding:15px 32px">WhatsApp Us</a>
     </div>
   </section>

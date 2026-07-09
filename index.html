@@ -809,6 +809,9 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   .admin-body{padding:20px}
   .modal{width:calc(100vw - 32px);padding:24px 20px;border-radius:18px}
   .fleet-grid{grid-template-columns:1fr}
+  #fleet-sec{padding:56px 16px !important}
+  .fleet-carousel{scroll-padding-left:0;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  .fleet-carousel .car-card{flex:0 0 calc(100vw - 72px)}
   .price-grid{grid-template-columns:1fr}
   .btn-md{padding:12px 22px;font-size:.88rem}
   .btn-sm{padding:7px 14px;font-size:.78rem}
@@ -4237,7 +4240,10 @@ async function loadRealCarReviews(car){
 }
 function carouselScroll(dir){
   var g=document.getElementById("fleet-grid");
-  if(g) g.scrollBy({left:dir*320,behavior:"smooth"});
+  if(!g) return;
+  var card=g.querySelector('.car-card');
+  var step=card ? card.offsetWidth+18 : 308;
+  g.scrollBy({left:dir*step,behavior:"smooth"});
 }
 
 var _fleetAutoSlideTimer = null;

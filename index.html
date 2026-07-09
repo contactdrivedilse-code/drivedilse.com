@@ -280,6 +280,43 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .unavail-tag{position:absolute;top:12px;right:12px;background:#b91c1c;color:#fff;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(185,28,28,.35)}
 .hold-tag{position:absolute;top:12px;right:12px;background:#f59e0b;color:#fff;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(245,158,11,.35)}
 .hold-btn{width:100%;padding:14px;border-radius:12px;border:1.5px solid #f59e0b;background:#fffbeb;color:#92400e;font-weight:700;font-size:.82rem;cursor:default;text-align:center}
+
+/* ── MONTHLY LEASE PAGE ── */
+.lease-hero{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:56px 20px 44px;text-align:center}
+.lease-hero h1{font-family:'Playfair Display',Georgia,serif;font-size:2.4rem;font-weight:900;margin:0 0 10px;letter-spacing:-.5px}
+.lease-hero p{font-size:1rem;color:rgba(255,255,255,.75);max-width:520px;margin:0 auto 24px;line-height:1.65}
+.lease-badge{display:inline-block;background:var(--y);color:var(--t);font-size:.68rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;padding:4px 14px;border-radius:20px;margin-bottom:16px}
+.lease-benefits{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;max-width:700px;margin:0 auto}
+.lease-benefit{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 16px;font-size:.78rem;font-weight:700;color:rgba(255,255,255,.9);display:flex;align-items:center;gap:7px}
+.lease-sec{max-width:1100px;margin:0 auto;padding:36px 20px}
+.lease-sec-title{font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;font-weight:900;margin-bottom:4px;color:var(--t)}
+.lease-sec-sub{font-size:.84rem;color:var(--ts);margin-bottom:24px}
+.lease-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.lease-card{background:#fff;border:1.5px solid var(--b);border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.06);transition:box-shadow .2s,transform .2s;cursor:pointer}
+.lease-card:hover{box-shadow:0 8px 28px rgba(200,160,0,.16);transform:translateY(-3px)}
+.lease-card-img{height:170px;background:#f5f0e0;position:relative;overflow:hidden}
+.lease-card-img img{width:100%;height:100%;object-fit:cover}
+.lease-monthly-price{font-family:'Playfair Display',Georgia,serif;font-size:1.55rem;font-weight:900;color:var(--yd)}
+.lease-month-sub{font-size:.7rem;color:var(--ts);margin-top:1px}
+.lease-cta-btn{width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,var(--y),var(--yd));border:none;font-weight:800;font-size:.9rem;color:var(--t);cursor:pointer;transition:opacity .2s}
+.lease-cta-btn:hover{opacity:.88}
+.lease-why{background:linear-gradient(135deg,#fffbe6,#fff8d6);border:1.5px solid rgba(200,160,0,.2);border-radius:18px;padding:28px 24px;margin:32px 0}
+.lease-why-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:18px}
+.lease-why-item{display:flex;gap:12px;align-items:flex-start}
+.lease-why-icon{font-size:1.4rem;flex-shrink:0;margin-top:2px}
+/* Lease booking modal */
+.lbm-field{margin-bottom:16px}
+.lbm-field label{display:block;font-size:.78rem;font-weight:700;color:var(--ts);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.lbm-months-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.lbm-month-btn{padding:7px 14px;border-radius:10px;border:1.5px solid var(--b);background:#fff;font-weight:700;font-size:.82rem;cursor:pointer;transition:all .15s;color:var(--t)}
+.lbm-month-btn.sel{background:var(--y);border-color:var(--yd);color:var(--t)}
+.lbm-price-box{background:linear-gradient(135deg,#fffbe6,#fff8d6);border:1.5px solid rgba(200,160,0,.25);border-radius:14px;padding:16px 18px;margin:16px 0}
+.lbm-price-total{font-family:'Playfair Display',Georgia,serif;font-size:2rem;font-weight:900;color:var(--yd)}
+@media(max-width:768px){
+  .lease-hero h1{font-size:1.7rem}
+  .lease-grid{grid-template-columns:1fr}
+  .lease-why-grid{grid-template-columns:1fr}
+}
 .car-card.unavailable .car-img{filter:grayscale(40%) brightness(.92)}
 .unavail-btn{width:100%;padding:14px;border-radius:12px;border:1.5px solid #e5e7eb;background:#f3f4f6;color:#9ca3af;font-weight:700;font-size:.88rem;cursor:default;text-align:center}
 .unavail-notice{background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.8rem;color:#b91c1c;font-weight:600;display:flex;align-items:flex-start;gap:8px}
@@ -1036,6 +1073,7 @@ function csTick(){
     </div>
     <nav style="display:flex;gap:10px;align-items:center">
       <a class="nav-link" href="/cars" style="text-decoration:none">Fleet</a>
+      <span class="nav-link" onclick="showLease()">Monthly Lease</span>
       <span class="nav-link" onclick="goTo('how-sec')">How It Works</span>
       <span class="nav-link" onclick="goTo('faq-sec')">FAQ</span>
       <a class="nav-link" href="/policy" style="text-decoration:none">Policies</a>
@@ -1056,6 +1094,7 @@ function csTick(){
       <button onclick="closeMobMenu()" aria-label="Close" style="background:none;border:none;font-size:1.6rem;cursor:pointer;color:var(--ts);line-height:1;padding:6px">&times;</button>
     </div>
     <a href="/cars" class="mob-menu-link" style="text-decoration:none">Fleet</a>
+    <span class="mob-menu-link" onclick="closeMobMenu();showLease()">Monthly Lease</span>
     <span class="mob-menu-link" onclick="closeMobMenu();goTo('how-sec')">How It Works</span>
     <span class="mob-menu-link" onclick="closeMobMenu();goTo('faq-sec')">FAQ</span>
     <a href="/policy" class="mob-menu-link" style="text-decoration:none">Policies</a>
@@ -1880,6 +1919,149 @@ window.addEventListener('scroll',function(){
     </div>
   </div>
 </div>
+<!-- ══════════ MONTHLY LEASE ══════════ -->
+<div id="pg-lease" class="page">
+  <header class="hdr">
+    <div class="logo-wrap" onclick="goHome()">
+      <img src="assets/logo-icon.png" class="logo-img" alt="DriveDilSe">
+      <span class="logo-brand">Drive<span class="gold">DilSe</span></span>
+    </div>
+    <nav style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-g btn-sm" onclick="goHome()">&#8592; Back to Home</button>
+    </nav>
+  </header>
+
+  <!-- Hero band -->
+  <div class="lease-hero">
+    <div class="lease-badge">Monthly Lease</div>
+    <h1>Drive Every Month,<br>Pay Only for What You Use</h1>
+    <p>Enjoy the freedom of a personal car without the burden of EMIs, insurance, or maintenance. 1 to 12 months — your terms.</p>
+    <div class="lease-benefits">
+      <div class="lease-benefit">📅 1–12 Month Plans</div>
+      <div class="lease-benefit">🚚 Doorstep Delivery</div>
+      <div class="lease-benefit">✅ GST Inclusive</div>
+      <div class="lease-benefit">🔒 ₹1,000 Deposit</div>
+      <div class="lease-benefit">💬 24/7 WhatsApp Support</div>
+    </div>
+  </div>
+
+  <!-- Car grid -->
+  <div class="lease-sec">
+    <div class="lease-sec-title">Choose Your Lease Car</div>
+    <div class="lease-sec-sub">Monthly estimates based on our dynamic pricing. Exact amount shown after you pick your dates.</div>
+    <div class="lease-grid" id="lease-car-grid">
+      <div style="color:var(--ts);font-size:.9rem;padding:20px">Loading cars…</div>
+    </div>
+
+    <!-- Why Lease section -->
+    <div class="lease-why">
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.25rem;font-weight:900;margin-bottom:4px">Why Choose a Monthly Lease?</div>
+      <div style="font-size:.82rem;color:var(--ts)">All the comfort of a car, none of the ownership headaches.</div>
+      <div class="lease-why-grid">
+        <div class="lease-why-item">
+          <div class="lease-why-icon">💰</div>
+          <div>
+            <div style="font-weight:800;font-size:.88rem;margin-bottom:3px">Save vs. Daily Rates</div>
+            <div style="font-size:.78rem;color:var(--ts)">Long-term tier pricing gives you a better hourly rate than daily bookings.</div>
+          </div>
+        </div>
+        <div class="lease-why-item">
+          <div class="lease-why-icon">🔧</div>
+          <div>
+            <div style="font-weight:800;font-size:.88rem;margin-bottom:3px">Zero Maintenance Worry</div>
+            <div style="font-size:.78rem;color:var(--ts)">We handle servicing, insurance, and paperwork — you just drive.</div>
+          </div>
+        </div>
+        <div class="lease-why-item">
+          <div class="lease-why-icon">📋</div>
+          <div>
+            <div style="font-weight:800;font-size:.88rem;margin-bottom:3px">No Long-Term Lock-in</div>
+            <div style="font-size:.78rem;color:var(--ts)">Start with 1 month and extend month by month as you need.</div>
+          </div>
+        </div>
+        <div class="lease-why-item">
+          <div class="lease-why-icon">🚀</div>
+          <div>
+            <div style="font-weight:800;font-size:.88rem;margin-bottom:3px">Quick Start</div>
+            <div style="font-size:.78rem;color:var(--ts)">Book online, complete KYC once, and the car is at your door.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA strip -->
+    <div style="text-align:center;padding:24px 0 8px">
+      <div style="font-size:.82rem;color:var(--ts);margin-bottom:12px">Need help choosing the right plan?</div>
+      <a class="btn btn-green btn-lg" href="https://wa.me/917709209765?text=Hi%2C+I%27m+interested+in+a+monthly+lease+from+DriveDilSe" target="_blank" style="text-decoration:none;display:inline-block;padding:14px 28px">&#128172; Chat with Us on WhatsApp</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ LEASE BOOKING MODAL ══════════ -->
+<div class="modal-bg" id="lease-modal">
+  <div class="modal" style="max-width:500px;width:calc(100vw - 32px);max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('lease-modal')">&times;</button>
+    <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:4px">Book Monthly Lease</div>
+    <div style="font-size:.82rem;color:var(--ts);margin-bottom:20px" id="lbm-car-name">—</div>
+
+    <!-- Start date -->
+    <div class="lbm-field">
+      <label>Lease Start Date</label>
+      <input class="inp" type="date" id="lbm-start-date" onchange="lbmCalc()">
+    </div>
+
+    <!-- Duration in months -->
+    <div class="lbm-field">
+      <label>Duration</label>
+      <div class="lbm-months-row" id="lbm-months-row">
+        <button class="lbm-month-btn" onclick="lbmSetMonths(1)">1 mo</button>
+        <button class="lbm-month-btn" onclick="lbmSetMonths(2)">2 mo</button>
+        <button class="lbm-month-btn" onclick="lbmSetMonths(3)">3 mo</button>
+        <button class="lbm-month-btn" onclick="lbmSetMonths(6)">6 mo</button>
+        <button class="lbm-month-btn" onclick="lbmSetMonths(9)">9 mo</button>
+        <button class="lbm-month-btn" onclick="lbmSetMonths(12)">12 mo</button>
+      </div>
+      <div style="font-size:.72rem;color:var(--ts);margin-top:6px">Lease ends: <span id="lbm-end-date-label" style="font-weight:700;color:var(--t)">—</span></div>
+    </div>
+
+    <!-- Price box -->
+    <div class="lbm-price-box" id="lbm-price-box" style="display:none">
+      <div style="font-size:.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ts);margin-bottom:6px">Price Breakdown</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:.78rem;color:var(--ts)">Base Fare</span><span style="font-size:.82rem;font-weight:700" id="lbm-base"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:.78rem;color:var(--ts)">Duration</span><span style="font-size:.82rem;font-weight:700" id="lbm-dur"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-size:.78rem;color:var(--ts)">GST 18%</span><span style="font-size:.82rem;font-weight:700" id="lbm-gst"></span></div>
+      <div style="border-top:1px solid rgba(200,160,0,.25);padding-top:10px;display:flex;justify-content:space-between;align-items:flex-end">
+        <div style="font-size:.78rem;font-weight:700;color:var(--ts)">Total Payable</div>
+        <div class="lbm-price-total" id="lbm-total">—</div>
+      </div>
+      <div style="font-size:.66rem;color:var(--ts);margin-top:6px;text-align:right">+ ₹1,000 refundable security deposit</div>
+    </div>
+
+    <!-- Guest details (shown when not signed in) -->
+    <div id="lbm-guest-fields">
+      <div class="lbm-field">
+        <label>Full Name</label>
+        <input class="inp" type="text" id="lbm-name" placeholder="As on Aadhaar / DL">
+      </div>
+      <div class="lbm-field">
+        <label>Mobile Number</label>
+        <div style="display:flex;gap:8px">
+          <span style="padding:12px 14px;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;font-size:.9rem;font-weight:700;color:var(--ts)">+91</span>
+          <input class="inp" type="tel" id="lbm-phone" placeholder="10-digit number" maxlength="10" style="flex:1">
+        </div>
+      </div>
+      <div class="lbm-field">
+        <label>Email</label>
+        <input class="inp" type="email" id="lbm-email" placeholder="you@example.com">
+      </div>
+    </div>
+
+    <div id="lbm-msg" style="font-size:.8rem;margin-bottom:10px;min-height:16px"></div>
+    <button class="btn btn-y btn-lg" id="lbm-pay-btn" onclick="leasePayNow()" style="width:100%" disabled>Select dates &amp; duration above</button>
+    <div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:10px">✅ KYC verification required before trip starts · Refundable deposit collected at delivery</div>
+  </div>
+</div>
+
 <!-- ══════════ CAR DETAIL ══════════ -->
 <div id="pg-detail" class="page">
   <header class="hdr">
@@ -6705,6 +6887,211 @@ function qlOfflineProceed(){
   userProfile.email = em  || userProfile.email || "";
   closeModal("quick-login-modal");
   if(_qlAfterLogin){ _qlAfterLogin(); } else { payNow(); }
+}
+
+// ── MONTHLY LEASE ──────────────────────────────────────────────────────────
+
+var _leaseCar = null, _leaseMonths = 1, _leasePriceResult = null;
+
+function leaseMonthlyEstimate(car){
+  // Estimate monthly price using dynamic pricing for 30 days from today at 10 AM
+  var now = new Date(); now.setHours(10,0,0,0);
+  var end = new Date(now.getTime() + 30*24*3600000);
+  return calcDynamicPrice(car.rate, now.toISOString(), end.toISOString()).total;
+}
+
+function showLease(){
+  showPage("pg-lease");
+  window.scrollTo(0,0);
+  var grid = document.getElementById("lease-car-grid");
+  if(!FLEET || !FLEET.length){
+    grid.innerHTML = '<div style="color:var(--ts);font-size:.9rem;padding:20px">No cars available. Please check back shortly.</div>';
+    return;
+  }
+  grid.innerHTML = "";
+  FLEET.forEach(function(car){
+    if(!car.active) return;
+    var monthlyEst = leaseMonthlyEstimate(car);
+    var card = document.createElement("div");
+    card.className = "lease-card";
+    card.innerHTML =
+      '<div class="lease-card-img">' +
+        (car.imageUrl
+          ? '<img src="' + car.imageUrl + '" alt="' + car.name + '" loading="lazy">'
+          : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,' + car.color + ',' + car.color + '55);font-size:4rem">' + car.emoji + '</div>') +
+        '<div class="car-rating-badge">⭐ ' + carRating(car) + '</div>' +
+      '</div>' +
+      '<div style="padding:16px 18px 20px">' +
+        '<div class="car-cat">' + car.cat + '</div>' +
+        '<div style="font-size:.98rem;font-weight:800;margin-bottom:10px">' + car.name + '</div>' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
+          '<span class="pill">⚙️ ' + car.tm + '</span>' +
+          '<span class="pill">⛽ ' + car.fuel + '</span>' +
+          '<span class="pill">💺 ' + car.seats + ' Seats</span>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px">' +
+          '<div>' +
+            '<div class="lease-monthly-price">' + inr(monthlyEst) + '</div>' +
+            '<div class="lease-month-sub">/ month (est.) · incl. GST</div>' +
+          '</div>' +
+          '<div style="text-align:right;font-size:.74rem;color:var(--ts)">' + inr(Math.round(car.rate/24)) + '/hr</div>' +
+        '</div>' +
+        '<button class="lease-cta-btn" onclick="openLeaseForm(\'' + car.id + '\')">Lease This Car →</button>' +
+      '</div>';
+    grid.appendChild(card);
+  });
+}
+
+function openLeaseForm(carId){
+  _leaseCar = null;
+  for(var i=0;i<FLEET.length;i++){ if(String(FLEET[i].id)===String(carId)){ _leaseCar=FLEET[i]; break; } }
+  if(!_leaseCar) return;
+  _leaseMonths = 1; _leasePriceResult = null;
+
+  document.getElementById("lbm-car-name").textContent = _leaseCar.name + " · " + _leaseCar.cat + " · " + _leaseCar.tm;
+
+  // Pre-fill guest fields from profile if signed in
+  var lbmGuestFields = document.getElementById("lbm-guest-fields");
+  var isLoggedIn = !!(authToken && !authToken.startsWith("demo_") && userProfile.phoneVerified);
+  lbmGuestFields.style.display = isLoggedIn ? "none" : "block";
+  if(isLoggedIn){
+    // Will use profile values at pay time
+  } else {
+    if(userProfile.name)  document.getElementById("lbm-name").value  = userProfile.name;
+    if(userProfile.phone) document.getElementById("lbm-phone").value = userProfile.phone;
+    if(userProfile.email) document.getElementById("lbm-email").value = userProfile.email;
+  }
+
+  // Default start date = tomorrow 10 AM
+  var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(10,0,0,0);
+  document.getElementById("lbm-start-date").value = tomorrow.toISOString().slice(0,10);
+
+  // Highlight default month selection
+  lbmSetMonths(1);
+
+  document.getElementById("lbm-msg").textContent = "";
+  document.getElementById("lbm-price-box").style.display = "none";
+  var payBtn = document.getElementById("lbm-pay-btn");
+  payBtn.textContent = "Select dates & duration above"; payBtn.disabled = true;
+
+  openModal("lease-modal");
+}
+
+function lbmSetMonths(n){
+  _leaseMonths = n;
+  // Update button highlight
+  document.querySelectorAll(".lbm-month-btn").forEach(function(b){
+    var mo = parseInt(b.textContent);
+    b.classList.toggle("sel", mo === n);
+  });
+  lbmCalc();
+}
+
+function lbmCalc(){
+  if(!_leaseCar) return;
+  var startVal = document.getElementById("lbm-start-date").value;
+  if(!startVal) return;
+
+  var startDate = new Date(startVal + "T10:00:00");
+  var endDate   = new Date(startDate);
+  endDate.setMonth(endDate.getMonth() + _leaseMonths);
+
+  // Show end date label
+  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  document.getElementById("lbm-end-date-label").textContent =
+    endDate.getDate() + " " + months[endDate.getMonth()] + " " + endDate.getFullYear() + ", 10:00 AM";
+
+  var pr = calcDynamicPrice(_leaseCar.rate, startDate.toISOString(), endDate.toISOString());
+  _leasePriceResult = { base: pr.base, gst: pr.gst, total: pr.total, pickup: startDate.toISOString(), drop: endDate.toISOString() };
+
+  var durLabel = _leaseMonths === 1 ? "1 Month" : _leaseMonths + " Months";
+  document.getElementById("lbm-base").textContent  = inr(pr.base);
+  document.getElementById("lbm-dur").textContent   = durLabel + " (" + Math.round(pr.hours) + " hrs)";
+  document.getElementById("lbm-gst").textContent   = inr(pr.gst);
+  document.getElementById("lbm-total").textContent = inr(pr.total);
+  document.getElementById("lbm-price-box").style.display = "block";
+
+  var payBtn = document.getElementById("lbm-pay-btn");
+  payBtn.textContent = "Pay " + inr(pr.total + 1000) + " & Confirm Lease →";
+  payBtn.disabled = false;
+}
+
+async function leasePayNow(){
+  if(!_leaseCar || !_leasePriceResult){ alert("Please select start date and duration."); return; }
+
+  var isLoggedIn = !!(authToken && !authToken.startsWith("demo_") && userProfile.phoneVerified);
+  var lbmName = "", lbmPhone = "", lbmEmail = "";
+  if(!isLoggedIn){
+    lbmName  = document.getElementById("lbm-name").value.trim();
+    lbmPhone = document.getElementById("lbm-phone").value.trim();
+    lbmEmail = document.getElementById("lbm-email").value.trim();
+    if(!lbmName){ document.getElementById("lbm-msg").innerHTML = '<span style="color:#c0392b">Please enter your full name.</span>'; return; }
+    if(!/^[6-9]\d{9}$/.test(lbmPhone)){ document.getElementById("lbm-msg").innerHTML = '<span style="color:#c0392b">Please enter a valid 10-digit mobile number.</span>'; return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lbmEmail)){ document.getElementById("lbm-msg").innerHTML = '<span style="color:#c0392b">Please enter a valid email address.</span>'; return; }
+  } else {
+    lbmPhone = userProfile.phone || "";
+    lbmName  = userProfile.name  || "";
+    lbmEmail = userProfile.email || "";
+  }
+
+  var payBtn = document.getElementById("lbm-pay-btn");
+  payBtn.textContent = "Creating order…"; payBtn.disabled = true;
+  document.getElementById("lbm-msg").textContent = "";
+
+  try {
+    var pickupISO = _leasePriceResult.pickup;
+    var dropISO   = _leasePriceResult.drop;
+    var totalWithDeposit = _leasePriceResult.total + 1000; // ₹1,000 deposit included
+
+    var orderBody = {
+      phone: lbmPhone, name: lbmName,
+      carId: _leaseCar.id, pickupDate: pickupISO, dropDate: dropISO,
+      pickupLocation: "Hub, Pune", dropLocation: "Hub, Pune",
+      deliveryCharge: 0, depositChoice: "now", sessionId: SESSION_ID,
+    };
+    var order = await apiFetch("/payment/guest-order", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(orderBody) });
+    if(order.guestToken){ authToken = order.guestToken; setAuthToken(authToken); }
+
+    var rzp = new Razorpay({
+      key: order.keyId,
+      amount: Math.round(order.amount * 100),
+      currency: order.currency || "INR",
+      name: "DriveDilSe",
+      description: _leaseCar.name + " — " + _leaseMonths + " Month Lease",
+      order_id: order.orderId,
+      prefill: { name: lbmName, contact: lbmPhone, email: lbmEmail },
+      theme: { color: "#f5c518" },
+      handler: async function(resp){
+        try {
+          var verifyBody = {
+            razorpayOrderId: resp.razorpay_order_id, razorpayPaymentId: resp.razorpay_payment_id,
+            razorpaySignature: resp.razorpay_signature,
+            carId: _leaseCar.id, pickupDate: pickupISO, dropDate: dropISO,
+            pickupLocation: "Hub, Pune", dropLocation: "Hub, Pune",
+            deliveryCharge: 0, depositChoice: "now", sessionId: SESSION_ID,
+          };
+          var result = await apiFetch("/payment/verify", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(verifyBody) });
+          if(result.token){ authToken = result.token; setAuthToken(authToken); }
+          cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: _leaseCar.id, carName: _leaseCar.name, pickup:{date:pickupISO}, drop:{date:dropISO}, total:_leasePriceResult.total, status:"pending_kyc" });
+          closeModal("lease-modal");
+          alert("✅ Lease booked! Booking ID: " + result.bookingId + "\n\nComplete KYC verification so we can confirm your lease and deliver the car.\n\nYou can view your lease details in 'My Trips'.");
+          showTrips();
+        } catch(e){
+          payBtn.textContent = "Retry Payment →"; payBtn.disabled = false;
+          alert("Payment received but booking failed — contact support: " + resp.razorpay_payment_id + "\n" + e.message);
+        }
+      },
+      modal: { ondismiss: function(){ payBtn.textContent = "Pay " + inr(_leasePriceResult.total + 1000) + " & Confirm Lease →"; payBtn.disabled = false; } },
+    });
+    rzp.on("payment.failed", function(resp){
+      payBtn.textContent = "Pay " + inr(_leasePriceResult.total + 1000) + " & Confirm Lease →"; payBtn.disabled = false;
+      alert("Payment failed: " + (resp.error && resp.error.description || "Please try again."));
+    });
+    rzp.open();
+  } catch(e){
+    payBtn.textContent = "Pay " + inr(_leasePriceResult.total + 1000) + " & Confirm Lease →"; payBtn.disabled = false;
+    document.getElementById("lbm-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not create order") + '</span>';
+  }
 }
 </script>
 </body>

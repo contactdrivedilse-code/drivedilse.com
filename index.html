@@ -883,82 +883,75 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 .hero h1{letter-spacing:-.5px;text-shadow:0 2px 24px rgba(0,0,0,.12)}
 .section-title,.feat-title,#how-sec h2,.cta-band-title,.faq-sec h2{letter-spacing:-.2px}
 
-/* ══════════ CINEMATIC DARK HERO ══════════ */
+/* ══════════ HERO REDESIGN ══════════ */
 .hero{
   min-height:100vh !important;
-  background:linear-gradient(155deg,#0d0b07 0%,#14100a 45%,#0e0c09 100%) !important;
+  background:#fff !important;
   display:flex !important;flex-direction:column !important;justify-content:center !important;
   padding:0 !important;overflow:hidden !important
 }
 .hero::before{
-  background-image:radial-gradient(circle,rgba(245,197,24,.09) 1.5px,transparent 1.5px) !important;
+  background-image:radial-gradient(circle,rgba(201,160,16,.13) 1.5px,transparent 1.5px) !important;
   background-size:28px 28px !important
 }
 .hero-bg-overlay{
   display:block !important;
-  background:radial-gradient(ellipse 55% 50% at 68% 42%,rgba(245,197,24,.07) 0%,transparent 65%),
-             radial-gradient(ellipse 30% 28% at 18% 78%,rgba(245,197,24,.04) 0%,transparent 55%) !important
+  background:radial-gradient(ellipse 60% 55% at 72% 38%,rgba(245,197,24,.09) 0%,transparent 65%),
+             radial-gradient(ellipse 35% 30% at 15% 80%,rgba(245,197,24,.06) 0%,transparent 55%) !important
 }
 .hero-glow{
   display:block !important;
-  background:radial-gradient(circle,rgba(245,197,24,.055) 0%,transparent 60%) !important;
+  background:radial-gradient(circle,rgba(245,197,24,.06) 0%,transparent 60%) !important;
   width:700px !important;height:700px !important
 }
 .hero-inner{padding:96px 48px 72px !important}
-/* Refined headline — Playfair italic, not heavy Inter 900 */
+/* Refined headline — Playfair italic, elegant weight */
 .hero h1{
   font-family:'Playfair Display',Georgia,serif !important;
   font-weight:700 !important;font-style:italic !important;
-  font-size:2.75rem !important;letter-spacing:.2px !important;
-  line-height:1.2 !important;color:#fff !important;
-  text-shadow:0 4px 32px rgba(0,0,0,.5) !important
+  font-size:2.75rem !important;letter-spacing:.1px !important;
+  line-height:1.2 !important;color:var(--t) !important;
+  text-shadow:none !important
 }
 /* Cycling word in gold */
 .hero-cycle-word{
-  color:var(--y) !important;font-style:normal !important;
+  color:var(--yd) !important;font-style:normal !important;
   display:inline-block;transition:opacity .28s ease
 }
-/* Badge: gold glass pill */
+/* Badge */
 .hero-badge{
-  background:rgba(245,197,24,.1) !important;
-  border:1px solid rgba(245,197,24,.28) !important;
-  color:rgba(255,255,255,.78) !important;
+  background:#fff !important;
+  border:1px solid var(--b) !important;
+  color:var(--t) !important;
   box-shadow:none !important;
-  font-weight:600 !important;letter-spacing:1.8px !important
+  font-weight:800 !important;letter-spacing:1.5px !important
 }
-/* Sub text: soft white */
-.hero-sub{color:rgba(255,255,255,.55) !important;font-weight:400 !important;line-height:1.75 !important}
-/* Search card: crisp white floats against dark */
+/* Sub text */
+.hero-sub{color:#666 !important;font-weight:400 !important;line-height:1.75 !important}
+/* Search card */
 .hero-search-card,.hero-search{
-  background:#fff !important;border:none !important;
-  border-radius:20px !important;padding:26px !important;
-  box-shadow:0 28px 72px rgba(0,0,0,.6),0 4px 16px rgba(0,0,0,.3) !important
+  background:#fff !important;
+  border:1.5px solid var(--b) !important;
+  border-radius:16px !important;padding:24px !important;
+  box-shadow:0 1px 3px rgba(0,0,0,.04) !important
 }
 .hero-search-eyebrow{color:var(--ts) !important;letter-spacing:1.5px !important}
 .hero-search-heading{font-family:'Inter',sans-serif !important;font-weight:800 !important;font-size:1.1rem !important}
 .hero-trip-field{border-radius:10px !important}
-/* Feature icons: gold glass */
-.hero-feature-icon{background:rgba(245,197,24,.1) !important;border:1px solid rgba(245,197,24,.2) !important;border-radius:9px !important}
-.hero-feature-title{color:rgba(255,255,255,.9) !important}
-.hero-feature-desc{color:rgba(255,255,255,.44) !important}
-.hero-stats-row{border-top-color:rgba(255,255,255,.1) !important}
-.hero-stat-num{color:#fff !important}
-.hero-stat-lbl{color:rgba(255,255,255,.42) !important}
+/* Feature icons */
+.hero-feature-icon{background:var(--ow) !important;border:1px solid var(--b) !important;border-radius:8px !important}
+.hero-feature-title{color:var(--t) !important}
+.hero-feature-desc{color:var(--ts) !important}
+.hero-stats-row{border-top-color:var(--b) !important}
+.hero-stat-num{color:var(--t) !important}
+.hero-stat-lbl{color:var(--ts) !important}
 .hero-stat-stars{color:var(--y) !important}
-/* CTA row: ghost buttons on dark */
-.hero-cta-row .btn-g,.hero .btn-g{
-  background:rgba(255,255,255,.07) !important;
-  border:1.5px solid rgba(255,255,255,.2) !important;
-  color:rgba(255,255,255,.88) !important;box-shadow:none !important
-}
-.hero-cta-row .btn-g:hover,.hero .btn-g:hover{
-  background:rgba(255,255,255,.13) !important;
-  border-color:rgba(255,255,255,.36) !important;color:#fff !important
-}
+/* CTA buttons */
 .hero .btn-y{box-shadow:none !important}
 .hero .btn-y::after{display:none !important}
-.hero .btn-y:hover{box-shadow:0 4px 20px rgba(245,197,24,.5) !important;transform:none !important;filter:none !important}
-/* Scroll cue at bottom of viewport */
+.hero .btn-y:hover{box-shadow:0 2px 10px rgba(0,0,0,.1) !important;transform:none !important;filter:none !important}
+.hero .btn-g{box-shadow:none !important}
+/* Scroll cue */
 .hero-scroll-cue{
   position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
   display:flex;flex-direction:column;align-items:center;gap:6px;
@@ -966,17 +959,17 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
 }
 .hero-scroll-cue-label{
   font-size:.58rem;font-weight:700;letter-spacing:2.8px;text-transform:uppercase;
-  color:rgba(255,255,255,.3)
+  color:rgba(0,0,0,.25)
 }
 .hero-scroll-chevron{
   width:16px;height:16px;
-  border-right:1.5px solid rgba(255,255,255,.3);
-  border-bottom:1.5px solid rgba(255,255,255,.3);
+  border-right:1.5px solid rgba(0,0,0,.2);
+  border-bottom:1.5px solid rgba(0,0,0,.2);
   transform:rotate(45deg)
 }
-@keyframes scrollCueDrift{0%,100%{opacity:.35;transform:translateX(-50%) translateY(0)}50%{opacity:.7;transform:translateX(-50%) translateY(5px)}}
+@keyframes scrollCueDrift{0%,100%{opacity:.4;transform:translateX(-50%) translateY(0)}50%{opacity:.75;transform:translateX(-50%) translateY(5px)}}
 .hero-scroll-cue{animation:scrollCueDrift 2.2s ease-in-out 1.4s infinite}
-@keyframes chevronPulse{0%,100%{transform:rotate(45deg) translate(0,0);opacity:.4}50%{transform:rotate(45deg) translate(2px,2px);opacity:.9}}
+@keyframes chevronPulse{0%,100%{transform:rotate(45deg) translate(0,0);opacity:.3}50%{transform:rotate(45deg) translate(2px,2px);opacity:.8}}
 .hero-scroll-chevron{animation:chevronPulse 2.2s ease-in-out 1.4s infinite}
 /* Mobile */
 @media(max-width:768px){

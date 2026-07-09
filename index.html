@@ -277,7 +277,11 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .car-img{height:190px;display:flex;align-items:center;justify-content:center;font-size:4.5rem;position:relative;background:linear-gradient(135deg,#f8f8f8 0%,#ede9db 100%);overflow:hidden}
 .car-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.04) 100%)}
 .avail-tag{position:absolute;top:12px;right:12px;background:#dcfce7;color:#15803d;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-.unavail-tag{position:absolute;top:12px;right:12px;background:#fee2e2;color:#b91c1c;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px}
+.unavail-tag{position:absolute;top:12px;right:12px;background:#b91c1c;color:#fff;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(185,28,28,.35)}
+.car-card.unavailable .car-img{filter:grayscale(40%) brightness(.92)}
+.unavail-btn{width:100%;padding:14px;border-radius:12px;border:1.5px solid #e5e7eb;background:#f3f4f6;color:#9ca3af;font-weight:700;font-size:.88rem;cursor:default;text-align:center}
+.unavail-notice{background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.8rem;color:#b91c1c;font-weight:600;display:flex;align-items:flex-start;gap:8px}
+.unavail-notice a{color:#b91c1c;text-decoration:underline;cursor:pointer;white-space:nowrap}
 .car-rating-badge{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.95);color:var(--t);font-size:.68rem;font-weight:800;padding:4px 9px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .car-cat{font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);background:#fffbe6;border:1px solid rgba(201,160,16,.25);padding:3px 10px;border-radius:20px;display:inline-block;margin-bottom:8px}
 .carousel-arrow{position:absolute;top:90px;width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid var(--b);box-shadow:0 4px 16px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;color:var(--t);z-index:5;transition:background .2s,border-color .2s}
@@ -1988,6 +1992,10 @@ window.addEventListener('scroll',function(){
         <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Discounts on longer bookings</div>
       </div>
       <div class="tag" id="booking-tag">Book This Car</div>
+      <div class="unavail-notice" id="unavail-notice" style="display:none">
+        <span style="font-size:1.1rem;flex-shrink:0">⛔</span>
+        <div>This car is <strong>unavailable</strong> for your selected dates. Please <a onclick="startDateFlow()">choose different dates</a> to continue booking.</div>
+      </div>
       <div id="booking-form">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div class="dt-pair">
@@ -3587,10 +3595,14 @@ function renderFleet(pickup, drop, searched, gridId, carsList){
   (carsList || FLEET).forEach(function(car){
     var avail = searched ? (car.availableNow !== undefined ? car.availableNow : isAvail(car, pickup, drop)) : true;
     var div = document.createElement("div");
-    div.className = "car-card";
-    var badge = searched ? (avail ? '<div class="avail-tag">Available ✓</div>' : '<div class="unavail-tag">Check dates</div>') : "";
+    div.className = "car-card" + (searched && !avail ? " unavailable" : "");
+    var badge = searched ? (avail ? '<div class="avail-tag">Available ✓</div>' : '<div class="unavail-tag">⛔ Unavailable</div>') : "";
     var btnTxt = searched ? "Book This Car →" : "View & Book →";
     var hasPhoto = !!car.imageUrl;
+    var bookBtn = (!searched || avail)
+      ? '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>'
+      : '<div class="unavail-btn">⛔ Unavailable for selected dates</div>' +
+        '<div style="text-align:center;margin-top:8px"><a style="font-size:.78rem;color:var(--yd);font-weight:700;cursor:pointer;text-decoration:underline" onclick="openCar(\'' + car.id + '\')">Check available dates →</a></div>';
     div.innerHTML =
       '<div class="car-img" style="' + (hasPhoto ? 'background:#000;background-image:url(\'' + car.imageUrl + '\');background-size:cover;background-position:center' : 'background:linear-gradient(135deg,' + car.color + ',' + car.color + '55)') + '">' +
         (hasPhoto ? '' : '<span style="font-size:4rem">' + car.emoji + '</span>') +
@@ -3614,7 +3626,7 @@ function renderFleet(pickup, drop, searched, gridId, carsList){
             '<span class="card-delivery-thumb" style="position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2)"></span>' +
           '</label>' +
         '</div>' +
-        '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>' +
+        bookBtn +
       '</div>';
     g.appendChild(div);
   });
@@ -3854,6 +3866,20 @@ function openCar(id){
   }
   showDeliverySummary();
 
+  // Check availability for the searched dates and block pay button if unavailable
+  var hp2 = getDt("h-pickup"), hd2 = getDt("h-drop");
+  var unavailNotice = document.getElementById("unavail-notice");
+  var payBtn2 = document.getElementById("pay-now-btn");
+  if(unavailNotice) unavailNotice.style.display = "none";
+  if(payBtn2){ payBtn2.disabled = false; payBtn2.style.opacity = ""; payBtn2.style.cursor = ""; payBtn2.title = ""; }
+  if(hp2 && hd2 && selCar){
+    var carAvailForDates = isAvail(selCar, hp2, hd2);
+    if(!carAvailForDates){
+      if(unavailNotice) unavailNotice.style.display = "flex";
+      if(payBtn2){ payBtn2.disabled = true; payBtn2.style.opacity = ".45"; payBtn2.style.cursor = "not-allowed"; payBtn2.title = "Car is unavailable for your selected dates"; }
+    }
+  }
+
   showPage("pg-detail");
 }
 
@@ -3970,24 +3996,24 @@ function calcPrice(){
   else { db.style.display = "none"; }
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");
-  // Reset unavailability state for this calculation, then check live
-  var unavailBanner = document.getElementById("unavail-banner");
+  // Check availability live against backend and block pay button if unavailable
+  var unavailNotice2 = document.getElementById("unavail-notice");
   var payBtn = document.getElementById("pay-now-btn");
-  if(unavailBanner) unavailBanner.style.display = "none";
-  if(payBtn) payBtn.disabled = false;
+  if(unavailNotice2) unavailNotice2.style.display = "none";
+  if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; payBtn.title = ""; }
   if(selCar && selCar.id && pv && dv){
     apiFetch("/fleet/available?pickup="+encodeURIComponent(pv)+"&drop="+encodeURIComponent(dv))
       .then(function(avCars){
         var isAvailable = avCars.some(function(c){ return String(c._id||c.id) === String(selCar.id); });
         if(!isAvailable){
-          if(unavailBanner){ unavailBanner.style.display = "block"; unavailBanner.textContent = "🚫 Car is unavailable for these dates — already booked or paused"; }
-          if(payBtn){ payBtn.disabled = true; payBtn.style.opacity = "0.5"; payBtn.style.cursor = "not-allowed"; }
+          if(unavailNotice2) unavailNotice2.style.display = "flex";
+          if(payBtn){ payBtn.disabled = true; payBtn.style.opacity = ".45"; payBtn.style.cursor = "not-allowed"; payBtn.title = "Car is unavailable for your selected dates"; }
         } else {
-          if(unavailBanner) unavailBanner.style.display = "none";
-          if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; }
+          if(unavailNotice2) unavailNotice2.style.display = "none";
+          if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; payBtn.title = ""; }
         }
       })
-      .catch(function(){}); // silent — backend will enforce at payment time anyway
+      .catch(function(){}); // silent — payNow() enforces it again at booking time
   }
   // Reset applied coupon for this calculation
   appliedCoupon = null; couponDiscount = 0;

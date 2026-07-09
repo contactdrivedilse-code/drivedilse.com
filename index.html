@@ -2016,18 +2016,17 @@ window.addEventListener('scroll',function(){
       </div>
     </div>
 
-    <!-- Duration in months -->
+    <!-- End date + time -->
     <div class="lbm-field">
-      <label>Duration</label>
-      <div class="lbm-months-row" id="lbm-months-row">
-        <button class="lbm-month-btn" onclick="lbmSetMonths(1)">1 mo</button>
-        <button class="lbm-month-btn" onclick="lbmSetMonths(2)">2 mo</button>
-        <button class="lbm-month-btn" onclick="lbmSetMonths(3)">3 mo</button>
-        <button class="lbm-month-btn" onclick="lbmSetMonths(6)">6 mo</button>
-        <button class="lbm-month-btn" onclick="lbmSetMonths(9)">9 mo</button>
-        <button class="lbm-month-btn" onclick="lbmSetMonths(12)">12 mo</button>
+      <label>Lease End Date &amp; Time</label>
+      <div class="dt-pair" style="margin-top:4px">
+        <div class="dt-controls">
+          <input type="date" class="dt-date-inp" id="lbm-end-date" onchange="lbmCalc()">
+          <span class="dt-divider">@</span>
+          <select class="dt-hour-sel" id="lbm-end-hour" onchange="lbmCalc()"></select>
+        </div>
       </div>
-      <div style="font-size:.72rem;color:var(--ts);margin-top:6px">Lease ends: <span id="lbm-end-date-label" style="font-weight:700;color:var(--t)">—</span></div>
+      <div style="font-size:.72rem;margin-top:6px" id="lbm-dur-notice"></div>
     </div>
 
     <!-- Price box -->
@@ -4287,6 +4286,15 @@ function calcPrice(){
   if(d <= p){ alert("Drop must be after pickup."); return; }
   var hrs = (d - p) / 3600000;
   if(hrs < 6){ alert("Minimum booking is 6 hours."); return; }
+  if(hrs > 15 * 24){
+    document.getElementById("price-section").style.display = "none";
+    document.getElementById("sticky-total-bar").classList.remove("show");
+    var days15 = Math.round(hrs/24);
+    if(confirm("Bookings over 15 days go through our Monthly Lease. This trip is " + days15 + " days.\n\nSwitch to the Lease booking form for this car?")){
+      openLeaseForm(selCar.id);
+    }
+    return;
+  }
 
   var pr = calcDynamicPrice(selCar.rate, pv, dv);
   var base = pr.base, gst = pr.gst, total = pr.total;
@@ -6968,57 +6976,66 @@ function openLeaseForm(carId){
     if(userProfile.email) document.getElementById("lbm-email").value = userProfile.email;
   }
 
-  // Default start date = tomorrow 10 AM
-  var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(10,0,0,0);
-  document.getElementById("lbm-start-date").value = tomorrow.toISOString().slice(0,10);
+  // No defaults — user picks start & end freely (minimum 15 days)
+  document.getElementById("lbm-start-date").value = "";
+  document.getElementById("lbm-end-date").value   = "";
   buildHourOpts(document.getElementById("lbm-start-hour"), 10);
-
-  // Highlight default month selection
-  lbmSetMonths(1);
+  buildHourOpts(document.getElementById("lbm-end-hour"),   10);
+  document.getElementById("lbm-dur-notice").textContent = "";
 
   document.getElementById("lbm-msg").textContent = "";
   document.getElementById("lbm-price-box").style.display = "none";
   var payBtn = document.getElementById("lbm-pay-btn");
-  payBtn.textContent = "Select dates & duration above"; payBtn.disabled = true;
+  payBtn.textContent = "Select start & end date above"; payBtn.disabled = true;
 
   openModal("lease-modal");
-}
-
-function lbmSetMonths(n){
-  _leaseMonths = n;
-  // Update button highlight
-  document.querySelectorAll(".lbm-month-btn").forEach(function(b){
-    var mo = parseInt(b.textContent);
-    b.classList.toggle("sel", mo === n);
-  });
-  lbmCalc();
 }
 
 function lbmCalc(){
   if(!_leaseCar) return;
   var startISO = getDt("lbm-start");
-  if(!startISO) return;
+  var endISO   = getDt("lbm-end");
+  var noticeEl = document.getElementById("lbm-dur-notice");
+  var priceBox = document.getElementById("lbm-price-box");
+  var payBtn   = document.getElementById("lbm-pay-btn");
 
-  var startDate = new Date(startISO);
-  var endDate   = new Date(startDate);
-  endDate.setMonth(endDate.getMonth() + _leaseMonths);
+  if(!startISO || !endISO){
+    noticeEl.textContent = "";
+    priceBox.style.display = "none";
+    payBtn.textContent = "Select start & end date above"; payBtn.disabled = true;
+    return;
+  }
 
-  // Show end date label
-  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  document.getElementById("lbm-end-date-label").textContent =
-    endDate.getDate() + " " + months[endDate.getMonth()] + " " + endDate.getFullYear() + ", 10:00 AM";
+  var startDate = new Date(startISO), endDate = new Date(endISO);
+  if(endDate <= startDate){
+    noticeEl.innerHTML = '<span style="color:#b91c1c">End date must be after start date.</span>';
+    priceBox.style.display = "none";
+    payBtn.textContent = "Select start & end date above"; payBtn.disabled = true;
+    _leasePriceResult = null;
+    return;
+  }
 
-  var pr = calcDynamicPrice(_leaseCar.rate, startDate.toISOString(), endDate.toISOString());
-  _leasePriceResult = { base: pr.base, gst: pr.gst, total: pr.total, pickup: startDate.toISOString(), drop: endDate.toISOString() };
+  var hrs  = (endDate - startDate) / 3600000;
+  var days = Math.round(hrs / 24);
+  if(days < 15){
+    noticeEl.innerHTML = '<span style="color:#b91c1c">Minimum lease duration is 15 days. For shorter trips use regular booking.</span>';
+    priceBox.style.display = "none";
+    payBtn.textContent = "Minimum 15 days required"; payBtn.disabled = true;
+    _leasePriceResult = null;
+    return;
+  }
 
-  var durLabel = _leaseMonths === 1 ? "1 Month" : _leaseMonths + " Months";
+  noticeEl.innerHTML = '<span style="color:#15803d;font-weight:700">✓ ' + days + ' days (' + Math.round(hrs) + ' hrs)</span>';
+
+  var pr = calcDynamicPrice(_leaseCar.rate, startISO, endISO);
+  _leasePriceResult = { base: pr.base, gst: pr.gst, total: pr.total, pickup: startISO, drop: endISO };
+
   document.getElementById("lbm-base").textContent  = inr(pr.base);
-  document.getElementById("lbm-dur").textContent   = durLabel + " (" + Math.round(pr.hours) + " hrs)";
+  document.getElementById("lbm-dur").textContent   = days + " days";
   document.getElementById("lbm-gst").textContent   = inr(pr.gst);
   document.getElementById("lbm-total").textContent = inr(pr.total);
-  document.getElementById("lbm-price-box").style.display = "block";
+  priceBox.style.display = "block";
 
-  var payBtn = document.getElementById("lbm-pay-btn");
   payBtn.textContent = "Pay " + inr(pr.total + 1000) + " & Confirm Lease →";
   payBtn.disabled = false;
 }

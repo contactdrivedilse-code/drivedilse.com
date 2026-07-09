@@ -278,6 +278,8 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .car-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.04) 100%)}
 .avail-tag{position:absolute;top:12px;right:12px;background:#dcfce7;color:#15803d;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .unavail-tag{position:absolute;top:12px;right:12px;background:#b91c1c;color:#fff;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(185,28,28,.35)}
+.hold-tag{position:absolute;top:12px;right:12px;background:#f59e0b;color:#fff;font-size:.62rem;font-weight:700;letter-spacing:1px;padding:4px 10px;border-radius:20px;box-shadow:0 2px 8px rgba(245,158,11,.35)}
+.hold-btn{width:100%;padding:14px;border-radius:12px;border:1.5px solid #f59e0b;background:#fffbeb;color:#92400e;font-weight:700;font-size:.82rem;cursor:default;text-align:center}
 .car-card.unavailable .car-img{filter:grayscale(40%) brightness(.92)}
 .unavail-btn{width:100%;padding:14px;border-radius:12px;border:1.5px solid #e5e7eb;background:#f3f4f6;color:#9ca3af;font-weight:700;font-size:.88rem;cursor:default;text-align:center}
 .unavail-notice{background:#fee2e2;border:1.5px solid #fca5a5;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.8rem;color:#b91c1c;font-weight:600;display:flex;align-items:flex-start;gap:8px}
@@ -2079,6 +2081,7 @@ window.addEventListener('scroll',function(){
             </div>
             <div id="r-day-breakdown" style="display:none;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
             <div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:10px">GST inclusive · No hidden charges</div>
+            <div id="car-hold-timer" style="display:none;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;padding:10px 14px;margin-top:10px;text-align:center;font-size:.8rem;color:#92400e;font-weight:700">🔒 Car reserved for you — <span id="car-hold-timer-countdown"></span> remaining</div>
 
             <div class="offers-card" id="explore-offers-card" onclick="openOffersModal()">
               <div class="offers-badge">%</div>
@@ -2862,6 +2865,8 @@ function acceptCookieConsent(){
 
 var authToken = localStorage.getItem("dds_token") || getCookie("dds_token") || "";
 var adminToken = "";
+// Unique per-browser session ID for the 10-min car hold feature
+var SESSION_ID = localStorage.getItem("dds_session_id") || (function(){ var id = crypto.randomUUID(); localStorage.setItem("dds_session_id", id); return id; })();
 window._bkdMap = {}; window._bkdSelected = null; window._bkdCurrent = null;
 
 var FLEET = [];     // populated from API on load
@@ -3022,7 +3027,14 @@ function showConfirm(title, body, onConfirm){
   fresh.onclick = function(){ closeModal("confirm-modal"); onConfirm(); };
   openModal("confirm-modal");
 }
-function goHome(){ showPage("pg-home"); }
+var _holdCarId = null, _holdTimer = null;
+function releaseHold(){
+  if(!_holdCarId) return;
+  var cid = _holdCarId; _holdCarId = null;
+  clearInterval(_holdTimer); _holdTimer = null;
+  apiFetch("/payment/hold", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({carId:cid, sessionId:SESSION_ID}) }).catch(function(){});
+}
+function goHome(){ releaseHold(); showPage("pg-home"); }
 
 function showProfile(){ renderProfile(); showPage("pg-profile"); window.scrollTo(0,0); }
 function showTrips(){ showPage("pg-trips"); window.scrollTo(0,0); renderProfile(); }
@@ -3698,13 +3710,17 @@ function renderFleet(pickup, drop, searched, gridId, carsList){
     var avail = searched ? (car.availableNow !== undefined ? car.availableNow : isAvail(car, pickup, drop)) : true;
     var div = document.createElement("div");
     div.className = "car-card" + (searched && !avail ? " unavailable" : "");
-    var badge = searched ? (avail ? '<div class="avail-tag">Available ✓</div>' : '<div class="unavail-tag">⛔ Unavailable</div>') : "";
+    var isOnHold = searched && !avail && car.onHold;
+    var badge = searched ? (avail ? '<div class="avail-tag">Available ✓</div>' : (isOnHold ? '<div class="hold-tag">🔒 On Hold</div>' : '<div class="unavail-tag">⛔ Unavailable</div>')) : "";
     var btnTxt = searched ? "Book This Car →" : "View & Book →";
     var hasPhoto = !!car.imageUrl;
     var bookBtn = (!searched || avail)
       ? '<button class="btn btn-y btn-lg" onclick="openCar(this.dataset.id)" data-id="' + car.id + '">' + btnTxt + '</button>'
-      : '<div class="unavail-btn">⛔ Unavailable for selected dates</div>' +
-        '<div style="text-align:center;margin-top:8px"><a style="font-size:.78rem;color:var(--yd);font-weight:700;cursor:pointer;text-decoration:underline" onclick="openCar(\'' + car.id + '\')">Check available dates →</a></div>';
+      : isOnHold
+        ? '<div class="hold-btn">🔒 On Hold — check back in ~' + (car.holdMinutesLeft || 10) + ' min</div>' +
+          '<div style="text-align:center;margin-top:8px"><a style="font-size:.78rem;color:var(--yd);font-weight:700;cursor:pointer;text-decoration:underline" onclick="openCar(\'' + car.id + '\')">Check available dates →</a></div>'
+        : '<div class="unavail-btn">⛔ Unavailable for selected dates</div>' +
+          '<div style="text-align:center;margin-top:8px"><a style="font-size:.78rem;color:var(--yd);font-weight:700;cursor:pointer;text-decoration:underline" onclick="openCar(\'' + car.id + '\')">Check available dates →</a></div>';
     div.innerHTML =
       '<div class="car-img" style="' + (hasPhoto ? 'background:#000;background-image:url(\'' + car.imageUrl + '\');background-size:cover;background-position:center' : 'background:linear-gradient(135deg,' + car.color + ',' + car.color + '55)') + '">' +
         (hasPhoto ? '' : '<span style="font-size:4rem">' + car.emoji + '</span>') +
@@ -3850,9 +3866,19 @@ async function doSearch(){
   document.getElementById("results-sub").textContent     = "";
   showPage("pg-results");
   try {
-    var availableCars = await apiFetch("/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d));
+    var [availableCars, heldCars] = await Promise.all([
+      apiFetch("/fleet/available?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d)+"&session="+encodeURIComponent(SESSION_ID)),
+      apiFetch("/fleet/holds?pickup="+encodeURIComponent(p)+"&drop="+encodeURIComponent(d)+"&session="+encodeURIComponent(SESSION_ID)).catch(function(){ return []; }),
+    ]);
     var availableIds = new Set(availableCars.map(function(c){ return String(c._id || c.id); }));
-    FLEET.forEach(function(car){ car.availableNow = availableIds.has(String(car.id)); });
+    var holdMap = {};
+    (heldCars || []).forEach(function(h){ holdMap[String(h.carId)] = h.minutesLeft; });
+    FLEET.forEach(function(car){
+      car.availableNow = availableIds.has(String(car.id));
+      var ml = holdMap[String(car.id)];
+      car.onHold = !car.availableNow && ml != null;
+      car.holdMinutesLeft = ml || 0;
+    });
     var availCount = FLEET.filter(function(c){ return c.availableNow; }).length;
     document.getElementById("results-heading").textContent = availCount + " of " + FLEET.length + " cars available for your dates";
     document.getElementById("results-sub").textContent = "All cars are shown — unavailable ones will tell you so when you try to book.";
@@ -3946,7 +3972,10 @@ function openCar(id){
   buildHourOpts(document.getElementById("d-pickup-hour"), hp ? new Date(hp).getHours() : now.getHours());
   buildHourOpts(document.getElementById("d-drop-hour"),   hd ? new Date(hd).getHours() : now.getHours());
 
-  // Reset state
+  // Reset state — also release any previous hold (user switched car)
+  releaseHold();
+  var holdTimerEl = document.getElementById("car-hold-timer");
+  if(holdTimerEl) holdTimerEl.style.display = "none";
   document.getElementById("price-section").style.display  = "none";
   document.getElementById("sticky-total-bar").classList.remove("show");
   document.getElementById("success-section").style.display = "none";
@@ -4093,24 +4122,51 @@ function calcPrice(){
 
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");
-  // Check availability live against backend and block pay button if unavailable
+  // Check availability live + place a 10-min hold for this customer's session
   var unavailNotice2 = document.getElementById("unavail-notice");
   var payBtn = document.getElementById("pay-now-btn");
   if(unavailNotice2) unavailNotice2.style.display = "none";
   if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; payBtn.title = ""; }
   if(selCar && selCar.id && pv && dv){
-    apiFetch("/fleet/available?pickup="+encodeURIComponent(pv)+"&drop="+encodeURIComponent(dv))
-      .then(function(avCars){
-        var isAvailable = avCars.some(function(c){ return String(c._id||c.id) === String(selCar.id); });
-        if(!isAvailable){
-          if(unavailNotice2) unavailNotice2.style.display = "flex";
-          if(payBtn){ payBtn.disabled = true; payBtn.style.opacity = ".45"; payBtn.style.cursor = "not-allowed"; payBtn.title = "Car is unavailable for your selected dates"; }
-        } else {
-          if(unavailNotice2) unavailNotice2.style.display = "none";
-          if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; payBtn.title = ""; }
+    // Place hold first — this also tells us if the car is taken by someone else
+    apiFetch("/payment/hold", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({carId:selCar.id, pickupDate:new Date(pv).toISOString(), dropDate:new Date(dv).toISOString(), sessionId:SESSION_ID}) })
+      .then(function(holdResp){
+        // Hold placed — start countdown timer
+        _holdCarId = selCar.id;
+        clearInterval(_holdTimer);
+        var expiresAt = new Date(holdResp.expiresAt).getTime();
+        var timerEl = document.getElementById("car-hold-timer");
+        var cdEl = document.getElementById("car-hold-timer-countdown");
+        if(timerEl) timerEl.style.display = "block";
+        function tick(){
+          var secsLeft = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
+          var m = Math.floor(secsLeft / 60), s = secsLeft % 60;
+          if(cdEl) cdEl.textContent = m + ":" + (s < 10 ? "0" : "") + s;
+          if(secsLeft <= 0){
+            clearInterval(_holdTimer); _holdTimer = null;
+            if(timerEl) timerEl.style.display = "none";
+            if(unavailNotice2) unavailNotice2.style.display = "flex";
+            if(payBtn){ payBtn.disabled = true; payBtn.style.opacity = ".45"; payBtn.style.cursor = "not-allowed"; payBtn.title = "Hold expired — please recalculate price"; }
+          }
         }
+        tick();
+        _holdTimer = setInterval(tick, 1000);
+        if(unavailNotice2) unavailNotice2.style.display = "none";
+        if(payBtn){ payBtn.disabled = false; payBtn.style.opacity = ""; payBtn.style.cursor = ""; payBtn.title = ""; }
       })
-      .catch(function(){}); // silent — payNow() enforces it again at booking time
+      .catch(function(){
+        // Hold failed — car is likely booked/held by someone else
+        var timerEl = document.getElementById("car-hold-timer");
+        if(timerEl) timerEl.style.display = "none";
+        apiFetch("/fleet/available?pickup="+encodeURIComponent(pv)+"&drop="+encodeURIComponent(dv)+"&session="+encodeURIComponent(SESSION_ID))
+          .then(function(avCars){
+            var isAvailable = avCars.some(function(c){ return String(c._id||c.id) === String(selCar.id); });
+            if(!isAvailable){
+              if(unavailNotice2) unavailNotice2.style.display = "flex";
+              if(payBtn){ payBtn.disabled = true; payBtn.style.opacity = ".45"; payBtn.style.cursor = "not-allowed"; payBtn.title = "Car is unavailable for your selected dates"; }
+            }
+          }).catch(function(){});
+      });
   }
 
   // Reset coupon, deposit, trip protection
@@ -4191,6 +4247,7 @@ async function payNow(){
   var dropLoc   = (deliveryCharge > 0 && !isSame && dropAddress) ? dropAddress + " (Doorstep)" : pickupLoc;
 
   function finishBooking(result){
+    releaseHold(); // car is now booked — release the hold so it doesn't block the new booking record
     if(result.token){ authToken = result.token; setAuthToken(authToken); }
     myBookingIds.push(result.bookingId);
     cacheBookingLocally(result.booking || { bookingId: result.bookingId, carId: selCar.id, carName: selCar.name, pickup:{date:priceResult.pickup}, drop:{date:priceResult.drop}, total:priceResult.total, status:"pending_kyc" });
@@ -4207,10 +4264,10 @@ async function payNow(){
     if(isGuest){
       var guestPhone = bfPhone || (authToken && authToken.split("_")[1]) || userProfile.phone || "";
       orderEndpoint = "/payment/guest-order";
-      orderBody = { phone: guestPhone, name: bfName || userProfile.name || "", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice };
+      orderBody = { phone: guestPhone, name: bfName || userProfile.name || "", carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice, sessionId: SESSION_ID };
     } else {
       orderEndpoint = "/payment/order";
-      orderBody = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice };
+      orderBody = { carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc, deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice, sessionId: SESSION_ID };
     }
     var order = await apiFetch(orderEndpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(orderBody) });
     if(order.guestToken){ authToken = order.guestToken; setAuthToken(authToken); }
@@ -4233,7 +4290,7 @@ async function payNow(){
           var verifyBody = {
             razorpayOrderId: resp.razorpay_order_id, razorpayPaymentId: resp.razorpay_payment_id, razorpaySignature: resp.razorpay_signature,
             carId: selCar.id, pickupDate: pickupISO, dropDate: dropISO, pickupLocation: pickupLoc, dropLocation: dropLoc,
-            deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice,
+            deliveryCharge: chargeDeliveryFee, couponCode: couponCode, depositChoice: depositChoice, sessionId: SESSION_ID,
           };
           var result = await apiFetch("/payment/verify", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(verifyBody) });
           finishBooking(result);

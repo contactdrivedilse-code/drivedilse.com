@@ -24,28 +24,63 @@ Deno.serve(async (req) => {
   const path = url.pathname.replace("/fleet", "") || "/";
 
   try {
-    // GET /available?pickup=&drop=
+    // GET /available?pickup=&drop=&session=
     if (req.method === "GET" && path.startsWith("/available")) {
-      const pickup = url.searchParams.get("pickup");
-      const drop   = url.searchParams.get("drop");
+      const pickup  = url.searchParams.get("pickup");
+      const drop    = url.searchParams.get("drop");
+      const session = url.searchParams.get("session") || "";
       if (!pickup || !drop) return json({ error: "pickup and drop required" }, 400);
 
-      const pISO = new Date(pickup).toISOString();
-      const dISO = new Date(drop).toISOString();
+      const pISO   = new Date(pickup).toISOString();
+      const dISO   = new Date(drop).toISOString();
+      const nowISO = new Date().toISOString();
 
-      const [{ data: cars }, { data: pauses }, { data: booked }] = await Promise.all([
+      // Build hold query — exclude the requesting customer's own hold so they
+      // aren't blocked by their own reservation.
+      let holdsQ = sb.from("car_holds").select("car_id")
+        .lt("pickup_date", dISO).gt("drop_date", pISO).gt("expires_at", nowISO);
+      if (session) holdsQ = holdsQ.neq("session_id", session);
+
+      const [{ data: cars }, { data: pauses }, { data: booked }, { data: held }] = await Promise.all([
         sb.from("cars").select("*").eq("active", true),
         sb.from("car_pauses").select("car_id").lt("from_date", dISO).gt("to_date", pISO),
-        sb.from("bookings").select("car_id").in("status", ["confirmed", "active"])
+        sb.from("bookings").select("car_id")
+          .in("status", ["confirmed", "active", "pending_kyc", "pending"])
           .lt("pickup_date", dISO).gt("drop_date", pISO),
+        holdsQ,
       ]);
 
       const blocked = new Set([
         ...(pauses ?? []).map((p: Record<string, string>) => p.car_id),
         ...(booked  ?? []).map((b: Record<string, string>) => b.car_id),
+        ...(held    ?? []).map((h: Record<string, string>) => h.car_id),
       ]);
 
       return json((cars ?? []).filter((c: Record<string, unknown>) => !blocked.has(c.id as string)).map(mapCar));
+    }
+
+    // GET /holds?pickup=&drop=&session= — returns active holds by OTHER sessions
+    // so the fleet page can show "On Hold — check back in X min" on car cards.
+    if (req.method === "GET" && path === "/holds") {
+      const pickup  = url.searchParams.get("pickup");
+      const drop    = url.searchParams.get("drop");
+      const session = url.searchParams.get("session") || "";
+      if (!pickup || !drop) return json([]);
+
+      const pISO   = new Date(pickup).toISOString();
+      const dISO   = new Date(drop).toISOString();
+      const nowISO = new Date().toISOString();
+
+      let q = sb.from("car_holds").select("car_id, expires_at")
+        .lt("pickup_date", dISO).gt("drop_date", pISO).gt("expires_at", nowISO);
+      if (session) q = q.neq("session_id", session);
+
+      const { data } = await q;
+      const now = Date.now();
+      return json((data ?? []).map((h: Record<string, unknown>) => ({
+        carId: h.car_id,
+        minutesLeft: Math.max(1, Math.ceil((new Date(h.expires_at as string).getTime() - now) / 60000)),
+      })));
     }
 
     // GET /:id/next-available?from=ISO — when a car is booked/paused over the

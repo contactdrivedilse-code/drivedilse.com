@@ -25,14 +25,22 @@ function resolveDepositChoice(raw: unknown): "now" | "later" { return raw === "n
 // step, not at actual booking creation, so a paused car could still be
 // booked through it (e.g. via the homepage carousel, which deliberately
 // keeps unavailable cars visible/clickable).
-async function hasDateConflict(carId: string, pISO: string, dISO: string): Promise<boolean> {
-  const [{ data: bookingConflict }, { data: pauseConflict }] = await Promise.all([
+const HOLD_MINUTES = 10;
+
+async function hasDateConflict(carId: string, pISO: string, dISO: string, ownSession?: string): Promise<boolean> {
+  const nowISO = new Date().toISOString();
+  let holdsQ = sb.from("car_holds").select("id").eq("car_id", carId)
+    .lt("pickup_date", dISO).gt("drop_date", pISO).gt("expires_at", nowISO);
+  if (ownSession) holdsQ = holdsQ.neq("session_id", ownSession);
+
+  const [{ data: bookingConflict }, { data: pauseConflict }, { data: holdConflict }] = await Promise.all([
     sb.from("bookings").select("id").eq("car_id", carId)
       .in("status", ["confirmed", "active", "pending_kyc", "pending", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle(),
     sb.from("car_pauses").select("id").eq("car_id", carId)
       .lt("from_date", dISO).gt("to_date", pISO).maybeSingle(),
+    holdsQ.maybeSingle(),
   ]);
-  return !!bookingConflict || !!pauseConflict;
+  return !!bookingConflict || !!pauseConflict || !!holdConflict;
 }
 const CONFLICT_MSG = "This car is paused or already booked for these dates. Please choose different dates or another car.";
 
@@ -214,9 +222,48 @@ Deno.serve(async (req) => {
   const path = url.pathname.replace("/payment", "") || "/";
 
   try {
+    // POST /hold — temporarily reserves a car for the customer's session
+    if (req.method === "POST" && path === "/hold") {
+      const { carId, pickupDate, dropDate, sessionId } = await req.json();
+      if (!carId || !pickupDate || !dropDate || !sessionId)
+        return json({ error: "carId, pickupDate, dropDate, sessionId required" }, 400);
+
+      const pISO    = new Date(pickupDate).toISOString();
+      const dISO    = new Date(dropDate).toISOString();
+      const nowISO  = new Date().toISOString();
+      const expires = new Date(Date.now() + HOLD_MINUTES * 60000).toISOString();
+
+      // Block if someone else already holds or booked these dates
+      if (await hasDateConflict(carId, pISO, dISO, sessionId))
+        return json({ error: "Car is already held or booked for these dates." }, 409);
+
+      // Remove previous hold by same session for this car + clean expired holds
+      await Promise.all([
+        sb.from("car_holds").delete().eq("car_id", carId).eq("session_id", sessionId),
+        sb.from("car_holds").delete().eq("car_id", carId).lt("expires_at", nowISO),
+      ]);
+
+      const { data: hold, error } = await sb.from("car_holds").insert({
+        id: crypto.randomUUID(), car_id: carId,
+        pickup_date: pISO, drop_date: dISO,
+        session_id: sessionId, expires_at: expires,
+      }).select("id, expires_at").maybeSingle();
+      if (error) throw error;
+
+      return json({ holdId: (hold as Record<string, unknown>).id, expiresAt: expires, minutesLeft: HOLD_MINUTES });
+    }
+
+    // DELETE /hold — release a hold when customer navigates away or books successfully
+    if (req.method === "DELETE" && path === "/hold") {
+      const { carId, sessionId } = await req.json();
+      if (carId && sessionId)
+        await sb.from("car_holds").delete().eq("car_id", carId).eq("session_id", sessionId);
+      return json({ success: true });
+    }
+
     // POST /guest-order
     if (req.method === "POST" && path === "/guest-order") {
-      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gdc, couponCode, depositChoice } = await req.json();
+      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gdc, couponCode, depositChoice, sessionId: gSessionId } = await req.json();
       if (!phone || !/^[6-9]\d{9}$/.test(phone))
         return json({ error: "Valid 10-digit Indian mobile number required" }, 400);
 
@@ -225,7 +272,7 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString())) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof gdc === "number" && gdc > 0 ? gdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
@@ -280,13 +327,13 @@ Deno.serve(async (req) => {
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
-      const { carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: odc, couponCode, depositChoice } = await req.json();
+      const { carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: odc, couponCode, depositChoice, sessionId: oSessionId } = await req.json();
       const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
       const c = car as Record<string, unknown> | null;
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pISO = new Date(pickupDate).toISOString(), dISO = new Date(dropDate).toISOString();
-      if (await hasDateConflict(carId, pISO, dISO)) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(carId, pISO, dISO, oSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
@@ -310,7 +357,7 @@ Deno.serve(async (req) => {
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
-      const { razorpayOrderId, razorpayPaymentId, razorpaySignature, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: vdc, couponCode, depositChoice } = await req.json();
+      const { razorpayOrderId, razorpayPaymentId, razorpaySignature, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: vdc, couponCode, depositChoice, sessionId: vSessionId } = await req.json();
 
       if (!await verifyRazorpay(razorpayOrderId, razorpayPaymentId, razorpaySignature))
         return json({ error: "Payment verification failed" }, 400);
@@ -326,7 +373,7 @@ Deno.serve(async (req) => {
       // previously had NO conflict check at all (only /order, the earlier
       // preview step, did, and even that missed pauses). A booking made or
       // a pause added between /order and /verify could slip through.
-      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString())) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), vSessionId)) return json({ error: CONFLICT_MSG }, 400);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
@@ -387,7 +434,7 @@ Deno.serve(async (req) => {
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
-      const { carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: dc, couponCode, depositChoice } = await req.json();
+      const { carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: dc, couponCode, depositChoice, sessionId: dSessionId } = await req.json();
       const [{ data: car }, { data: profile }] = await Promise.all([
         sb.from("cars").select("*").eq("id", carId).maybeSingle(),
         sb.from("profiles").select("*").eq("id", user.id).maybeSingle(),
@@ -399,7 +446,7 @@ Deno.serve(async (req) => {
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const pISO = pickup.toISOString(), dISO = drop.toISOString();
-      if (await hasDateConflict(carId, pISO, dISO)) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(carId, pISO, dISO, dSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
@@ -451,7 +498,7 @@ Deno.serve(async (req) => {
 
     // POST /guest-direct — create booking for demo/offline users (no JWT, just phone)
     if (req.method === "POST" && path === "/guest-direct") {
-      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gddc, couponCode, depositChoice } = await req.json();
+      const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gddc, couponCode, depositChoice, sessionId: gdSessionId } = await req.json();
       if (!phone) return json({ error: "Phone required" }, 400);
 
       const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
@@ -459,7 +506,7 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pISO2 = new Date(pickupDate).toISOString(), dISO2 = new Date(dropDate).toISOString();
-      if (await hasDateConflict(carId, pISO2, dISO2)) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(carId, pISO2, dISO2, gdSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
       if (!prof) {

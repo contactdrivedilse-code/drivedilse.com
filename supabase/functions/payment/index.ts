@@ -44,10 +44,11 @@ async function hasDateConflict(carId: string, pISO: string, dISO: string, ownSes
 }
 const CONFLICT_MSG = "This car is paused or already booked for these dates. Please choose different dates or another car.";
 
-// Base tier hourly rates calibrated for a ₹50k/month car (pricePerDay ≈ ₹1701).
-// Any car scales proportionally: actual_rate = TIER_RATE × (car.pricePerDay / BASE_PPD)
-const BASE_PPD    = 1701; // price_per_day that yields ~₹50k/month
-const TIER_RATES  = { lt12: 200, lt24: 150, lt48: 130, lt168: 100, gte168: 100 };
+// Base tier hourly rates for the reference car (pricePerDay ≈ ₹1701).
+// All other cars scale proportionally: actual_rate = TIER_RATE × (car.pricePerDay / BASE_PPD)
+// Calibration: at lt24=60, a 24-hr weekday booking on the base car costs ≈ ₹1,530 incl. GST.
+const BASE_PPD    = 1701;
+const TIER_RATES  = { lt12: 80, lt24: 60, lt48: 52, lt168: 40, gte168: 25 };
 
 function getTierHourlyRate(pricePerDay: number, totalHours: number): number {
   const factor = pricePerDay / BASE_PPD;

@@ -1956,12 +1956,20 @@ document.addEventListener("DOMContentLoaded", async function(){
   window._cascadeCards=function(gridEl){
     var cards=Array.from(gridEl.children);
     cards.forEach(function(card,i){
-      card.style.cssText+='opacity:0;transform:translateY(18px)';
+      card.style.opacity='0';
+      card.style.transform='translateY(18px)';
+      var stagger=i*65;
       setTimeout(function(){
-        card.style.transition='opacity .42s ease '+i*65+'ms,transform .42s cubic-bezier(.2,.8,.2,1) '+i*65+'ms';
+        card.style.transition='opacity .42s ease '+stagger+'ms,transform .42s cubic-bezier(.2,.8,.2,1) '+stagger+'ms';
         card.style.opacity='1';
         card.style.transform='none';
-      },20);
+        // Clear inline styles after animation finishes so CSS hover transitions work normally
+        setTimeout(function(){
+          card.style.transition='';
+          card.style.opacity='';
+          card.style.transform='';
+        }, 500+stagger);
+      },16);
     });
   };
 })();

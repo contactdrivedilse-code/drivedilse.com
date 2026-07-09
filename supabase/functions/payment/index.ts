@@ -36,29 +36,88 @@ async function hasDateConflict(carId: string, pISO: string, dISO: string): Promi
 }
 const CONFLICT_MSG = "This car is paused or already booked for these dates. Please choose different dates or another car.";
 
-function calcMultiplier(hours: number): number {
-  const days = hours / 24;
-  if (hours <= 8)  return 1.30;
-  if (hours <= 12) return 1.15;
-  if (days <= 1)   return 1.00;
-  if (days <= 3)   return 0.95;
-  if (days <= 5)   return 0.92;
-  if (days <= 7)   return 0.90;
-  if (days <= 14)  return 0.85;
-  if (days <= 21)  return 0.80;
-  return 0.75;
+// Base tier hourly rates calibrated for a ₹50k/month car (pricePerDay ≈ ₹1701).
+// Any car scales proportionally: actual_rate = TIER_RATE × (car.pricePerDay / BASE_PPD)
+const BASE_PPD    = 1701; // price_per_day that yields ~₹50k/month
+const TIER_RATES  = { lt12: 200, lt24: 150, lt48: 130, lt168: 100, gte168: 100 };
+
+function getTierHourlyRate(pricePerDay: number, totalHours: number): number {
+  const factor = pricePerDay / BASE_PPD;
+  if (totalHours < 12)  return TIER_RATES.lt12   * factor;
+  if (totalHours < 24)  return TIER_RATES.lt24   * factor;
+  if (totalHours < 48)  return TIER_RATES.lt48   * factor;
+  if (totalHours < 168) return TIER_RATES.lt168  * factor;
+  return TIER_RATES.gte168 * factor;
+}
+
+// Indian national / public holidays — update annually.
+// Dates that are also weekends get the HIGHER of the two rates (holiday wins if >= weekend).
+const HOLIDAYS = new Set([
+  // 2026
+  "2026-01-01","2026-01-14","2026-01-26",
+  "2026-03-23","2026-03-30","2026-04-02","2026-04-03","2026-04-06","2026-04-14",
+  "2026-05-01","2026-05-23",
+  "2026-06-07","2026-07-27",
+  "2026-08-15","2026-08-19",
+  "2026-09-04","2026-09-18",
+  "2026-10-02","2026-10-21",
+  "2026-11-08","2026-11-26",
+  "2026-12-25",
+  // 2027
+  "2027-01-01","2027-01-14","2027-01-26",
+  "2027-03-12","2027-03-19","2027-03-31","2027-04-14","2027-04-26",
+  "2027-05-01","2027-05-13",
+  "2027-06-27",
+  "2027-08-15","2027-08-28",
+  "2027-09-24",
+  "2027-10-02","2027-10-10","2027-10-28",
+  "2027-11-18",
+  "2027-12-25",
+]);
+
+function getDayType(dateStr: string): "holiday" | "weekend" | "weekday" {
+  if (HOLIDAYS.has(dateStr)) return "holiday";
+  const dow = new Date(dateStr + "T00:00:00Z").getUTCDay();
+  if (dow === 0 || dow === 6) return "weekend";
+  return "weekday";
+}
+
+function getDayMultiplier(type: "holiday" | "weekend" | "weekday"): number {
+  if (type === "holiday") return 1.10;
+  if (type === "weekend") return 1.20;
+  return 0.90;
+}
+
+// Converts a UTC ms timestamp to an IST calendar date string "YYYY-MM-DD".
+function toISTDate(ms: number): string {
+  const ist = new Date(ms + 5.5 * 3600000);
+  return ist.toISOString().slice(0, 10);
 }
 
 function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
-  const hours    = (drop.getTime() - pickup.getTime()) / 3600000;
-  const mult     = calcMultiplier(hours);
-  const base     = Math.round(pricePerDay * mult * hours / 24);
-  const gst      = Math.round(base * 0.18);
-  const total    = base + gst;
-  const full     = Math.round(pricePerDay * hours / 24);
-  const discount = Math.max(0, full - base);
-  const days     = Math.max(1, Math.ceil(hours / 24));
-  return { base, gst, total, discount, days };
+  const totalMs = drop.getTime() - pickup.getTime();
+  const hours   = totalMs / 3600000;
+  if (hours <= 0) return { base: 0, gst: 0, total: 0, discount: 0, days: 0 };
+
+  // Select per-hour rate based on total booking duration, scaled to this car's pricePerDay.
+  const hourlyRate = getTierHourlyRate(pricePerDay, hours);
+
+  // Walk in 24-hour chunks applying day-type multiplier (weekday×0.9, weekend×1.2, holiday×1.1).
+  let rawBase = 0;
+  let cur = pickup.getTime();
+  while (cur < drop.getTime()) {
+    const chunkEnd  = Math.min(cur + 24 * 3600000, drop.getTime());
+    const chunkHrs  = (chunkEnd - cur) / 3600000;
+    const dateStr   = toISTDate(cur);
+    const mult      = getDayMultiplier(getDayType(dateStr));
+    rawBase += hourlyRate * mult * chunkHrs;
+    cur = chunkEnd;
+  }
+  const base  = Math.round(rawBase);
+  const gst   = Math.round(base * 0.18);
+  const total = base + gst;
+  const days  = Math.max(1, Math.ceil(hours / 24));
+  return { base, gst, total, discount: 0, days };
 }
 
 // `verifiedUserId` must come from a real (non-guest) OTP-verified JWT — guest/demo bookings never pass one,

@@ -887,6 +887,14 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <div class="maint-title">We'll be back shortly!</div>
   <div class="maint-sub">Our site is currently under maintenance. We're working hard to improve your experience — check back soon.</div>
   <a class="maint-wa" href="https://wa.me/919999999999" target="_blank">&#128172; WhatsApp Us for Urgent Bookings</a>
+  <div style="margin-top:28px">
+    <button onclick="document.getElementById('maint-early-access').style.display='block';this.style.display='none'" style="background:none;border:1.5px solid #ccc;border-radius:20px;padding:8px 20px;font-size:.78rem;font-weight:600;color:#888;cursor:pointer">Early Access</button>
+    <div id="maint-early-access" style="display:none;margin-top:12px">
+      <input id="maint-code-inp" type="password" placeholder="Enter access code" style="padding:10px 14px;border:1.5px solid #ddd;border-radius:10px;font-size:.85rem;width:200px;outline:none">
+      <button onclick="checkEarlyAccess()" style="margin-left:8px;background:#f5c518;border:none;border-radius:10px;padding:10px 18px;font-weight:800;font-size:.85rem;cursor:pointer">Go →</button>
+      <div id="maint-code-err" style="color:#c0392b;font-size:.75rem;margin-top:6px"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ======== SITE LOADER ======== -->
@@ -1989,7 +1997,7 @@ window.addEventListener('scroll',function(){
       <div class="rate-box">
         <div style="font-size:.67rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px">Base Rate</div>
         <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.9rem;font-weight:900;color:var(--yd)" id="d-rate"></div>
-        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Discounts on longer bookings</div>
+        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Incl. all taxes</div>
       </div>
       <div class="tag" id="booking-tag">Book This Car</div>
       <div class="unavail-notice" id="unavail-notice" style="display:none">
@@ -2069,6 +2077,7 @@ window.addEventListener('scroll',function(){
               <div id="r-coupon-row" style="display:none;justify-content:space-between"><span style="font-size:.76rem;color:#15803d">🎁 Coupon (<span id="r-coupon-code"></span>)</span><span style="font-size:.8rem;font-weight:700;color:#15803d" id="r-coupon-amt"></span></div>
               <div style="display:flex;justify-content:space-between"><span style="font-size:.76rem;font-weight:700">Total Payable</span><span style="font-size:.85rem;font-weight:800;color:var(--yd)" id="r-fin"></span></div>
             </div>
+            <div id="r-day-breakdown" style="display:none;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
             <div style="font-size:.68rem;color:var(--ts);text-align:center;margin-top:10px">GST inclusive · No hidden charges</div>
 
             <div class="offers-card" id="explore-offers-card" onclick="openOffersModal()">
@@ -2759,6 +2768,17 @@ window.addEventListener('scroll',function(){
 // ── API CONFIG ──
 // ── MAINTENANCE MODE — set to false to bring site back online ──
 var MAINTENANCE = true;
+var EARLY_ACCESS_CODE = "dilse2026";
+function checkEarlyAccess(){
+  var code = document.getElementById("maint-code-inp").value.trim();
+  if(code === EARLY_ACCESS_CODE){
+    localStorage.setItem("dds_early_access","1");
+    document.getElementById("maintenance-screen").classList.remove("on");
+  } else {
+    document.getElementById("maint-code-err").textContent = "Incorrect code. Try again.";
+  }
+}
+if(localStorage.getItem("dds_early_access") === "1") MAINTENANCE = false;
 if(MAINTENANCE){ document.getElementById("maintenance-screen").classList.add("on"); }
 
 var API = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
@@ -3432,6 +3452,88 @@ function drmContinue(){
 }
 
 // ── FLEET ──
+// ── DYNAMIC PRICING ──────────────────────────────────────────────────────────
+var HOLIDAYS = new Set([
+  // 2026
+  "2026-01-01","2026-01-14","2026-01-26",
+  "2026-03-23","2026-03-30","2026-04-02","2026-04-03","2026-04-06","2026-04-14",
+  "2026-05-01","2026-05-23",
+  "2026-06-07","2026-07-27",
+  "2026-08-15","2026-08-19",
+  "2026-09-04","2026-09-18",
+  "2026-10-02","2026-10-21",
+  "2026-11-08","2026-11-26",
+  "2026-12-25",
+  // 2027
+  "2027-01-01","2027-01-14","2027-01-26",
+  "2027-03-12","2027-03-19","2027-03-31","2027-04-14","2027-04-26",
+  "2027-05-01","2027-05-13",
+  "2027-06-27",
+  "2027-08-15","2027-08-28",
+  "2027-09-24",
+  "2027-10-02","2027-10-10","2027-10-28",
+  "2027-11-18",
+  "2027-12-25",
+]);
+
+function getDayType(dateStr){
+  if(HOLIDAYS.has(dateStr)) return "holiday";
+  var d = new Date(dateStr + "T00:00:00");
+  var dow = d.getDay();
+  if(dow === 0 || dow === 6) return "weekend";
+  return "weekday";
+}
+function getDayMult(type){
+  if(type === "holiday") return 1.10;
+  if(type === "weekend") return 1.20;
+  return 0.90;
+}
+// Returns the local YYYY-MM-DD for a JS Date (user's timezone = IST on Indian devices)
+function toLocalDateStr(dt){
+  var y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,"0"), d2 = String(dt.getDate()).padStart(2,"0");
+  return y+"-"+m+"-"+d2;
+}
+// Tier hourly rates calibrated for a ₹50k/month car (baseRate ≈ ₹1701/day).
+// All other cars scale proportionally via their baseRate.
+var BASE_PPD_REF = 1701;
+var TIER_RATES_HR = {lt12:200, lt24:150, lt48:130, lt168:100, gte168:100};
+function getTierHourlyRate(baseRate, hrs){
+  var factor = baseRate / BASE_PPD_REF;
+  if(hrs < 12)  return TIER_RATES_HR.lt12  * factor;
+  if(hrs < 24)  return TIER_RATES_HR.lt24  * factor;
+  if(hrs < 48)  return TIER_RATES_HR.lt48  * factor;
+  if(hrs < 168) return TIER_RATES_HR.lt168 * factor;
+  return TIER_RATES_HR.gte168 * factor;
+}
+
+function calcDynamicPrice(baseRate, pickupISO, dropISO){
+  var pickup = new Date(pickupISO), drop = new Date(dropISO);
+  var totalMs = drop - pickup, hrs = totalMs / 3600000;
+  if(hrs <= 0) return {base:0,gst:0,total:0,hours:0,days:0,breakdown:[]};
+  // Select hourly rate by booking duration tier
+  var hourlyRate = getTierHourlyRate(baseRate, hrs);
+  var rawBase = 0, breakdown = [], cur = pickup.getTime();
+  while(cur < drop.getTime()){
+    var chunkEnd  = Math.min(cur + 24*3600000, drop.getTime());
+    var chunkHrs  = (chunkEnd - cur) / 3600000;
+    var dateStr   = toLocalDateStr(new Date(cur));
+    var type      = getDayType(dateStr);
+    var mult      = getDayMult(type);
+    rawBase += hourlyRate * mult * chunkHrs;
+    // Group consecutive same-type chunks for display
+    if(breakdown.length && breakdown[breakdown.length-1].type === type){
+      breakdown[breakdown.length-1].hours += chunkHrs;
+    } else {
+      breakdown.push({date:dateStr, type:type, mult:mult, hours:chunkHrs, rate:Math.round(hourlyRate*mult*24)});
+    }
+    cur = chunkEnd;
+  }
+  var base = Math.round(rawBase);
+  var gst  = Math.round(base * 0.18);
+  return {base:base, gst:gst, total:base+gst, hours:hrs, days:Math.max(1,Math.ceil(hrs/24)), breakdown:breakdown};
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function isAvail(car, pickup, drop){
   if(!car.active) return false;
   var p = new Date(pickup), d = new Date(drop);
@@ -3968,20 +4070,14 @@ function calcPrice(){
   if(d <= p){ alert("Drop must be after pickup."); return; }
   var hrs = (d - p) / 3600000;
   if(hrs < 6){ alert("Minimum booking is 6 hours."); return; }
-  var days = hrs / 24, rate = selCar.rate, r, disc = "";
-  if(hrs <= 8)       { r = rate * 1.30; }
-  else if(hrs <= 12) { r = rate * 1.15; }
-  else if(days <= 1) { r = rate; }
-  else if(days <= 3) { r = rate * 0.95; disc = "5% off"; }
-  else if(days <= 5) { r = rate * 0.92; disc = "8% off"; }
-  else if(days <= 7) { r = rate * 0.90; disc = "10% off"; }
-  else if(days <= 14){ r = rate * 0.85; disc = "15% off"; }
-  else if(days <= 21){ r = rate * 0.80; disc = "20% off"; }
-  else               { r = rate * 0.75; disc = "25% off"; }
-  var base = Math.round(r * days), gst = Math.round(base * 0.18), total = base + gst;
+
+  var pr = calcDynamicPrice(selCar.rate, pv, dv);
+  var base = pr.base, gst = pr.gst, total = pr.total;
   var perhr = Math.round(total / hrs), h = Math.round(hrs);
-  var dlbl = days >= 1 ? (days % 1 === 0 ? Math.round(days) + " days" : days.toFixed(1) + " days") : h + " hrs";
-  priceResult = {base:base, gst:gst, total:total, perhr:perhr, h:h, dlbl:dlbl, disc:disc, pickup:pv, drop:dv};
+  var days = pr.days;
+  var dlbl = hrs < 24 ? (h + " hr" + (h===1?"":"s")) : (Math.round(days) + (days===1?" day":" days"));
+  priceResult = {base:base, gst:gst, total:total, perhr:perhr, h:h, dlbl:dlbl, disc:"", pickup:pv, drop:dv};
+
   document.getElementById("r-total").textContent = inr(total);
   document.getElementById("r-dur").textContent   = dlbl;
   document.getElementById("r-perhr").textContent = inr(perhr) + "/hr";
@@ -3991,9 +4087,10 @@ function calcPrice(){
   document.getElementById("r-fin").textContent   = inr(total);
   document.getElementById("stb-total").textContent = inr(total);
   document.getElementById("tpc-total").textContent = inr(total);
+
   var db = document.getElementById("r-disc");
-  if(disc){ db.textContent = disc; db.style.display = "inline-block"; }
-  else { db.style.display = "none"; }
+  if(db) db.style.display = "none";
+
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");
   // Check availability live against backend and block pay button if unavailable
@@ -4015,12 +4112,11 @@ function calcPrice(){
       })
       .catch(function(){}); // silent — payNow() enforces it again at booking time
   }
-  // Reset applied coupon for this calculation
+
+  // Reset coupon, deposit, trip protection
   appliedCoupon = null; couponDiscount = 0;
   updateOfferAppliedMsg();
-  // Reset Refundable Deposit choice to default (Pay Later)
   selectDeposit("later");
-  // Reset Trip Protection choice for this calculation
   tripProtectionChoice = null; tripProtectionFee = 0;
   var tpYes = document.getElementById("tp-opt-yes"), tpNo = document.getElementById("tp-opt-no");
   if(tpYes) tpYes.classList.remove("on");
@@ -4124,7 +4220,7 @@ async function payNow(){
       amount: Math.round(order.amount * 100),
       currency: order.currency || "INR",
       name: "DriveDilSe",
-      description: selCar.name + " — " + (priceResult.days || order.days) + " day(s)",
+      description: selCar.name + " — " + (priceResult.dlbl || (priceResult.days || order.days) + " day(s)"),
       order_id: order.orderId,
       prefill: {
         name: bfName || userProfile.name || "",

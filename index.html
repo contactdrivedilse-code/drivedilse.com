@@ -3690,7 +3690,7 @@ function toLocalDateStr(dt){
 // Tier hourly rates calibrated for a ₹50k/month car (baseRate ≈ ₹1701/day).
 // All other cars scale proportionally via their baseRate.
 var BASE_PPD_REF = 1701;
-var TIER_RATES_HR = {lt12:80, lt24:60, lt48:52, lt168:40, gte168:25};
+var TIER_RATES_HR = {lt12:80, lt24:60, lt48:52, lt168:40, gte168:52};
 function getTierHourlyRate(baseRate, hrs){
   var factor = baseRate / BASE_PPD_REF;
   if(hrs < 12)  return TIER_RATES_HR.lt12  * factor;

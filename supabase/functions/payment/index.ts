@@ -48,7 +48,7 @@ const CONFLICT_MSG = "This car is paused or already booked for these dates. Plea
 // All other cars scale proportionally: actual_rate = TIER_RATE × (car.pricePerDay / BASE_PPD)
 // Calibration: at lt24=60, a 24-hr weekday booking on the base car costs ≈ ₹1,530 incl. GST.
 const BASE_PPD    = 1701;
-const TIER_RATES  = { lt12: 80, lt24: 60, lt48: 52, lt168: 40, gte168: 25 };
+const TIER_RATES  = { lt12: 80, lt24: 60, lt48: 52, lt168: 40, gte168: 52 };
 
 function getTierHourlyRate(pricePerDay: number, totalHours: number): number {
   const factor = pricePerDay / BASE_PPD;

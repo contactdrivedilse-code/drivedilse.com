@@ -900,26 +900,28 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   background:radial-gradient(circle,rgba(245,197,24,.07) 0%,transparent 60%);
   pointer-events:none;z-index:0
 }
-.intro-eyebrow,.intro-headline,.intro-sub,.intro-cta-row,.intro-scroll-cue{position:relative;z-index:1}
-.intro-eyebrow{
+.intro-logo,.intro-tagline,.intro-sub,.intro-cta-row,.intro-scroll-cue{position:relative;z-index:1}
+@keyframes introLogoIn{from{opacity:0;transform:scale(.88) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes introLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.intro-logo{margin-bottom:32px}
+.intro-logo-img{
+  width:300px;max-width:76vw;display:block;
+  animation:introLogoIn .85s cubic-bezier(.2,.8,.2,1) .25s both,
+             introLogoFloat 4.2s ease-in-out 1.1s infinite
+}
+.intro-tagline{
   font-size:.62rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;
-  color:var(--ts);margin-bottom:28px;
-  animation:heroFadeUp .5s cubic-bezier(.2,.8,.2,1) .3s both
+  color:var(--ts);margin-bottom:18px;
+  animation:heroFadeUp .5s cubic-bezier(.2,.8,.2,1) .7s both
 }
-.intro-headline{
-  font-family:'Playfair Display',Georgia,serif;font-weight:700;
-  font-size:5rem;line-height:1.08;color:var(--t);margin:0 0 28px;
-  animation:heroFadeUp .68s cubic-bezier(.2,.8,.2,1) .5s both
-}
-.intro-gold{color:var(--yd);font-style:italic}
 .intro-sub{
   font-size:.98rem;color:#999;max-width:380px;line-height:1.85;
   margin:0 0 36px;
-  animation:heroFadeUp .55s cubic-bezier(.2,.8,.2,1) .75s both
+  animation:heroFadeUp .55s cubic-bezier(.2,.8,.2,1) .88s both
 }
 .intro-cta-row{
   display:flex;gap:12px;justify-content:center;flex-wrap:wrap;
-  animation:heroFadeUp .5s cubic-bezier(.2,.8,.2,1) .95s both
+  animation:heroFadeUp .5s cubic-bezier(.2,.8,.2,1) 1.05s both
 }
 .intro-scroll-cue{
   position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
@@ -1326,8 +1328,10 @@ function csTick(){
 
   <!-- INTRO -->
   <section class="intro-sec">
-    <div class="intro-eyebrow">&#10022; Pune &middot; Self-Drive &amp; Monthly Lease</div>
-    <h2 class="intro-headline">Drive<br><span class="intro-gold">Dil Se.</span></h2>
+    <div class="intro-logo">
+      <img src="/assets/logo.png" alt="DriveDilSe" class="intro-logo-img">
+    </div>
+    <div class="intro-tagline">&#10022; Pune &middot; Self-Drive &amp; Monthly Lease</div>
     <p class="intro-sub">Well-maintained cars on your schedule.<br>No driver. No hidden charges. Just the open road.</p>
     <div class="intro-cta-row">
       <button class="btn btn-y btn-md" onclick="goTo('search-sec')">Book a Car &rarr;</button>

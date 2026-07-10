@@ -4064,9 +4064,29 @@ function getDayType(dateStr){
   return "weekday";
 }
 function getDayMult(type){
-  if(type === "holiday") return 1.10;
-  if(type === "weekend") return 1.20;
-  return 0.90;
+  if(type === "holiday") return 1.40;  // spec: +40% festival/holiday
+  if(type === "weekend") return 1.20;  // spec: +20% Fri-Sun
+  return 1.0;                          // spec: weekdays at base
+}
+// Lead time multiplier — urgency / advance booking
+function getLeadTimeMult(pickupISO){
+  var hoursAhead = (new Date(pickupISO) - Date.now()) / 3600000;
+  if(hoursAhead < 24)    return 1.15; // same-day or within 24 h
+  if(hoursAhead < 8*24)  return 1.0;  // standard 2-7 day window
+  return 1.20;                         // 8+ days: inventory protection
+}
+// Fleet utilization multiplier — derived from live search results
+function getUtilizationMult(carCat){
+  if(!carCat) return 1.0;
+  var inCat = FLEET.filter(function(c){ return c.cat === carCat; });
+  if(!inCat.length || inCat[0].availableNow === undefined) return 1.0;
+  var total   = inCat.length;
+  var avail   = inCat.filter(function(c){ return c.availableNow; }).length;
+  var utilPct = (total - avail) / total;
+  if(utilPct <= 0.30) return 0.85;  // low — stimulate demand
+  if(utilPct <= 0.70) return 1.0;   // healthy
+  if(utilPct <= 0.85) return 1.15;  // high
+  return 1.40;                       // critical — aggressive surge
 }
 // Returns the local YYYY-MM-DD for a JS Date (user's timezone = IST on Indian devices)
 function toLocalDateStr(dt){
@@ -4086,31 +4106,35 @@ function getTierHourlyRate(baseRate, hrs){
   return TIER_RATES_HR.gte168 * factor;
 }
 
-function calcDynamicPrice(baseRate, pickupISO, dropISO){
+// Final Price = Base × Lead Time × Calendar × Utilization  (cap: 1.6×)
+function calcDynamicPrice(baseRate, pickupISO, dropISO, carCat){
   var pickup = new Date(pickupISO), drop = new Date(dropISO);
-  var totalMs = drop - pickup, hrs = totalMs / 3600000;
+  var hrs = (drop - pickup) / 3600000;
   if(hrs <= 0) return {base:0,gst:0,total:0,hours:0,days:0,breakdown:[]};
-  // Select hourly rate by booking duration tier
   var hourlyRate = getTierHourlyRate(baseRate, hrs);
-  var rawBase = 0, breakdown = [], cur = pickup.getTime();
+  var leadMult   = getLeadTimeMult(pickupISO);
+  var utilMult   = getUtilizationMult(carCat);
+  var rawBase = 0, breakdown = [], hasCap = false, cur = pickup.getTime();
   while(cur < drop.getTime()){
-    var chunkEnd  = Math.min(cur + 24*3600000, drop.getTime());
-    var chunkHrs  = (chunkEnd - cur) / 3600000;
-    var dateStr   = toLocalDateStr(new Date(cur));
-    var type      = getDayType(dateStr);
-    var mult      = getDayMult(type);
-    rawBase += hourlyRate * mult * chunkHrs;
-    // Group consecutive same-type chunks for display
+    var chunkEnd = Math.min(cur + 24*3600000, drop.getTime());
+    var chunkHrs = (chunkEnd - cur) / 3600000;
+    var dateStr  = toLocalDateStr(new Date(cur));
+    var type     = getDayType(dateStr);
+    var calMult  = getDayMult(type);
+    var combined = leadMult * calMult * utilMult;
+    if(combined > 1.6){ combined = 1.6; hasCap = true; }
+    rawBase += hourlyRate * combined * chunkHrs;
     if(breakdown.length && breakdown[breakdown.length-1].type === type){
       breakdown[breakdown.length-1].hours += chunkHrs;
     } else {
-      breakdown.push({date:dateStr, type:type, mult:mult, hours:chunkHrs, rate:Math.round(hourlyRate*mult*24)});
+      breakdown.push({date:dateStr, type:type, mult:combined, hours:chunkHrs, rate:Math.round(hourlyRate*combined*24)});
     }
     cur = chunkEnd;
   }
   var base = Math.round(rawBase);
   var gst  = Math.round(base * 0.18);
-  return {base:base, gst:gst, total:base+gst, hours:hrs, days:Math.max(1,Math.ceil(hrs/24)), breakdown:breakdown};
+  return {base:base, gst:gst, total:base+gst, hours:hrs, days:Math.max(1,Math.ceil(hrs/24)),
+          breakdown:breakdown, leadMult:leadMult, utilMult:utilMult, hasCap:hasCap};
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -4682,7 +4706,7 @@ function calcPrice(){
     return;
   }
 
-  var pr = calcDynamicPrice(selCar.rate, pv, dv);
+  var pr = calcDynamicPrice(selCar.rate, pv, dv, selCar.cat);
   var base = pr.base, gst = pr.gst, total = pr.total;
   var perhr = Math.round(total / hrs), h = Math.round(hrs);
   var days = pr.days;
@@ -4701,6 +4725,26 @@ function calcPrice(){
 
   var db = document.getElementById("r-disc");
   if(db) db.style.display = "none";
+
+  // Pricing factor pills
+  var bdEl = document.getElementById("r-day-breakdown");
+  if(bdEl){
+    var pills = [];
+    if(pr.leadMult === 1.15) pills.push(["⚡ Same-day booking",       "#fff3cd","#c8960a"]);
+    else if(pr.leadMult === 1.20) pills.push(["📅 Advance booking +20%", "#e8f5e9","#388e3c"]);
+    if(pr.utilMult === 0.85)      pills.push(["🎉 15% off · Low demand", "#e8f5e9","#43a047"]);
+    else if(pr.utilMult === 1.15) pills.push(["📈 High demand",           "#fff8e1","#f59e0b"]);
+    else if(pr.utilMult === 1.40) pills.push(["🔥 Peak demand",           "#ffebee","#e53935"]);
+    if(pr.breakdown && pr.breakdown.some(function(b){return b.type==="holiday";}))
+      pills.push(["🎊 Holiday date",  "#f3e5f5","#8e24aa"]);
+    else if(pr.breakdown && pr.breakdown.some(function(b){return b.type==="weekend";}))
+      pills.push(["📆 Weekend rate",  "#e3f2fd","#1976d2"]);
+    if(pr.hasCap) pills.push(["🔒 Rate capped at 1.6×", "#f5f5f5","#999"]);
+    bdEl.innerHTML = pills.map(function(p){
+      return '<span style="display:inline-flex;align-items:center;font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;background:'+p[1]+';border:1px solid '+p[2]+';color:#333">'+p[0]+'</span>';
+    }).join("");
+    bdEl.style.display = pills.length ? "flex" : "none";
+  }
 
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");

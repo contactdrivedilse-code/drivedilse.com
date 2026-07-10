@@ -2201,35 +2201,9 @@ document.addEventListener("DOMContentLoaded", async function(){
         }
       }
 
-      // Step 3: Feather edges — smooth alpha of pixels adjacent to transparent bg
-      var alpha = new Float32Array(w*h);
-      for(var i=0;i<d.length;i+=4) alpha[i/4]=d[i+3];
-      for(var y=1;y<h-1;y++){
-        for(var xx=1;xx<w-1;xx++){
-          var idx=y*w+xx;
-          if(alpha[idx]===0) continue;
-          var transp=0, total=0;
-          for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++){
-            var ni=(y+dy)*w+(xx+dx);
-            if(ni>=0&&ni<w*h){ total++; if(alpha[ni]===0) transp++; }
-          }
-          if(transp>0) d[idx*4+3]=Math.round(alpha[idx]*(1-Math.pow(transp/total,0.6)*0.85));
-        }
-      }
-
       x.putImageData(id,0,0);
-
-      // Render at 2× size onto a smaller canvas for crisp downsampling
-      var c2 = document.createElement('canvas');
-      var sz = 420;
-      c2.width = sz; c2.height = sz;
-      var x2 = c2.getContext('2d');
-      x2.imageSmoothingEnabled = true;
-      x2.imageSmoothingQuality = 'high';
-      x2.drawImage(c, 0, 0, sz, sz);
-
       var el=document.getElementById('ld-logo-img');
-      if(el) el.src=c2.toDataURL('image/png');
+      if(el) el.src=c.toDataURL('image/png');
     };
     src.src='assets/logo-icon.png';
   })();
@@ -2237,7 +2211,7 @@ document.addEventListener("DOMContentLoaded", async function(){
   // Progress bar + counter
   var bar=document.getElementById('ld-bar-fill');
   var pct=document.getElementById('ld-pct');
-  var t0=Date.now(), DUR=5000;
+  var t0=Date.now(), DUR=3000;
   function tick(){
     var p=Math.min(100,Math.floor((Date.now()-t0)/DUR*100));
     if(bar) bar.style.width=p+'%';
@@ -4503,7 +4477,7 @@ function hideSiteLoader(){
   var el = document.getElementById("site-loader");
   if(!el) return;
   _loaderHiding = true;
-  var wait = Math.max(0, 5000 - (Date.now() - _loaderStart));
+  var wait = Math.max(0, 3000 - (Date.now() - _loaderStart));
   setTimeout(function(){
     document.dispatchEvent(new Event('loaderExit'));
     el.classList.add('ld-exit');
@@ -4511,7 +4485,7 @@ function hideSiteLoader(){
   }, wait);
 }
 loadFleet().finally(hideSiteLoader);
-setTimeout(hideSiteLoader, 5600); // safety net
+setTimeout(hideSiteLoader, 3600); // safety net
 initCookieConsent();
 preloadUserProfile();
 initPwaInstall();

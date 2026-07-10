@@ -1110,6 +1110,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <div class="ld-sweep"></div>
   <div class="ld-content">
     <div class="ld-logo-ring">
+      <div class="ld-logo-bg"></div>
       <img src="assets/logo-icon.png" alt="DriveDilSe" class="ld-logo-img" id="ld-logo-img">
     </div>
     <div class="ld-name" id="ld-name"></div>
@@ -1146,15 +1147,25 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 
 /* Logo */
 .ld-logo-ring{
+  position:relative;width:220px;height:220px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   margin-bottom:30px;
-  transform:translateX(-18px);
   animation:ldRingIn .95s cubic-bezier(.2,.8,.2,1) .55s both;
 }
-@keyframes ldRingIn{from{opacity:0;transform:scale(.65);filter:blur(10px)}60%{filter:blur(0)}to{opacity:1;transform:scale(1);filter:blur(0)}}
+.ld-logo-bg{
+  position:absolute;inset:0;border-radius:50%;background:#fff;
+  box-shadow:0 0 0 1.5px rgba(245,197,24,.45),0 0 0 10px rgba(245,197,24,.06),0 0 55px rgba(245,197,24,.2),0 0 110px rgba(245,197,24,.09);
+  animation:ldGlowPulse 2.6s ease-in-out 1.6s infinite;
+}
+@keyframes ldGlowPulse{
+  0%,100%{box-shadow:0 0 0 1.5px rgba(245,197,24,.45),0 0 0 10px rgba(245,197,24,.06),0 0 55px rgba(245,197,24,.2),0 0 110px rgba(245,197,24,.09)}
+  50%{box-shadow:0 0 0 2px rgba(245,197,24,.8),0 0 0 16px rgba(245,197,24,.1),0 0 80px rgba(245,197,24,.35),0 0 160px rgba(245,197,24,.14)}
+}
+@keyframes ldRingIn{from{opacity:0;transform:scale(.65);filter:blur(12px)}60%{filter:blur(0)}to{opacity:1;transform:scale(1);filter:blur(0)}}
 .ld-logo-img{
-  width:220px;max-width:62vw;display:block;
-  margin:0 auto;
+  position:relative;z-index:1;
+  width:78%;max-width:166px;display:block;
+  mix-blend-mode:multiply;
 }
 
 /* Brand letters */
@@ -2161,40 +2172,6 @@ document.addEventListener("DOMContentLoaded", async function(){
       }
     });
   }
-
-  // BFS flood-fill from edges — removes outer background white, keeps steering wheel white
-  (function(){
-    var src = new Image();
-    src.onload = function(){
-      var c = document.createElement('canvas');
-      c.width = src.naturalWidth; c.height = src.naturalHeight;
-      var x = c.getContext('2d');
-      x.drawImage(src, 0, 0);
-      var id = x.getImageData(0,0,c.width,c.height);
-      var d = id.data, w = c.width, h = c.height;
-      var vis = new Uint8Array(w*h);
-      var q = [];
-      for(var i=0;i<w;i++){ q.push(i); q.push((h-1)*w+i); }
-      for(var j=1;j<h-1;j++){ q.push(j*w); q.push(j*w+w-1); }
-      while(q.length){
-        var idx=q.pop();
-        if(vis[idx]) continue;
-        vis[idx]=1;
-        var p=idx*4;
-        if(d[p]<190||d[p+1]<190||d[p+2]<190||d[p+3]<100) continue;
-        d[p+3]=0;
-        var px=idx%w, py=(idx/w)|0;
-        if(px>0) q.push(idx-1);
-        if(px<w-1) q.push(idx+1);
-        if(py>0) q.push(idx-w);
-        if(py<h-1) q.push(idx+w);
-      }
-      x.putImageData(id,0,0);
-      var el=document.getElementById('ld-logo-img');
-      if(el) el.src=c.toDataURL('image/png');
-    };
-    src.src='assets/logo-icon.png';
-  })();
 
   // Progress bar + counter
   var bar=document.getElementById('ld-bar-fill');

@@ -4576,7 +4576,8 @@ function openCar(id){
   if(unavailNotice) unavailNotice.style.display = "none";
   if(payBtn2){ payBtn2.disabled = false; payBtn2.style.opacity = ""; payBtn2.style.cursor = ""; payBtn2.title = ""; }
   if(hp2 && hd2 && selCar){
-    var carAvailForDates = isAvail(selCar, hp2, hd2);
+    // Prefer server-verified availableNow over local isAvail — local data may be incomplete
+    var carAvailForDates = (selCar.availableNow !== undefined) ? selCar.availableNow : isAvail(selCar, hp2, hd2);
     if(!carAvailForDates){
       if(unavailNotice) unavailNotice.style.display = "flex";
       if(payBtn2){ payBtn2.disabled = true; payBtn2.style.opacity = ".45"; payBtn2.style.cursor = "not-allowed"; payBtn2.title = "Car is unavailable for your selected dates"; }

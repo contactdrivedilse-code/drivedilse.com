@@ -1149,6 +1149,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 .ld-logo-ring{
   position:relative;width:220px;height:220px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
   margin-bottom:30px;
   animation:ldRingIn .95s cubic-bezier(.2,.8,.2,1) .55s both;
 }
@@ -2172,6 +2173,35 @@ document.addEventListener("DOMContentLoaded", async function(){
       }
     });
   }
+
+  // Auto-center logo: find visual center of colored content, offset to match circle center
+  (function(){
+    var el = document.getElementById('ld-logo-img');
+    if(!el) return;
+    var tmp = new Image();
+    tmp.onload = function(){
+      var c = document.createElement('canvas');
+      c.width = tmp.naturalWidth; c.height = tmp.naturalHeight;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(tmp, 0, 0);
+      var px = ctx.getImageData(0,0,c.width,c.height).data;
+      var sx=0, sy=0, n=0;
+      for(var i=0; i<px.length; i+=4){
+        // Only count non-white colored pixels (the gold/dark logo mark)
+        if(px[i+3]>64 && !(px[i]>210 && px[i+1]>210 && px[i+2]>210)){
+          sx += (i/4) % c.width;
+          sy += Math.floor((i/4) / c.width);
+          n++;
+        }
+      }
+      if(!n) return;
+      var dx = (c.width/2 - sx/n) / c.width;
+      var dy = (c.height/2 - sy/n) / c.height;
+      var dw = el.offsetWidth || 166;
+      el.style.transform = 'translate('+( dx*dw).toFixed(1)+'px,'+(dy*dw).toFixed(1)+'px)';
+    };
+    tmp.src = 'assets/logo-icon.png';
+  })();
 
   // Progress bar + counter
   var bar=document.getElementById('ld-bar-fill');

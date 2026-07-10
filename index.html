@@ -2166,7 +2166,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     });
   }
 
-  // BFS flood-fill from edges — removes outer white background, keeps white steering center
+  // Build white-version of logo: remove outer bg via BFS, convert black → white
   (function(){
     var src = new Image();
     src.onload = function(){
@@ -2176,6 +2176,7 @@ document.addEventListener("DOMContentLoaded", async function(){
       x.drawImage(src, 0, 0);
       var id = x.getImageData(0,0,c.width,c.height);
       var d = id.data, w = c.width, h = c.height;
+      // Step 1: BFS from edges — remove outer white background
       var vis = new Uint8Array(w*h);
       var q = [];
       for(var i=0;i<w;i++){ q.push(i); q.push((h-1)*w+i); }
@@ -2192,6 +2193,12 @@ document.addEventListener("DOMContentLoaded", async function(){
         if(px<w-1) q.push(idx+1);
         if(py>0) q.push(idx-w);
         if(py<h-1) q.push(idx+w);
+      }
+      // Step 2: Convert dark/black pixels (steering wheel) → white
+      for(var i=0;i<d.length;i+=4){
+        if(d[i+3]>0 && d[i]<90 && d[i+1]<90 && d[i+2]<90){
+          d[i]=255; d[i+1]=255; d[i+2]=255;
+        }
       }
       x.putImageData(id,0,0);
       var el=document.getElementById('ld-logo-img');

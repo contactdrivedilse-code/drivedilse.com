@@ -1110,8 +1110,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   <div class="ld-sweep"></div>
   <div class="ld-content">
     <div class="ld-logo-ring">
-      <div class="ld-logo-bg"></div>
-      <img src="assets/logo.png" alt="DriveDilSe" class="ld-logo-img">
+      <img src="assets/logo.png" alt="DriveDilSe" class="ld-logo-img" id="ld-logo-img">
     </div>
     <div class="ld-name" id="ld-name"></div>
     <p class="ld-tag">Self-Drive &nbsp;·&nbsp; Your Terms</p>
@@ -1146,24 +1145,19 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 /* Center */
 .ld-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
 
-/* Logo medallion */
+/* Logo */
 .ld-logo-ring{
-  position:relative;width:220px;height:220px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   margin-bottom:30px;
   animation:ldRingIn .95s cubic-bezier(.2,.8,.2,1) .55s both;
+  filter:drop-shadow(0 0 28px rgba(245,197,24,.35));
 }
-.ld-logo-bg{
-  position:absolute;inset:0;border-radius:50%;background:#fff;
-  box-shadow:0 0 0 1.5px rgba(245,197,24,.45),0 0 0 10px rgba(245,197,24,.06),0 0 55px rgba(245,197,24,.2),0 0 110px rgba(245,197,24,.09);
-  animation:ldGlowPulse 2.6s ease-in-out 1.6s infinite;
-}
+@keyframes ldRingIn{from{opacity:0;transform:scale(.65);filter:blur(12px) drop-shadow(0 0 0 rgba(245,197,24,0))}60%{filter:blur(0) drop-shadow(0 0 28px rgba(245,197,24,.35))}to{opacity:1;transform:scale(1);filter:drop-shadow(0 0 28px rgba(245,197,24,.35))}}
+.ld-logo-img{width:220px;max-width:62vw;display:block;animation:ldGlowPulse 2.8s ease-in-out 1.6s infinite}
 @keyframes ldGlowPulse{
-  0%,100%{box-shadow:0 0 0 1.5px rgba(245,197,24,.45),0 0 0 10px rgba(245,197,24,.06),0 0 55px rgba(245,197,24,.2),0 0 110px rgba(245,197,24,.09)}
-  50%{box-shadow:0 0 0 2px rgba(245,197,24,.8),0 0 0 16px rgba(245,197,24,.1),0 0 80px rgba(245,197,24,.35),0 0 160px rgba(245,197,24,.14)}
+  0%,100%{filter:drop-shadow(0 0 16px rgba(245,197,24,.3))}
+  50%{filter:drop-shadow(0 0 36px rgba(245,197,24,.65))}
 }
-@keyframes ldRingIn{from{opacity:0;transform:scale(.65);filter:blur(12px)}60%{filter:blur(0)}to{opacity:1;transform:scale(1);filter:blur(0)}}
-.ld-logo-img{position:relative;z-index:1;width:78%;max-width:166px;display:block}
 
 /* Brand letters */
 .ld-name{
@@ -2179,6 +2173,30 @@ document.addEventListener("DOMContentLoaded", async function(){
       }
     });
   }
+
+  // Strip white background from logo PNG via canvas pixel processing
+  (function(){
+    var img = new Image();
+    img.onload = function(){
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      var x = c.getContext('2d');
+      x.drawImage(img, 0, 0);
+      var d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+      for(var i = 0; i < p.length; i += 4){
+        var r=p[i], g=p[i+1], b=p[i+2];
+        // Pixels where all channels are high (near-white) become transparent
+        if(r > 210 && g > 210 && b > 210){
+          var w = (Math.min(r,g,b) - 160) / 95; // 0 at grey 160, 1 at pure white
+          p[i+3] = Math.round(p[i+3] * Math.max(0, 1 - w));
+        }
+      }
+      x.putImageData(d, 0, 0);
+      var el = document.getElementById('ld-logo-img');
+      if(el) el.src = c.toDataURL('image/png');
+    };
+    img.src = 'assets/logo.png';
+  })();
 
   // Progress bar + counter
   var bar=document.getElementById('ld-bar-fill');

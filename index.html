@@ -1154,7 +1154,6 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 .ld-logo-img{
   width:220px;max-width:62vw;display:block;
   margin:0 auto;
-  filter:brightness(0) invert(1);
 }
 
 /* Brand letters */
@@ -2161,6 +2160,40 @@ document.addEventListener("DOMContentLoaded", async function(){
       }
     });
   }
+
+  // BFS flood-fill from edges to remove outer white background only
+  (function(){
+    var src = new Image();
+    src.onload = function(){
+      var c = document.createElement('canvas');
+      c.width = src.naturalWidth; c.height = src.naturalHeight;
+      var x = c.getContext('2d');
+      x.drawImage(src, 0, 0);
+      var id = x.getImageData(0,0,c.width,c.height);
+      var d = id.data, w = c.width, h = c.height;
+      var vis = new Uint8Array(w*h);
+      var q = [];
+      for(var i=0;i<w;i++){ q.push(i); q.push((h-1)*w+i); }
+      for(var j=1;j<h-1;j++){ q.push(j*w); q.push(j*w+w-1); }
+      while(q.length){
+        var idx=q.pop();
+        if(vis[idx]) continue;
+        vis[idx]=1;
+        var p=idx*4;
+        if(d[p]<190||d[p+1]<190||d[p+2]<190||d[p+3]<100) continue;
+        d[p+3]=0;
+        var px=idx%w, py=(idx/w)|0;
+        if(px>0) q.push(idx-1);
+        if(px<w-1) q.push(idx+1);
+        if(py>0) q.push(idx-w);
+        if(py<h-1) q.push(idx+w);
+      }
+      x.putImageData(id,0,0);
+      var el=document.getElementById('ld-logo-img');
+      if(el) el.src=c.toDataURL('image/png');
+    };
+    src.src='assets/logo-icon.png';
+  })();
 
   // Progress bar + counter
   var bar=document.getElementById('ld-bar-fill');

@@ -1148,7 +1148,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 
 /* Logo medallion */
 .ld-logo-ring{
-  position:relative;width:182px;height:182px;border-radius:50%;
+  position:relative;width:220px;height:220px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   margin-bottom:30px;
   animation:ldRingIn .95s cubic-bezier(.2,.8,.2,1) .55s both;
@@ -1163,7 +1163,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
   50%{box-shadow:0 0 0 2px rgba(245,197,24,.8),0 0 0 16px rgba(245,197,24,.1),0 0 80px rgba(245,197,24,.35),0 0 160px rgba(245,197,24,.14)}
 }
 @keyframes ldRingIn{from{opacity:0;transform:scale(.65);filter:blur(12px)}60%{filter:blur(0)}to{opacity:1;transform:scale(1);filter:blur(0)}}
-.ld-logo-img{position:relative;z-index:1;width:72%;max-width:126px;display:block}
+.ld-logo-img{position:relative;z-index:1;width:78%;max-width:166px;display:block}
 
 /* Brand letters */
 .ld-name{
@@ -2162,8 +2162,8 @@ document.addEventListener("DOMContentLoaded", async function(){
   var nameEl = document.getElementById('ld-name');
   if(nameEl){
     var seq=[
-      {c:'D'},{c:'R'},{c:'I'},{c:'V'},{c:'E'},{sp:1},
-      {c:'D',g:1},{c:'I',g:1},{c:'L',g:1},{sp:1},
+      {c:'D'},{c:'R'},{c:'I'},{c:'V'},{c:'E'},
+      {c:'D',g:1},{c:'I',g:1},{c:'L',g:1},
       {c:'S'},{c:'E'}
     ];
     var t=1.38, step=0.068;

@@ -1153,6 +1153,7 @@ footer{background:linear-gradient(135deg,#fffde8 0%,#fffbe0 50%,#fff8d0 100%) !i
 @keyframes ldRingIn{from{opacity:0;transform:scale(.65);filter:blur(12px)}60%{filter:blur(0)}to{opacity:1;transform:scale(1);filter:blur(0)}}
 .ld-logo-img{
   width:210px;max-width:60vw;display:block;
+  margin-right:28px;
   filter:drop-shadow(0 0 18px rgba(245,197,24,.3));
   animation:ldGlowPulse 2.6s ease-in-out 1.6s infinite;
 }
@@ -2166,7 +2167,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     });
   }
 
-  // Build white-version of logo: remove outer bg via BFS, convert black → white
+  // Build white-version of logo: remove outer bg, convert black→white, feather edges
   (function(){
     var src = new Image();
     src.onload = function(){
@@ -2176,6 +2177,7 @@ document.addEventListener("DOMContentLoaded", async function(){
       x.drawImage(src, 0, 0);
       var id = x.getImageData(0,0,c.width,c.height);
       var d = id.data, w = c.width, h = c.height;
+
       // Step 1: BFS from edges — remove outer white background
       var vis = new Uint8Array(w*h);
       var q = [];
@@ -2183,26 +2185,51 @@ document.addEventListener("DOMContentLoaded", async function(){
       for(var j=1;j<h-1;j++){ q.push(j*w); q.push(j*w+w-1); }
       while(q.length){
         var idx=q.pop();
-        if(vis[idx]) continue;
-        vis[idx]=1;
+        if(vis[idx]) continue; vis[idx]=1;
         var p=idx*4;
         if(d[p]<190||d[p+1]<190||d[p+2]<190||d[p+3]<100) continue;
         d[p+3]=0;
         var px=idx%w, py=(idx/w)|0;
-        if(px>0) q.push(idx-1);
-        if(px<w-1) q.push(idx+1);
-        if(py>0) q.push(idx-w);
-        if(py<h-1) q.push(idx+w);
+        if(px>0) q.push(idx-1); if(px<w-1) q.push(idx+1);
+        if(py>0) q.push(idx-w); if(py<h-1) q.push(idx+w);
       }
+
       // Step 2: Convert dark/black pixels (steering wheel) → white
       for(var i=0;i<d.length;i+=4){
         if(d[i+3]>0 && d[i]<90 && d[i+1]<90 && d[i+2]<90){
           d[i]=255; d[i+1]=255; d[i+2]=255;
         }
       }
+
+      // Step 3: Feather edges — smooth alpha of pixels adjacent to transparent bg
+      var alpha = new Float32Array(w*h);
+      for(var i=0;i<d.length;i+=4) alpha[i/4]=d[i+3];
+      for(var y=1;y<h-1;y++){
+        for(var xx=1;xx<w-1;xx++){
+          var idx=y*w+xx;
+          if(alpha[idx]===0) continue;
+          var transp=0, total=0;
+          for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++){
+            var ni=(y+dy)*w+(xx+dx);
+            if(ni>=0&&ni<w*h){ total++; if(alpha[ni]===0) transp++; }
+          }
+          if(transp>0) d[idx*4+3]=Math.round(alpha[idx]*(1-Math.pow(transp/total,0.6)*0.85));
+        }
+      }
+
       x.putImageData(id,0,0);
+
+      // Render at 2× size onto a smaller canvas for crisp downsampling
+      var c2 = document.createElement('canvas');
+      var sz = 420;
+      c2.width = sz; c2.height = sz;
+      var x2 = c2.getContext('2d');
+      x2.imageSmoothingEnabled = true;
+      x2.imageSmoothingQuality = 'high';
+      x2.drawImage(c, 0, 0, sz, sz);
+
       var el=document.getElementById('ld-logo-img');
-      if(el) el.src=c.toDataURL('image/png');
+      if(el) el.src=c2.toDataURL('image/png');
     };
     src.src='assets/logo-icon.png';
   })();

@@ -489,11 +489,23 @@ Deno.serve(async (req) => {
         .lt("pickup_date", dISOR).gt("drop_date", pISOR).maybeSingle();
       if (conflict) return json({ error: "Car is not available for the selected dates" }, 400);
 
-      const { total, discount, days } = calcPrice(b.price_per_day as number, newPickup, newDrop);
+      // Lock the effective per-hour rate from the original booking so customers
+      // always reschedule at the same rate they paid — no new duration multipliers.
+      const { data: extsForRs } = await sb.from("extensions").select("cost").eq("booking_id", id);
+      const extTotalRs = (extsForRs ?? []).reduce((s, e) => s + (((e as Record<string, unknown>).cost as number) || 0), 0);
+      const origPickup = new Date(b.pickup_date as string);
+      const origDrop   = new Date(b.drop_date as string);
+      const origHrs    = Math.max(1, (origDrop.getTime() - origPickup.getTime()) / 3600000);
+      const lockedPph  = ((b.total as number) - extTotalRs) / 1.18 / origHrs;
+      const newHrs     = (newDrop.getTime() - newPickup.getTime()) / 3600000;
+      const newBase    = Math.round(lockedPph * newHrs);
+      const newGst     = Math.round(newBase * 0.18);
+      const total      = newBase + newGst + extTotalRs;
+      const days       = Math.max(1, Math.ceil(newHrs / 24));
 
       await sb.from("bookings").update({
         pickup_date: pISOR, drop_date: dISOR,
-        days, total, discount, updated_at: new Date().toISOString(),
+        days, total, discount: 0, updated_at: new Date().toISOString(),
       }).eq("id", id);
 
       const { data: updated } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();

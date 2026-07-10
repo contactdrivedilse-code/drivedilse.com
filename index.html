@@ -6871,17 +6871,22 @@ function updateRescheduleSummary(){
   if(!p||!d){ sumEl.style.display="none"; return; }
   if(d<=p){ errEl.textContent="Drop must be after pickup."; errEl.style.display="block"; sumEl.style.display="none"; return; }
   if(p<new Date()){ errEl.textContent="Pickup cannot be in the past."; errEl.style.display="block"; sumEl.style.display="none"; return; }
-  var hrs  = (d-p)/3600000;
-  var ppd  = b.pricePerDay || Math.round((b.total||0)/Math.max(1,b.days||1));
-  var mult = hrs<=8?1.30:hrs<=12?1.15:hrs<=24?1.00:hrs<=72?0.95:hrs<=120?0.92:hrs<=168?0.90:0.85;
-  var base = Math.round(ppd*mult*hrs/24);
-  var gst  = Math.round(base*0.18);
-  var tot  = base+gst;
-  var days = Math.max(1,Math.ceil(hrs/24));
+  var newHrs = (d-p)/3600000;
+  // Derive locked effective pph from what was actually paid (no new multipliers)
+  var origPickup = b.pickup && b.pickup.date ? new Date(b.pickup.date) : new Date(b.pickup);
+  var origDrop   = b.drop   && b.drop.date   ? new Date(b.drop.date)   : new Date(b.drop);
+  var origHrs    = Math.max(1, (origDrop - origPickup) / 3600000);
+  var extTotal   = (b.extensions || []).reduce(function(s,e){ return s+(e.cost||0); }, 0);
+  var pph        = ((b.total||0) - extTotal) / 1.18 / origHrs;
+  var base = Math.round(pph * newHrs);
+  var gst  = Math.round(base * 0.18);
+  var tot  = base + gst;
+  var days = Math.max(1, Math.ceil(newHrs/24));
   sumEl.innerHTML =
     '<strong>New duration:</strong> '+days+' day'+(days>1?'s':'')+
     ' &nbsp;|&nbsp; <strong>New total:</strong> ₹'+tot.toLocaleString("en-IN")+
-    '<div style="font-size:.72rem;color:var(--ts);margin-top:3px">Base ₹'+base.toLocaleString("en-IN")+' + GST ₹'+gst.toLocaleString("en-IN")+'</div>';
+    '<div style="font-size:.72rem;color:var(--ts);margin-top:3px">Base ₹'+base.toLocaleString("en-IN")+' + GST ₹'+gst.toLocaleString("en-IN")+
+    ' · Locked at your booked rate ₹'+Math.round(pph)+'/hr</div>';
   sumEl.style.display = "block";
 }
 

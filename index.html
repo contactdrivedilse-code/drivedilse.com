@@ -1229,6 +1229,7 @@ function csTick(){
     <nav style="display:flex;gap:10px;align-items:center">
       <a class="nav-link" href="/cars" style="text-decoration:none">Fleet</a>
       <span class="nav-link" onclick="showLease()">Monthly Lease</span>
+      <span class="nav-link" onclick="outstationComingSoon()" style="position:relative">Outstation Cab <span style="font-size:.52rem;font-weight:800;background:var(--y);color:#1a1407;padding:2px 6px;border-radius:10px;vertical-align:middle;letter-spacing:.5px">SOON</span></span>
       <span class="nav-link" onclick="goTo('how-sec')">How It Works</span>
       <span class="nav-link" onclick="goTo('faq-sec')">FAQ</span>
       <a class="nav-link" href="/policy" style="text-decoration:none">Policies</a>
@@ -1250,6 +1251,7 @@ function csTick(){
     </div>
     <a href="/cars" class="mob-menu-link" style="text-decoration:none">Fleet</a>
     <span class="mob-menu-link" onclick="closeMobMenu();showLease()">Monthly Lease</span>
+    <span class="mob-menu-link" onclick="closeMobMenu();outstationComingSoon()">🚗 Outstation Cab <span style="font-size:.6rem;font-weight:800;background:var(--y);color:#1a1407;padding:2px 7px;border-radius:10px;margin-left:4px">SOON</span></span>
     <span class="mob-menu-link" onclick="closeMobMenu();goTo('how-sec')">How It Works</span>
     <span class="mob-menu-link" onclick="closeMobMenu();goTo('faq-sec')">FAQ</span>
     <a href="/policy" class="mob-menu-link" style="text-decoration:none">Policies</a>
@@ -1368,6 +1370,10 @@ function csTick(){
         <div class="hero-cta-row" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px">
           <button class="btn btn-g btn-md" onclick="goTo('fleet-sec')">View Fleet</button>
           <button class="btn btn-y btn-md" onclick="showLease()">Monthly Lease →</button>
+          <button class="btn btn-g btn-md" onclick="outstationComingSoon()" style="position:relative">
+            🚗 Outstation Cab
+            <span style="position:absolute;top:-8px;right:-8px;background:#f5c518;color:#1a1407;font-size:.52rem;font-weight:800;letter-spacing:1px;padding:2px 7px;border-radius:20px;text-transform:uppercase;white-space:nowrap">Coming Soon</span>
+          </button>
         </div>
         <div class="hero-feature-grid">
           <div class="hero-feature-item">
@@ -3517,6 +3523,19 @@ function releaseHold(){
   apiFetch("/payment/hold", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({carId:cid, sessionId:SESSION_ID}) }).catch(function(){});
 }
 function goHome(){ releaseHold(); showPage("pg-home"); }
+function outstationComingSoon(){
+  var t = document.getElementById("outstation-toast");
+  if(!t){
+    t = document.createElement("div");
+    t.id = "outstation-toast";
+    t.style.cssText = "position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1407;color:#fff;font-family:'Inter',sans-serif;font-size:.88rem;font-weight:600;padding:14px 24px;border-radius:40px;z-index:999999;box-shadow:0 8px 32px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .25s";
+    t.innerHTML = '<span style="font-size:1.1rem">🚗</span> Outstation Cab booking — <span style="color:var(--y)">coming soon!</span>';
+    document.body.appendChild(t);
+  }
+  clearTimeout(t._hide);
+  t.style.opacity = "1";
+  t._hide = setTimeout(function(){ t.style.opacity = "0"; }, 3000);
+}
 
 function showProfile(){ renderProfile(); showPage("pg-profile"); window.scrollTo(0,0); }
 function showTrips(){ showPage("pg-trips"); window.scrollTo(0,0); renderProfile(); }

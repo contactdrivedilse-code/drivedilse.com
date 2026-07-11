@@ -3523,19 +3523,7 @@ function releaseHold(){
   apiFetch("/payment/hold", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({carId:cid, sessionId:SESSION_ID}) }).catch(function(){});
 }
 function goHome(){ releaseHold(); showPage("pg-home"); }
-function outstationComingSoon(){
-  var t = document.getElementById("outstation-toast");
-  if(!t){
-    t = document.createElement("div");
-    t.id = "outstation-toast";
-    t.style.cssText = "position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a1407;color:#fff;font-family:'Inter',sans-serif;font-size:.88rem;font-weight:600;padding:14px 24px;border-radius:40px;z-index:999999;box-shadow:0 8px 32px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .25s";
-    t.innerHTML = '<span style="font-size:1.1rem">🚗</span> Outstation Cab booking — <span style="color:var(--y)">coming soon!</span>';
-    document.body.appendChild(t);
-  }
-  clearTimeout(t._hide);
-  t.style.opacity = "1";
-  t._hide = setTimeout(function(){ t.style.opacity = "0"; }, 3000);
-}
+function outstationComingSoon(){ window.location.href = '/outstation'; }
 
 function showProfile(){ renderProfile(); showPage("pg-profile"); window.scrollTo(0,0); }
 function showTrips(){ showPage("pg-trips"); window.scrollTo(0,0); renderProfile(); }

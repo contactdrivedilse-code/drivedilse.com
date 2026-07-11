@@ -92,6 +92,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .sb-done{background:#f0f0f0;color:#666}
 .sb-act{background:#e6f9ee;color:#1a7a3c}
 .sb-pend{background:#fde8e8;color:#c0392b}
+.sb-noshow{background:#fff0e0;color:#b45309}
 
 /* ── FLEET CARDS ── */
 .v-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
@@ -559,6 +560,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   <div class="modal-box" style="max-width:640px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title">Booking Details — <span id="bkdm-id" style="color:var(--yd);font-family:monospace"></span></div>
     <div id="bkdm-body"></div>
+    <div id="bkdm-actions"></div>
     <div class="modal-footer" style="margin-top:16px">
       <button class="btn btn-g btn-sm" style="flex:1" onclick="closeBkDetailsModal()">Close</button>
     </div>
@@ -647,8 +649,8 @@ function toast(msg, type){
 }
 
 function badge(s){
-  var labels = {active:"Active",confirmed:"Confirmed",pending:"Pending",pending_kyc:"Paid · KYC Pending",completed:"Completed",cancelled:"Cancelled"};
-  var m = {active:"sb-on",confirmed:"sb-up",pending:"sb-up",pending_kyc:"sb-pend",completed:"sb-done",cancelled:"sb-done"};
+  var labels = {active:"Active",confirmed:"Confirmed",pending:"Pending",pending_kyc:"Paid · KYC Pending",completed:"Completed",cancelled:"Cancelled",no_show:"No Show"};
+  var m = {active:"sb-on",confirmed:"sb-up",pending:"sb-up",pending_kyc:"sb-pend",completed:"sb-done",cancelled:"sb-done",no_show:"sb-noshow"};
   return '<span class="sbadge '+(m[s]||"sb-done")+'">'+(labels[s]||s)+'</span>';
 }
 
@@ -1004,7 +1006,7 @@ async function renderSchedule(isLocal, c){
   var dayMap = {};
   function ensureDay(k){ if(!dayMap[k]) dayMap[k] = {pickup:0, drop:0, pause:0}; return dayMap[k]; }
   bookings.forEach(function(b){
-    if(b.status === "cancelled") return;
+    if(b.status === "cancelled" || b.status === "no_show") return;
     if(b.pickupDate){ ensureDay(fmtYmd(new Date(b.pickupDate))).pickup++; }
     if(b.dropDate){ ensureDay(fmtYmd(new Date(b.dropDate))).drop++; }
   });
@@ -1050,7 +1052,7 @@ async function renderSchedule(isLocal, c){
   // ── Day detail list for scheduleSelDate ──
   var selItems = [];
   bookings.forEach(function(b){
-    if(b.status === "cancelled") return;
+    if(b.status === "cancelled" || b.status === "no_show") return;
     if(b.pickupDate && fmtYmd(new Date(b.pickupDate)) === scheduleSelDate){
       selItems.push({id:b._id||b.id, type:"pickup", time:b.pickupDate, carName:b.carName, customer:b.customer, phone:b.phone, location:b.pickupLocation, source:b.source, done:b.pickupDone});
     }
@@ -1253,8 +1255,8 @@ function buildTable(bks, showActions){
 
     var actCell = showActions
       ? '<td><select class="status-sel" onchange="updateStatus(\''+b._id+'\',this.value)">' +
-          ['pending','confirmed','active','completed','cancelled'].map(function(s){
-            return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s+'</option>';
+          ['pending','confirmed','active','completed','cancelled','no_show'].map(function(s){
+            return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s.replace('_',' ')+'</option>';
           }).join('') + '</select></td>'
       : '';
     var isFleet = currentRole === "fleet";
@@ -2203,9 +2205,56 @@ function openBkDetailsModal(id){
     (b.status === "completed" ? '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' + settlementSectionHtml(b) : '');
 
   document.getElementById("bkdm-body").innerHTML = html;
+
+  // Action buttons — cancel and no-show for open bookings
+  var actHtml = "";
+  if(b.status === "confirmed" || b.status === "pending") {
+    actHtml =
+      '<div style="display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--b)">' +
+        '<button class="btn btn-sm" style="background:#fff3cd;color:#856404;border:1.5px solid #ffc107;padding:8px 16px" onclick="adminMarkNoShow(\''+id+'\')">⚠️ Mark No Show</button>' +
+        '<button class="btn btn-red btn-sm" style="padding:8px 16px" onclick="adminCancelBooking(\''+id+'\')">✕ Cancel Booking</button>' +
+      '</div>';
+  }
+  document.getElementById("bkdm-actions").innerHTML = actHtml;
+
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+async function adminMarkNoShow(id){
+  if(!confirm("Mark this booking as No Show?\n\nThe customer did not arrive — no refund will be issued.")) return;
+  try {
+    await adminFetch("/admin/bookings/"+id+"/status", {
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ status:"no_show" })
+    });
+    var b = allBookings.find(function(x){ return x._id===id; });
+    if(b) b.status = "no_show";
+    closeBkDetailsModal();
+    toast("Booking marked as No Show.", "success");
+    updateBadges();
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function adminCancelBooking(id){
+  var b = allBookings.find(function(x){ return x._id===id; });
+  var reason = prompt("Reason for cancellation:");
+  if(!reason) return;
+  var issueRefund = false;
+  if(b && b.payment && b.payment.status==="paid" && (b.total||0)>0){
+    issueRefund = confirm("Issue a full refund of ₹"+(b.total||0).toLocaleString("en-IN")+" to the customer?\n\nOK = Yes, refund\nCancel = No refund");
+  }
+  try {
+    await adminFetch("/admin/bookings/"+id+"/cancel", {
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ reason, issueRefund })
+    });
+    if(b) b.status = "cancelled";
+    closeBkDetailsModal();
+    toast("Booking cancelled"+(issueRefund?" — refund initiated.":"."), "success");
+    updateBadges();
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
 
 function depositSectionHtml(b){
   if(b.depositAmount == null) return '';

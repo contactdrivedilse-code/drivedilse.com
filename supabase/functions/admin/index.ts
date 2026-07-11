@@ -226,12 +226,60 @@ Deno.serve(async (req) => {
         const { data: cur } = await sb.from("bookings").select("checkin_otp").eq("id", bkStatusMatch[1]).maybeSingle();
         if (!(cur as Record<string, unknown> | null)?.checkin_otp) updates.checkin_otp = generateOtp();
       }
+      if (status === "no_show") {
+        updates.cancelled_at    = new Date().toISOString();
+        updates.refund_amount   = 0;
+        updates.refund_pct      = 0;
+        updates.refund_reason   = "Customer did not arrive — no refund per cancellation policy.";
+        updates.refund_status   = "not_applicable";
+      }
       const { data, error } = await sb.from("bookings")
         .update(updates)
         .eq("id", bkStatusMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);
       return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
+    }
+
+    // PUT /bookings/:id/cancel — admin/fleet-initiated cancellation with optional refund
+    const adminCancelMatch = path.match(/^\/bookings\/([^/]+)\/cancel$/);
+    if (req.method === "PUT" && adminCancelMatch) {
+      const id = adminCancelMatch[1];
+      const { reason, issueRefund } = await req.json();
+      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.status === "cancelled" || b.status === "no_show")
+        return json({ error: "Booking is already closed" }, 400);
+
+      const updates: Record<string, unknown> = {
+        status: "cancelled", cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        refund_reason: reason || "Cancelled by operator.",
+      };
+
+      if (issueRefund && b.razorpay_payment_id && (b.total as number) > 0) {
+        const totalPaise = Math.round((b.total as number) * 100);
+        try {
+          const refData = await razorpayRefund(b.razorpay_payment_id as string, totalPaise);
+          updates.refund_amount = b.total;
+          updates.refund_pct = 1;
+          updates.razorpay_refund_id = refData.id;
+          updates.refund_status = "refunded";
+        } catch {
+          updates.refund_amount = b.total;
+          updates.refund_pct = 1;
+          updates.refund_status = "pending_manual";
+        }
+      } else {
+        updates.refund_amount = 0;
+        updates.refund_pct = 0;
+        updates.refund_status = issueRefund ? "pending_manual" : "not_applicable";
+      }
+
+      await sb.from("bookings").update(updates).eq("id", id);
+      const { data: updated } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();
+      return json({ success: true, booking: mapBooking(updated as Record<string, unknown>) });
     }
 
     // POST /bookings/:id/refund/mark-done — admin confirms a manual refund

@@ -3557,8 +3557,8 @@ async function renderProfile(){
       // Render bookings from API
       if(apiBookings.length){
         setBkListHtml(apiBookings.map(function(b){
-          var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",pending:"sb-up",pending_kyc:"sb-up"};
-          var statusLabels={confirmed:"Confirmed",active:"Active",completed:"Completed",cancelled:"Cancelled",pending:"Pending","pending_kyc":"Paid · KYC Pending"};
+          var statusMap={confirmed:"sb-up",active:"sb-on",completed:"sb-done",cancelled:"sb-done",no_show:"sb-pend",pending:"sb-up",pending_kyc:"sb-up"};
+          var statusLabels={confirmed:"Confirmed",active:"Active",completed:"Completed",cancelled:"Cancelled",no_show:"No Show",pending:"Pending","pending_kyc":"Paid · KYC Pending"};
           var pickupTime  = new Date(b.pickup.date).getTime();
           var nowMs       = Date.now();
           var windowMs    = 30 * 60 * 1000;

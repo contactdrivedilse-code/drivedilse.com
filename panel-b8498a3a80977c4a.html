@@ -2206,13 +2206,12 @@ function openBkDetailsModal(id){
 
   document.getElementById("bkdm-body").innerHTML = html;
 
-  // Action buttons — cancel and no-show for open bookings
+  // Action buttons — cancel (consolidates No Show + Car Unavailability)
   var actHtml = "";
-  if(b.status === "confirmed" || b.status === "pending") {
+  if(b.status === "confirmed" || b.status === "pending" || b.status === "active") {
     actHtml =
-      '<div style="display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--b)">' +
-        '<button class="btn btn-sm" style="background:#fff3cd;color:#856404;border:1.5px solid #ffc107;padding:8px 16px" onclick="adminMarkNoShow(\''+id+'\')">⚠️ Mark No Show</button>' +
-        '<button class="btn btn-red btn-sm" style="padding:8px 16px" onclick="adminCancelBooking(\''+id+'\')">✕ Cancel Booking</button>' +
+      '<div id="bkdm-cancel-trigger" style="display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--b)">' +
+        '<button class="btn btn-red btn-sm" style="padding:8px 20px" onclick="showCancelForm(\''+id+'\')">✕ Cancel Booking</button>' +
       '</div>';
   }
   document.getElementById("bkdm-actions").innerHTML = actHtml;
@@ -2221,37 +2220,67 @@ function openBkDetailsModal(id){
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
 
-async function adminMarkNoShow(id){
-  if(!confirm("Mark this booking as No Show?\n\nThe customer did not arrive — no refund will be issued.")) return;
-  try {
-    await adminFetch("/admin/bookings/"+id+"/status", {
-      method:"PUT", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ status:"no_show" })
+function showCancelForm(id){
+  var b = allBookings.find(function(x){ return x._id===id; });
+  var totalFmt = b ? (b.total||0).toLocaleString("en-IN") : "—";
+  var hasPaid = b && b.payment && b.payment.status==="paid" && (b.total||0)>0;
+  var cardBase = "border:2px solid transparent;border-radius:10px;padding:14px 16px;cursor:pointer;transition:border .15s,background .15s;user-select:none;flex:1;text-align:left";
+  var formHtml =
+    '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--b)">' +
+      '<p style="font-weight:700;font-size:13px;margin:0 0 12px;color:var(--t)">Select cancellation reason:</p>' +
+      '<div style="display:flex;gap:10px;margin-bottom:14px">' +
+        '<label id="lbl-unavail" style="'+cardBase+';background:var(--s)">' +
+          '<input type="radio" name="cancelType" value="car_unavailability" id="rb-unavail" style="margin-right:8px">'+
+          '<span style="font-weight:700;font-size:13px">🚗 Car Unavailability</span>'+
+          (hasPaid ? '<div style="font-size:11px;color:#15803d;margin-top:4px;margin-left:24px">Full refund ₹'+totalFmt+' will be issued</div>' : '')+
+          '<div style="font-size:11px;color:#888;margin-top:4px;margin-left:24px">Customer gets alternative car options</div>'+
+        '</label>' +
+        '<label id="lbl-noshow" style="'+cardBase+';background:var(--s)">' +
+          '<input type="radio" name="cancelType" value="no_show" id="rb-noshow" style="margin-right:8px">'+
+          '<span style="font-weight:700;font-size:13px">❌ No Show</span>'+
+          '<div style="font-size:11px;color:#c0392b;margin-top:4px;margin-left:24px">No refund — customer did not arrive</div>'+
+        '</label>' +
+      '</div>' +
+      '<div style="margin-bottom:14px">' +
+        '<label style="font-size:12px;font-weight:600;color:var(--t2);display:block;margin-bottom:4px">Additional note <span style="font-weight:400;color:var(--t2)">(optional)</span></label>' +
+        '<textarea id="cancel-note" rows="2" placeholder="E.g. vehicle breakdown, customer unreachable…" style="width:100%;border:1.5px solid var(--b);border-radius:6px;padding:8px;font-size:13px;background:var(--s);color:var(--t);box-sizing:border-box;resize:vertical"></textarea>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px">' +
+        '<button class="btn btn-red btn-sm" style="padding:8px 20px;flex:1" onclick="submitCancelBooking(\''+id+'\')">Confirm Cancellation</button>' +
+        '<button class="btn btn-g btn-sm" style="padding:8px 16px" onclick="document.getElementById(\'bkdm-cancel-trigger\').innerHTML=\'<button class=&quot;btn btn-red btn-sm&quot; style=&quot;padding:8px 20px&quot; onclick=&quot;showCancelForm(\\\''+id+'\\\')\">✕ Cancel Booking</button>\'">Back</button>' +
+      '</div>' +
+    '</div>';
+  document.getElementById("bkdm-actions").innerHTML = formHtml;
+  // Highlight selected card
+  ["rb-unavail","rb-noshow"].forEach(function(rbId){
+    var rb = document.getElementById(rbId);
+    if(!rb) return;
+    rb.addEventListener("change", function(){
+      document.getElementById("lbl-unavail").style.borderColor = document.getElementById("rb-unavail").checked ? "#c9a010" : "transparent";
+      document.getElementById("lbl-noshow").style.borderColor  = document.getElementById("rb-noshow").checked  ? "#c0392b" : "transparent";
     });
-    var b = allBookings.find(function(x){ return x._id===id; });
-    if(b) b.status = "no_show";
-    closeBkDetailsModal();
-    toast("Booking marked as No Show.", "success");
-    updateBadges();
-  } catch(e){ toast("Failed: "+e.message, "error"); }
+  });
 }
 
-async function adminCancelBooking(id){
-  var b = allBookings.find(function(x){ return x._id===id; });
-  var reason = prompt("Reason for cancellation:");
-  if(!reason) return;
-  var issueRefund = false;
-  if(b && b.payment && b.payment.status==="paid" && (b.total||0)>0){
-    issueRefund = confirm("Issue a full refund of ₹"+(b.total||0).toLocaleString("en-IN")+" to the customer?\n\nOK = Yes, refund\nCancel = No refund");
-  }
+async function submitCancelBooking(id){
+  var rb = document.querySelector("input[name='cancelType']:checked");
+  if(!rb){ toast("Please select a cancellation reason.", "error"); return; }
+  var cancellationType = rb.value;
+  var note = (document.getElementById("cancel-note").value||"").trim();
+  var label = cancellationType==="car_unavailability" ? "Car Unavailability" : "No Show";
+  if(!confirm("Confirm cancellation — Reason: "+label+"?\n\nAn email notification will be sent to the customer.")) return;
   try {
-    await adminFetch("/admin/bookings/"+id+"/cancel", {
+    var res = await adminFetch("/admin/bookings/"+id+"/cancel", {
       method:"PUT", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ reason, issueRefund })
+      body: JSON.stringify({ cancellationType, note })
     });
+    var b = allBookings.find(function(x){ return x._id===id; });
     if(b) b.status = "cancelled";
     closeBkDetailsModal();
-    toast("Booking cancelled"+(issueRefund?" — refund initiated.":"."), "success");
+    var msg = cancellationType==="car_unavailability"
+      ? "Booking cancelled — full refund initiated. Customer notified via email with alternative cars."
+      : "Booking marked as No Show. Customer notified via email.";
+    toast(msg, "success");
     updateBadges();
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }

@@ -3392,10 +3392,25 @@ async function loadFleet(){
   }
   // Deep link from a car's standalone SEO landing page (/cars/<slug>.html),
   // e.g. /?car=<carId> — opens straight to that car's detail/booking view.
+  // Also accepts ?pickup=&drop= to pre-fill dates (used in rebooking emails).
   var carParam = new URLSearchParams(location.search).get("car");
   if(carParam){
+    var spCar = new URLSearchParams(location.search);
+    var cpPu = spCar.get("pickup"), cpDr = spCar.get("drop");
+    if(cpPu){ var piEl2 = document.getElementById("pickup"); if(piEl2) piEl2.value = cpPu.slice(0,16); }
+    if(cpDr){ var drEl2 = document.getElementById("drop");   if(drEl2) drEl2.value = cpDr.slice(0,16); }
+    if(cpPu && cpDr) loadFleet();
     var match = FLEET.find(function(c){ return c.id === carParam; });
-    if(match) openCar(match.id);
+    if(match) setTimeout(function(){ openCar(match.id); }, cpPu && cpDr ? 800 : 0);
+  }
+  // Rebooking after car-unavailability cancellation — pre-fill dates and scroll to fleet
+  var sp = new URLSearchParams(location.search);
+  if(sp.get("rebooking") === "1"){
+    var rbPickup = sp.get("pickup"), rbDrop = sp.get("drop");
+    if(rbPickup){ var piEl = document.getElementById("pickup"); if(piEl) piEl.value = rbPickup.slice(0,16); }
+    if(rbDrop)  { var drEl = document.getElementById("drop");   if(drEl) drEl.value = rbDrop.slice(0,16);   }
+    if(rbPickup && rbDrop) loadFleet();
+    setTimeout(function(){ var fs = document.getElementById("fleet-sec"); if(fs) fs.scrollIntoView({behavior:"smooth",block:"start"}); }, 600);
   }
 }
 
@@ -5963,6 +5978,23 @@ function refundBadgeHtml(b){
   if(!r) return '';
   var reasonText = refundReasonFallback(r);
   var reason = reasonText ? '<div style="font-weight:500;color:inherit;opacity:.85;margin-top:3px;font-size:.7rem">'+reasonText+'</div>' : '';
+  // Car unavailability cancelled — show extra notice with alternatives link
+  var isUnavail = r.reason && r.reason.indexOf("car_unavailability") === 0;
+  if(isUnavail){
+    var pISO = b.pickup && b.pickup.date ? b.pickup.date : (b.pickup || "");
+    var dISO = b.drop   && b.drop.date   ? b.drop.date   : (b.drop   || "");
+    var altUrl = "/?rebooking=1&pickup="+encodeURIComponent(pISO)+"&drop="+encodeURIComponent(dISO)+"#fleet-sec";
+    var refundLine = (r.amount > 0)
+      ? '💸 '+(r.status === "refunded" || r.status === "refunded_manually" ? inr(r.amount)+" refunded" : inr(r.amount)+" refund in progress (5–7 days)")
+      : '';
+    return '<div style="margin-top:8px;font-size:.74rem;border-radius:8px;overflow:hidden">' +
+      '<div style="background:#fff7e6;border:1.5px solid #f5c518;border-bottom:none;padding:9px 12px;font-weight:700;color:#92400e">🚗 Cancelled — car was unavailable' + (refundLine ? '<span style="font-weight:600;margin-left:8px;color:#1a7a3c">'+refundLine+'</span>' : '') + '</div>' +
+      '<div style="background:#fffbe6;border:1.5px solid #f5c518;border-top:none;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+        '<span style="color:#555;font-size:.72rem">Need a ride? Browse cars available for your original dates.</span>' +
+        '<a href="'+altUrl+'" style="white-space:nowrap;background:#f5c518;color:#1a1407;font-weight:800;font-size:.72rem;padding:5px 12px;border-radius:20px;text-decoration:none;font-family:\'Inter\',sans-serif">Find Alternatives →</a>' +
+      '</div>' +
+    '</div>';
+  }
   if(!(r.amount > 0)){
     return '<div style="margin-top:8px;font-size:.74rem;font-weight:700;color:#888;background:#f4f4f4;border:1.5px solid #ddd;border-radius:8px;padding:8px 10px;text-align:center">No refund applicable for this cancellation'+reason+'</div>';
   }

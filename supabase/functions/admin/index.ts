@@ -241,45 +241,157 @@ Deno.serve(async (req) => {
       return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
     }
 
-    // PUT /bookings/:id/cancel — admin/fleet-initiated cancellation with optional refund
+    // PUT /bookings/:id/cancel — admin/fleet cancel with reason + email to customer
+    // cancellationType: "car_unavailability" (full refund + alternatives) | "no_show" (no refund)
     const adminCancelMatch = path.match(/^\/bookings\/([^/]+)\/cancel$/);
     if (req.method === "PUT" && adminCancelMatch) {
       const id = adminCancelMatch[1];
-      const { reason, issueRefund } = await req.json();
+      const { cancellationType, note } = await req.json() as { cancellationType: string; note?: string };
       const { data: booking } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
       if (b.status === "cancelled" || b.status === "no_show")
         return json({ error: "Booking is already closed" }, 400);
 
+      const isUnavail = cancellationType === "car_unavailability";
+      const reasonText = cancellationType + (note ? `: ${note}` : "");
+
       const updates: Record<string, unknown> = {
         status: "cancelled", cancelled_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        refund_reason: reason || "Cancelled by operator.",
+        refund_reason: reasonText,
+        refund_amount: 0, refund_pct: 0, refund_status: "not_applicable",
       };
 
-      if (issueRefund && b.razorpay_payment_id && (b.total as number) > 0) {
-        const totalPaise = Math.round((b.total as number) * 100);
+      // Car unavailability → full refund; no_show → no refund
+      if (isUnavail && b.razorpay_payment_id && (b.total as number) > 0) {
+        const paise = Math.round((b.total as number) * 100);
         try {
-          const refData = await razorpayRefund(b.razorpay_payment_id as string, totalPaise);
-          updates.refund_amount = b.total;
-          updates.refund_pct = 1;
-          updates.razorpay_refund_id = refData.id;
-          updates.refund_status = "refunded";
+          const rf = await razorpayRefund(b.razorpay_payment_id as string, paise);
+          updates.refund_amount = b.total; updates.refund_pct = 1;
+          updates.razorpay_refund_id = rf.id; updates.refund_status = "refunded";
         } catch {
-          updates.refund_amount = b.total;
-          updates.refund_pct = 1;
+          updates.refund_amount = b.total; updates.refund_pct = 1;
           updates.refund_status = "pending_manual";
         }
-      } else {
-        updates.refund_amount = 0;
-        updates.refund_pct = 0;
-        updates.refund_status = issueRefund ? "pending_manual" : "not_applicable";
       }
 
       await sb.from("bookings").update(updates).eq("id", id);
+
+      // Resolve customer email (may be in booking row or profiles)
+      let customerEmail: string | null = (b.email as string) || null;
+      if (!customerEmail && b.user_id) {
+        const { data: prof } = await sb.from("profiles").select("email").eq("id", b.user_id as string).maybeSingle();
+        customerEmail = ((prof as Record<string, unknown> | null)?.email as string) || null;
+      }
+
+      const pISO   = b.pickup_date as string;
+      const dISO   = b.drop_date  as string;
+      const fmt    = (iso: string) => new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
+      const cName  = escapeHtml(b.customer as string || "there");
+      const bkId   = escapeHtml(b.booking_id as string || id);
+      const carNm  = escapeHtml(b.car_name  as string || "your car");
+      const totalF = Number(b.total || 0).toLocaleString("en-IN");
+      const noteHtml = note ? `<p style="margin:12px 0 0;font-size:13px;color:#555"><strong>Note from our team:</strong> ${escapeHtml(note)}</p>` : "";
+
+      // Build alternatives list for car_unavailability
+      let alternatives: Record<string, unknown>[] = [];
+      let altTableHtml = "";
+      if (isUnavail) {
+        const nowISO = new Date().toISOString();
+        const [{ data: allCars }, { data: pauses }, { data: booked }, { data: held }] = await Promise.all([
+          sb.from("cars").select("id,name,category,transmission,fuel,seats,price_per_day,image_url").eq("active", true),
+          sb.from("car_pauses").select("car_id").lt("from_date", dISO).gt("to_date", pISO),
+          sb.from("bookings").select("car_id").in("status", ["confirmed","active"]).neq("id", id).lt("pickup_date", dISO).gt("drop_date", pISO),
+          sb.from("car_holds").select("car_id").lt("pickup_date", dISO).gt("drop_date", pISO).gt("expires_at", nowISO),
+        ]);
+        const blocked = new Set([
+          b.car_id as string,
+          ...((pauses ?? []) as Record<string, unknown>[]).map(p => p.car_id as string),
+          ...((booked ?? []) as Record<string, unknown>[]).map(x => x.car_id as string),
+          ...((held   ?? []) as Record<string, unknown>[]).map(h => h.car_id as string),
+        ]);
+        alternatives = ((allCars ?? []) as Record<string, unknown>[])
+          .filter(c => !blocked.has(c.id as string))
+          .slice(0, 4)
+          .map(c => ({ id: c.id, name: c.name, category: c.category, transmission: c.transmission, fuel: c.fuel, seats: c.seats, pricePerDay: c.price_per_day, imageUrl: c.image_url }));
+
+        if (alternatives.length > 0) {
+          altTableHtml = `
+            <p style="font-weight:700;font-size:14px;margin:20px 0 10px">✅ Cars available for your dates:</p>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #eee;border-radius:8px;overflow:hidden">` +
+            alternatives.map(alt => {
+              const ppd  = alt.pricePerDay as number;
+              const url  = `https://drivedilse.com/?car=${alt.id}&pickup=${encodeURIComponent(pISO)}&drop=${encodeURIComponent(dISO)}`;
+              return `<tr style="border-bottom:1px solid #f0f0f0">
+                <td style="padding:12px">
+                  <div style="font-weight:700;color:#111">${escapeHtml(alt.name as string)}</div>
+                  <div style="font-size:11px;color:#999;margin-top:2px">${escapeHtml(alt.category as string)} · ${escapeHtml(alt.transmission as string)} · ${alt.seats} seats</div>
+                </td>
+                <td style="padding:12px;text-align:right;white-space:nowrap">
+                  <div style="font-weight:800;color:#c9a010">₹${ppd.toLocaleString("en-IN")}/day</div>
+                  <div style="font-size:11px;color:#bbb">₹${Math.round(ppd/24).toLocaleString("en-IN")}/hr</div>
+                </td>
+                <td style="padding:12px;text-align:right">
+                  <a href="${url}" style="background:#f5c518;color:#1a1407;font-size:11px;font-weight:800;padding:7px 14px;border-radius:20px;text-decoration:none">Book →</a>
+                </td>
+              </tr>`;
+            }).join("") +
+            `</table>
+            <p style="text-align:center;margin-top:12px">
+              <a href="https://drivedilse.com/?pickup=${encodeURIComponent(pISO)}&drop=${encodeURIComponent(dISO)}#fleet-sec"
+                 style="color:#c9a010;font-size:13px;font-weight:600">Browse all available cars →</a>
+            </p>`;
+        } else {
+          altTableHtml = `<p style="font-size:13px;color:#888;margin-top:16px">Visit <a href="https://drivedilse.com" style="color:#c9a010">drivedilse.com</a> to check all available cars.</p>`;
+        }
+      }
+
+      // Send email
+      if (customerEmail) {
+        const header = `<div style="background:#1a1407;padding:20px 24px;border-radius:10px 10px 0 0"><span style="font-size:1.1rem;font-weight:900;color:#f5c518;letter-spacing:1px">DriveDilSe</span></div>`;
+        const footer = `<p style="font-size:11px;color:#bbb;margin-top:20px;border-top:1px solid #eee;padding-top:12px">Questions? Reply to this email or WhatsApp <a href="https://wa.me/917709209765" style="color:#c9a010">+91 77092 09765</a>.</p>`;
+
+        let body = "", subject = "";
+        if (isUnavail) {
+          subject = `Booking Cancelled — ${b.booking_id || id} | DriveDilSe`;
+          body = `<p style="margin:0 0 14px;font-size:15px">Hi ${cName},</p>
+            <p style="font-size:14px;line-height:1.7;margin:0 0 14px">
+              We're sorry — your booking <strong>${bkId}</strong> for <strong>${carNm}</strong> has been
+              <span style="color:#c0392b;font-weight:700">cancelled due to car unavailability</span>.
+            </p>
+            <table style="width:100%;font-size:13px;border-collapse:collapse;background:#fafafa;border-radius:8px;overflow:hidden;margin-bottom:4px">
+              <tr><td style="padding:8px 12px;color:#888">Pickup</td><td style="padding:8px 12px;font-weight:600">${fmt(pISO)}</td></tr>
+              <tr style="background:#f3f0e8"><td style="padding:8px 12px;color:#888">Drop</td><td style="padding:8px 12px;font-weight:600">${fmt(dISO)}</td></tr>
+              <tr><td style="padding:8px 12px;color:#888">Refund</td><td style="padding:8px 12px;font-weight:700;color:#1a7a3c">₹${totalF} — full refund initiated (5–7 business days)</td></tr>
+            </table>
+            ${noteHtml}${altTableHtml}
+            <p style="font-size:13px;color:#888;margin-top:16px;line-height:1.6">We sincerely apologise for the inconvenience and hope to serve you on your next trip.</p>`;
+        } else {
+          subject = `Booking Cancelled (No Show) — ${b.booking_id || id} | DriveDilSe`;
+          body = `<p style="margin:0 0 14px;font-size:15px">Hi ${cName},</p>
+            <p style="font-size:14px;line-height:1.7;margin:0 0 14px">
+              Your booking <strong>${bkId}</strong> for <strong>${carNm}</strong> has been marked as
+              <span style="color:#e67e22;font-weight:700">No Show</span> — our representative was unable to locate you at the scheduled pickup time.
+            </p>
+            <table style="width:100%;font-size:13px;border-collapse:collapse;background:#fafafa;border-radius:8px;overflow:hidden;margin-bottom:4px">
+              <tr><td style="padding:8px 12px;color:#888">Pickup</td><td style="padding:8px 12px;font-weight:600">${fmt(pISO)}</td></tr>
+              <tr style="background:#f3f0e8"><td style="padding:8px 12px;color:#888">Drop</td><td style="padding:8px 12px;font-weight:600">${fmt(dISO)}</td></tr>
+              <tr><td style="padding:8px 12px;color:#888">Refund</td><td style="padding:8px 12px;font-weight:700;color:#c0392b">No refund — per our cancellation policy</td></tr>
+            </table>
+            ${noteHtml}
+            <p style="font-size:13px;color:#888;margin-top:16px;line-height:1.6">
+              Per our <a href="https://drivedilse.com/policy" style="color:#c9a010">cancellation policy</a>, no-show bookings are non-refundable.
+              If you believe this is an error, please contact us immediately.
+            </p>`;
+        }
+
+        const html = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#333">${header}<div style="background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 10px 10px;padding:24px">${body}${footer}</div></div>`;
+        await sendEmail(customerEmail, subject, html).catch(console.error);
+      }
+
       const { data: updated } = await sb.from("bookings").select("*").eq("id", id).maybeSingle();
-      return json({ success: true, booking: mapBooking(updated as Record<string, unknown>) });
+      return json({ success: true, booking: mapBooking(updated as Record<string, unknown>), alternatives });
     }
 
     // POST /bookings/:id/refund/mark-done — admin confirms a manual refund

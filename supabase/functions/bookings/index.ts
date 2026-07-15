@@ -25,35 +25,39 @@ const CHECKIN_WINDOW_MINS = 30;
 function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
 const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 
-// Per-hour tier rates by category (mirrors frontend calcDynamicPrice)
-// Tiers: [<12hr, <24hr, <48hr, <7days, 7+days]
-const CAT_HOURLY: Record<string, number[]> = {
-  "MPV": [130, 120, 105,  88,  80],
-  "SUV": [155, 145, 124, 103,  93],
+// Marginal bracket rates (₹/hr, excl GST) — mirrors frontend calcDynamicPrice
+// Each rate applies ONLY to hours within its bracket: [0-12hr, 12-24hr, 24-168hr, 168hr+]
+const CAT_BRACKETS: Record<string, number[]> = {
+  compact: [109, 68, 38, 33],
+  premium: [121, 75, 42, 36],
+  MPV:     [130, 81, 45, 39],
+  SUV:     [156, 97, 54, 46],
 };
-const HATCH_COMPACT = [109, 101,  88,  74,  67];  // 0.84× MPV — ~₹42k/mo target
-const HATCH_PREMIUM = [121, 112,  98,  82,  74];  // 0.93× MPV — ~₹46k/mo target
+const BRACKET_CUTS = [0, 12, 24, 168, Infinity];
 
-function getCatHourlyRate(category: string, pricePerDay: number, hrs: number): number {
-  let tiers: number[];
-  if (category === "MPV")      tiers = CAT_HOURLY["MPV"];
-  else if (category === "SUV") tiers = CAT_HOURLY["SUV"];
-  else                          tiers = pricePerDay < 1580 ? HATCH_COMPACT : HATCH_PREMIUM;
-  if (hrs < 12)  return tiers[0];
-  if (hrs < 24)  return tiers[1];
-  if (hrs < 48)  return tiers[2];
-  if (hrs < 168) return tiers[3];
-  return tiers[4];
+function getCatBrackets(category: string, pricePerDay: number): number[] {
+  if (category === "MPV") return CAT_BRACKETS.MPV;
+  if (category === "SUV") return CAT_BRACKETS.SUV;
+  return pricePerDay < 1580 ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
+}
+
+function getMarginalBase(rates: number[], fromHr: number, toHr: number): number {
+  let cost = 0;
+  for (let i = 0; i < rates.length; i++) {
+    const s = Math.max(fromHr, BRACKET_CUTS[i]);
+    const e = Math.min(toHr,   BRACKET_CUTS[i + 1]);
+    if (e > s) cost += (e - s) * rates[i];
+  }
+  return cost;
 }
 
 function calcPrice(pricePerDay: number, pickup: Date, drop: Date, category = "Hatchback") {
   const hours = (drop.getTime() - pickup.getTime()) / 3600000;
-  const pph   = getCatHourlyRate(category, pricePerDay, hours);
-  const base  = Math.round(pph * hours);
+  const rates = getCatBrackets(category, pricePerDay);
+  const base  = Math.round(getMarginalBase(rates, 0, hours));
   const gst   = Math.round(base * 0.18);
-  const total = base + gst;
   const days  = Math.max(1, Math.ceil(hours / 24));
-  return { base, gst, total, discount: 0, days };
+  return { base, gst, total: base + gst, discount: 0, days };
 }
 
 async function getUser(req: Request) {

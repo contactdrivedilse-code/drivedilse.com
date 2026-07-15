@@ -4031,47 +4031,55 @@ function getLeaseMonthly(car, plan){
   return (car.rate||0) < 1580 ? p.compact : p.premium;
 }
 
-// Category-based per-hour rate tiers (before day-of-week adjustment)
-// Monthly targets: MPV ₹50k, SUV ₹60k, Compact hatch ₹42k, Premium hatch ₹46k
-// Tiers: [< 12hr, < 24hr, < 48hr, < 7 days, 7+ days]
-var CAT_HOURLY = {
-  "MPV": [130, 120, 105,  88,  80],
-  "SUV": [155, 145, 124, 103,  93],
+// ── MARGINAL BRACKET RATES (₹/hr, excl GST) ──
+// Each rate applies ONLY to hours within that time bracket (marginal pricing).
+// Brackets: [0-12hr,  12-24hr,  24-168hr,  168hr+]
+// Targets: 1-day MPV≈₹3k, SUV≈₹3.5k; 14-day premium hatch≈₹17k (weekday)
+var CAT_BRACKETS = {
+  compact: [109, 68, 38, 33],   // 14-day ≈ ₹15k
+  premium: [121, 75, 42, 36],   // 14-day ≈ ₹17k
+  MPV:     [130, 81, 45, 39],   // 14-day ≈ ₹18k, 1-day ≈ ₹3k
+  SUV:     [156, 97, 54, 46],   // 14-day ≈ ₹22k, 1-day ≈ ₹3.5k
 };
-var HATCH_COMPACT = [109, 101,  88,  74,  67];  // ~₹42k/mo (0.84× MPV) — price_per_day < ₹1580 in DB
-var HATCH_PREMIUM = [121, 112,  98,  82,  74];  // ~₹46k/mo (0.93× MPV)
 var HATCH_PPD_SPLIT = 1580;
 
-function getCatHourlyRate(cat, baseRate, hrs){
-  var tiers = cat === "MPV" ? CAT_HOURLY["MPV"]
-            : cat === "SUV" ? CAT_HOURLY["SUV"]
-            : ((baseRate||0) < HATCH_PPD_SPLIT ? HATCH_COMPACT : HATCH_PREMIUM);
-  if(hrs < 12)  return tiers[0];
-  if(hrs < 24)  return tiers[1];
-  if(hrs < 48)  return tiers[2];
-  if(hrs < 168) return tiers[3];
-  return tiers[4];
+function getCatBrackets(cat, baseRate){
+  if(cat === "MPV") return CAT_BRACKETS.MPV;
+  if(cat === "SUV") return CAT_BRACKETS.SUV;
+  return (baseRate||0) < HATCH_PPD_SPLIT ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
 }
 
-// Final Price = Hourly Rate × Day-of-week multiplier
+function getMarginalBase(rates, fromHr, toHr){
+  var CUTS = [0, 12, 24, 168, Infinity];
+  var cost = 0;
+  for(var i = 0; i < rates.length; i++){
+    var s = Math.max(fromHr, CUTS[i]), e = Math.min(toHr, CUTS[i+1]);
+    if(e > s) cost += (e - s) * rates[i];
+  }
+  return cost;
+}
+
 function calcDynamicPrice(baseRate, pickupISO, dropISO, carCat){
   var pickup = new Date(pickupISO), drop = new Date(dropISO);
   var hrs = (drop - pickup) / 3600000;
   if(hrs <= 0) return {base:0,gst:0,total:0,hours:0,days:0,breakdown:[],leadMult:1,utilMult:1,hasCap:false};
-  var hourlyRate = getCatHourlyRate(carCat, baseRate, hrs);
-  var rawBase = 0, breakdown = [], cur = pickup.getTime();
+  var rates = getCatBrackets(carCat, baseRate);
+  var rawBase = 0, breakdown = [], cur = pickup.getTime(), elapsed = 0;
   while(cur < drop.getTime()){
-    var chunkEnd = Math.min(cur + 24*3600000, drop.getTime());
-    var chunkHrs = (chunkEnd - cur) / 3600000;
-    var dateStr  = toLocalDateStr(new Date(cur));
-    var type     = getDayType(dateStr);
-    var calMult  = getDayMult(type);
-    rawBase += hourlyRate * calMult * chunkHrs;
+    var chunkEnd  = Math.min(cur + 24*3600000, drop.getTime());
+    var chunkHrs  = (chunkEnd - cur) / 3600000;
+    var dateStr   = toLocalDateStr(new Date(cur));
+    var type      = getDayType(dateStr);
+    var dayMult   = getDayMult(type);
+    var chunkBase = getMarginalBase(rates, elapsed, elapsed + chunkHrs);
+    rawBase += chunkBase * dayMult;
     if(breakdown.length && breakdown[breakdown.length-1].type === type){
       breakdown[breakdown.length-1].hours += chunkHrs;
     } else {
-      breakdown.push({date:dateStr, type:type, mult:calMult, hours:chunkHrs, rate:Math.round(hourlyRate*calMult*24)});
+      breakdown.push({date:dateStr, type:type, mult:dayMult, hours:chunkHrs,
+                      rate:Math.round(getMarginalBase(rates, elapsed, elapsed+24) * dayMult)});
     }
+    elapsed += chunkHrs;
     cur = chunkEnd;
   }
   var base = Math.round(rawBase);

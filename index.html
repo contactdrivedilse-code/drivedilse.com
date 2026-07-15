@@ -2498,7 +2498,7 @@ window.addEventListener('scroll',function(){
           <div class="dt-pair">
             <div class="dt-pair-label">📍 Pickup</div>
             <div class="dt-controls">
-              <button type="button" class="dt-trigger" id="d-pickup-trigger" onclick="openDateCal('d-pickup-date',this)">Select date</button>
+              <span class="dt-date-inp" id="d-pickup-trigger" onclick="openDateCal('d-pickup-date',this)" tabindex="0" role="button" style="cursor:pointer;display:block;color:var(--ts)">Select date</span>
               <input type="date" id="d-pickup-date" style="display:none">
               <span class="dt-divider">@</span>
               <select class="dt-hour-sel" id="d-pickup-hour" onchange="autoCalcPrice()"></select>
@@ -2507,7 +2507,7 @@ window.addEventListener('scroll',function(){
           <div class="dt-pair">
             <div class="dt-pair-label">🏁 Drop</div>
             <div class="dt-controls">
-              <button type="button" class="dt-trigger" id="d-drop-trigger" onclick="openDateCal('d-drop-date',this)">Select date</button>
+              <span class="dt-date-inp" id="d-drop-trigger" onclick="openDateCal('d-drop-date',this)" tabindex="0" role="button" style="cursor:pointer;display:block;color:var(--ts)">Select date</span>
               <input type="date" id="d-drop-date" style="display:none">
               <span class="dt-divider">@</span>
               <select class="dt-hour-sel" id="d-drop-hour" onchange="autoCalcPrice()"></select>
@@ -3864,7 +3864,7 @@ function setDt(base, d){
   de.value = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
   he.value = d.getHours();
   var trig=document.getElementById(base+"-trigger");
-  if(trig) trig.textContent=d.toLocaleDateString("en-IN",{day:"numeric",month:"short"});
+  if(trig){ trig.textContent=d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}); trig.style.color="var(--t)"; }
 }
 // ── INIT ──
 (function(){
@@ -4557,7 +4557,7 @@ function openCar(id){
   }
   showDeliverySummary();
 
-  // Check availability for the searched dates and block pay + calc-price buttons if unavailable
+  // Check availability for the pre-searched dates — only if the searched range is valid (6+ hours)
   var hp2 = getDt("h-pickup"), hd2 = getDt("h-drop");
   var unavailNotice = document.getElementById("unavail-notice");
   var payBtn2 = document.getElementById("pay-now-btn");
@@ -4565,7 +4565,8 @@ function openCar(id){
   if(unavailNotice) unavailNotice.style.display = "none";
   if(payBtn2){ payBtn2.disabled = false; payBtn2.style.opacity = ""; payBtn2.style.cursor = ""; payBtn2.title = ""; }
   if(calcBtn){ calcBtn.disabled = false; calcBtn.style.opacity = ""; calcBtn.style.cursor = ""; calcBtn.title = ""; }
-  if(hp2 && hd2 && selCar){
+  var searchedHrs = hp2 && hd2 ? (new Date(hd2) - new Date(hp2)) / 3600000 : 0;
+  if(hp2 && hd2 && selCar && searchedHrs >= 6){
     // Prefer server-verified availableNow over local isAvail — local data may be incomplete
     var carAvailForDates = (selCar.availableNow !== undefined) ? selCar.availableNow : isAvail(selCar, hp2, hd2);
     if(!carAvailForDates){
@@ -4645,6 +4646,11 @@ function autoCalcPrice(){
   var p = new Date(pv), d = new Date(dv);
   var hrs = (d - p) / 3600000;
   if(hrs < 6 || hrs >= 15 * 24) return; // silent — don't alert on auto-trigger
+  // Clear the unavail notice and re-enable buttons for new date selection
+  var un = document.getElementById("unavail-notice"), pb = document.getElementById("pay-now-btn"), cb2 = document.getElementById("calc-price-btn");
+  if(un) un.style.display = "none";
+  if(pb){ pb.disabled=false; pb.style.opacity=""; pb.style.cursor=""; pb.title=""; }
+  if(cb2){ cb2.disabled=false; cb2.style.opacity=""; cb2.style.cursor=""; cb2.title=""; }
   var pr = calcDynamicPrice(selCar.rate, pv, dv, selCar.cat);
   var base = pr.base, gst = pr.gst, total = pr.total;
   var perhr = Math.round(total / hrs), h = Math.round(hrs);
@@ -7660,7 +7666,7 @@ function shiftCalM(dir){
 function pickCalDate(ds){
   document.getElementById(_calInputId).value=ds;
   var trig=document.getElementById(_calInputId.replace("-date","-trigger"));
-  if(trig){ var dt2=new Date(ds+"T00:00:00"); trig.textContent=dt2.toLocaleDateString("en-IN",{day:"numeric",month:"short"}); }
+  if(trig){ var dt2=new Date(ds+"T00:00:00"); trig.textContent=dt2.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}); trig.style.color="var(--t)"; }
   closeDateCal();
   autoCalcPrice();
   // After picking pickup, auto-open drop calendar

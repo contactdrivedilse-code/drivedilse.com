@@ -4642,11 +4642,11 @@ function calcPrice(){
   if(d <= p){ alert("Drop must be after pickup."); return; }
   var hrs = (d - p) / 3600000;
   if(hrs < 6){ alert("Minimum booking is 6 hours."); return; }
-  if(hrs > 15 * 24){
+  if(hrs >= 15 * 24){
     document.getElementById("price-section").style.display = "none";
     document.getElementById("sticky-total-bar").classList.remove("show");
     var days15 = Math.round(hrs/24);
-    if(confirm("Bookings over 15 days go through our Monthly Lease. This trip is " + days15 + " days.\n\nSwitch to the Lease booking form for this car?")){
+    if(confirm("Regular bookings are available for up to 14 days.\n\nThis trip is " + days15 + " days — switch to Monthly Lease for better rates?")){
       openLeaseForm(selCar.id);
     }
     return;

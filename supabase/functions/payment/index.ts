@@ -222,6 +222,12 @@ Deno.serve(async (req) => {
   const url  = new URL(req.url);
   const path = url.pathname.replace("/payment", "") || "/";
 
+  const MAX_REGULAR_HOURS = 14 * 24; // 336 hrs — 15+ days must use Monthly Lease
+  const durationError = (p: string, d: string) =>
+    (new Date(d).getTime() - new Date(p).getTime()) / 3600000 >= MAX_REGULAR_HOURS
+      ? json({ error: "Regular bookings are limited to 14 days. Please use Monthly Lease for longer durations." }, 400)
+      : null;
+
   try {
     // POST /hold — temporarily reserves a car for the customer's session.
     // The car_holds table has UNIQUE(car_id) so only ONE hold can exist per
@@ -237,6 +243,11 @@ Deno.serve(async (req) => {
       const dISO    = new Date(dropDate).toISOString();
       const nowISO  = new Date().toISOString();
       const expires = new Date(Date.now() + HOLD_MINUTES * 60000).toISOString();
+
+      // Block regular bookings ≥ 15 days — must use Monthly Lease
+      const holdHrs = (new Date(dISO).getTime() - new Date(pISO).getTime()) / 3600000;
+      if (holdHrs >= 15 * 24)
+        return json({ error: "Regular bookings are limited to 14 days. Please use Monthly Lease for longer durations." }, 400);
 
       // Block if there's a real booking or pause conflict (not holds — handled below)
       const [{ data: bookingConflict }, { data: pauseConflict }] = await Promise.all([
@@ -291,6 +302,8 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
+      const gDurErr = durationError(pickup.toISOString(), drop.toISOString());
+      if (gDurErr) return gDurErr;
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
       const deliveryFee = typeof gdc === "number" && gdc > 0 ? gdc : 0;
@@ -352,6 +365,8 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pISO = new Date(pickupDate).toISOString(), dISO = new Date(dropDate).toISOString();
+      const oDurErr = durationError(pISO, dISO);
+      if (oDurErr) return oDurErr;
       if (await hasDateConflict(carId, pISO, dISO, oSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
@@ -465,6 +480,8 @@ Deno.serve(async (req) => {
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const pISO = pickup.toISOString(), dISO = drop.toISOString();
+      const dDurErr = durationError(pISO, dISO);
+      if (dDurErr) return dDurErr;
       if (await hasDateConflict(carId, pISO, dISO, dSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
@@ -525,6 +542,8 @@ Deno.serve(async (req) => {
       if (!c || !c.active) return json({ error: "Car not available" }, 404);
 
       const pISO2 = new Date(pickupDate).toISOString(), dISO2 = new Date(dropDate).toISOString();
+      const gdDurErr = durationError(pISO2, dISO2);
+      if (gdDurErr) return gdDurErr;
       if (await hasDateConflict(carId, pISO2, dISO2, gdSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();

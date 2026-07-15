@@ -2506,14 +2506,14 @@ window.addEventListener('scroll',function(){
             <div class="dt-pair-label">📍 Pickup</div>
             <span id="d-pickup-trigger" class="dt-cal-date">Select date</span>
             <select class="dt-hour-sel" id="d-pickup-hour" onclick="event.stopPropagation()" onchange="autoCalcPrice()" style="width:100%;margin-top:8px;box-sizing:border-box"></select>
-            <input type="date" id="d-pickup-date" style="display:none">
+            <input type="hidden" id="d-pickup-date">
           </div>
           <div class="dt-divider-v"></div>
           <div class="dt-panel" onclick="openDateCal('d-drop-date',this)">
             <div class="dt-pair-label">🏁 Drop</div>
             <span id="d-drop-trigger" class="dt-cal-date">Select date</span>
             <select class="dt-hour-sel" id="d-drop-hour" onclick="event.stopPropagation()" onchange="autoCalcPrice()" style="width:100%;margin-top:8px;box-sizing:border-box"></select>
-            <input type="date" id="d-drop-date" style="display:none">
+            <input type="hidden" id="d-drop-date">
           </div>
         </div>
         <div id="bf-signedin-badge" style="display:none;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.8rem;font-weight:700;color:#1a7a3c">✓ Signed in &amp; verified — booking as <span id="bf-signedin-name" style="margin-left:2px"></span></div>

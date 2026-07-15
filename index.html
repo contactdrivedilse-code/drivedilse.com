@@ -4659,23 +4659,7 @@ function calcPrice(){
 
   // Pricing factor pills
   var bdEl = document.getElementById("r-day-breakdown");
-  if(bdEl){
-    var pills = [];
-    if(pr.leadMult === 1.15) pills.push(["⚡ Same-day booking",       "#fff3cd","#c8960a"]);
-    else if(pr.leadMult === 1.20) pills.push(["📅 Advance booking +20%", "#e8f5e9","#388e3c"]);
-    if(pr.utilMult === 0.85)      pills.push(["🎉 15% off · Low demand", "#e8f5e9","#43a047"]);
-    else if(pr.utilMult === 1.15) pills.push(["📈 High demand",           "#fff8e1","#f59e0b"]);
-    else if(pr.utilMult === 1.40) pills.push(["🔥 Peak demand",           "#ffebee","#e53935"]);
-    if(pr.breakdown && pr.breakdown.some(function(b){return b.type==="holiday";}))
-      pills.push(["🎊 Holiday date",  "#f3e5f5","#8e24aa"]);
-    else if(pr.breakdown && pr.breakdown.some(function(b){return b.type==="weekend";}))
-      pills.push(["📆 Weekend rate",  "#e3f2fd","#1976d2"]);
-    if(pr.hasCap) pills.push(["🔒 Rate capped at 1.6×", "#f5f5f5","#999"]);
-    bdEl.innerHTML = pills.map(function(p){
-      return '<span style="display:inline-flex;align-items:center;font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;background:'+p[1]+';border:1px solid '+p[2]+';color:#333">'+p[0]+'</span>';
-    }).join("");
-    bdEl.style.display = pills.length ? "flex" : "none";
-  }
+  if(bdEl){ bdEl.innerHTML = ""; bdEl.style.display = "none"; }
 
   document.getElementById("price-section").style.display = "block";
   document.getElementById("sticky-total-bar").classList.add("show");

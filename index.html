@@ -2491,9 +2491,9 @@ window.addEventListener('scroll',function(){
     </div>
     <div class="detail-right">
       <div class="rate-box">
-        <div style="font-size:.67rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px">Base Rate</div>
-        <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.9rem;font-weight:900;color:var(--yd)" id="d-rate"></div>
-        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">+18% GST · Incl. all taxes</div>
+        <div style="font-size:.67rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--yd);margin-bottom:6px">Starting at</div>
+        <div id="d-rate" style="font-family:'Playfair Display',Georgia,serif;font-size:1.9rem;font-weight:900;color:var(--yd)"></div>
+        <div style="font-size:.72rem;color:var(--ts);margin-top:4px">per day · incl. GST</div>
       </div>
       <div class="tag" id="booking-tag">Book This Car</div>
       <div class="unavail-notice" id="unavail-notice" style="display:none">
@@ -4459,7 +4459,8 @@ function openCar(id){
   if(!selCar) return;
   priceResult = null;
   document.getElementById("d-name").textContent = selCar.name;
-  document.getElementById("d-rate").innerHTML   = inr(Math.round(selCar.rate/24)) + '<span style="font-size:.9rem;color:var(--ts);font-weight:400">/hr</span>';
+  var _startRates = {MPV:3000, SUV:3500}; var _sr = _startRates[selCar.cat] || (selCar.cat==="premium" || (selCar.rate||0)>=1580 ? 2400 : 2200);
+  document.getElementById("d-rate").innerHTML   = inr(_sr) + '<span style="font-size:.9rem;color:var(--ts);font-weight:400">/day</span>';
   document.getElementById("d-pills").innerHTML  =
     '<span class="pill">⚙️ ' + selCar.tm + '</span>' +
     '<span class="pill">⛽ ' + selCar.fuel + '</span>' +

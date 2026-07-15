@@ -31,8 +31,8 @@ const CAT_HOURLY: Record<string, number[]> = {
   "MPV": [130, 120, 105,  88,  80],
   "SUV": [155, 145, 124, 103,  93],
 };
-const HATCH_COMPACT = [126, 118, 101,  84,  76];
-const HATCH_PREMIUM = [140, 130, 112,  93,  84];
+const HATCH_COMPACT = [109, 101,  88,  74,  67];  // 0.84× MPV — ~₹42k/mo target
+const HATCH_PREMIUM = [121, 112,  98,  82,  74];  // 0.93× MPV — ~₹46k/mo target
 
 function getCatHourlyRate(category: string, pricePerDay: number, hrs: number): number {
   let tiers: number[];

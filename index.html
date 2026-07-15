@@ -4002,7 +4002,7 @@ function getDayType(dateStr){
 function getDayMult(type){
   if(type === "holiday") return 1.10;  // national holiday: +10%
   if(type === "weekend") return 1.20;  // weekend (Sat/Sun): +20%
-  return 0.90;                         // weekday: −10%
+  return 1.0;                          // weekday: base rate
 }
 // Returns the local YYYY-MM-DD for a JS Date (user's timezone = IST on Indian devices)
 function toLocalDateStr(dt){

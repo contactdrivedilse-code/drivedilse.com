@@ -3413,8 +3413,8 @@ async function loadFleet(){
       {id:"f02e26ed-b34a-46bd-bbb1-54215401a2f4",name:"Maruti Suzuki Ignis",        cat:"Hatchback",tm:"MT",fuel:"Petrol",seats:5,rate:1526,deposit:0,color:"#f5c518",emoji:"🚗",active:true,paused:[]},
       {id:"7c98dc26-69f2-4f3e-9fc2-40730e2d3507",name:"Hyundai Grand i10 Nios",    cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:0,color:"#e8b800",emoji:"🚙",active:true,paused:[]},
       {id:"38649005-acc9-4b96-819f-c126f13f6217",name:"Maruti Suzuki Baleno",      cat:"Hatchback",tm:"AT",fuel:"Petrol",seats:5,rate:1628,deposit:0,color:"#ffd700",emoji:"🚙",active:true,paused:[]},
-      {id:"bd12a92a-ce8a-49d7-8ba7-b0dd45261b0b",name:"Maruti Suzuki Grand Vitara",cat:"SUV",      tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:0,color:"#f5c518",emoji:"🛻",active:true,paused:[]},
-      {id:"b3d62870-5a93-4383-824a-07ec664ea3cc",name:"Mahindra XUV 300",          cat:"SUV",      tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:0,color:"#e8b800",emoji:"🛻",active:true,paused:[]},
+      {id:"bd12a92a-ce8a-49d7-8ba7-b0dd45261b0b",name:"Maruti Suzuki Grand Vitara",cat:"Compact SUV",tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:0,color:"#f5c518",emoji:"🛻",active:true,paused:[]},
+      {id:"b3d62870-5a93-4383-824a-07ec664ea3cc",name:"Mahindra XUV 300",          cat:"Compact SUV",tm:"MT",fuel:"Petrol",seats:5,rate:2645,deposit:0,color:"#e8b800",emoji:"🛻",active:true,paused:[]},
       {id:"f50afbdc-13b1-42d3-8fac-45880aabb9fb",name:"Maruti Suzuki Ertiga",      cat:"MPV",      tm:"AT",fuel:"Petrol",seats:7,rate:2238,deposit:0,color:"#ffd700",emoji:"🚐",active:true,paused:[]},
       {id:"5fdd6246-7287-44ad-9f75-354c3ea051ab",name:"Maruti Suzuki XL6",         cat:"MPV",      tm:"MT",fuel:"Petrol",seats:6,rate:2238,deposit:0,color:"#f5c518",emoji:"🚐",active:true,paused:[]},
     ];
@@ -4050,7 +4050,7 @@ var LEASE_MONTHLY = {
 function getLeaseMonthly(car, plan){
   var p = LEASE_MONTHLY[plan||"unlimited"];
   if(car.cat==="MPV") return p["MPV"];
-  if(car.cat==="SUV") return p["SUV"];
+  if(car.cat==="SUV"||car.cat==="Compact SUV") return p["SUV"];
   return (car.rate||0) < 1580 ? p.compact : p.premium;
 }
 
@@ -4068,7 +4068,7 @@ var HATCH_PPD_SPLIT = 1580;
 
 function getCatBrackets(cat, baseRate){
   if(cat === "MPV") return CAT_BRACKETS.MPV;
-  if(cat === "SUV") return CAT_BRACKETS.SUV;
+  if(cat === "SUV" || cat === "Compact SUV") return CAT_BRACKETS.SUV;
   return (baseRate||0) < HATCH_PPD_SPLIT ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
 }
 
@@ -4162,7 +4162,8 @@ var FEATURES_COMMON = ["🛞 Spare Tyre","📷 Reverse Camera","🛡️ Dual Fro
 var FEATURES_BY_CAT = {
   Hatchback: FEATURES_COMMON,
   Sedan:     FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","🚦 Cruise Control"]),
-  SUV:       FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","⛰️ Hill Hold Assist","🌄 Sunroof"]),
+  SUV:           FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","⛰️ Hill Hold Assist","🌄 Sunroof"]),
+  "Compact SUV": FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","⛰️ Hill Hold Assist","🌄 Sunroof"]),
   MPV:       FEATURES_COMMON.concat(["📺 Touchscreen Infotainment","🪑 Captain Seats","💨 Rear AC Vents"])
 };
 var REVIEW_POOL = [
@@ -4459,7 +4460,7 @@ function openCar(id){
   if(!selCar) return;
   priceResult = null;
   document.getElementById("d-name").textContent = selCar.name;
-  var _startRates = {MPV:3000, SUV:3500}; var _sr = _startRates[selCar.cat] || (selCar.cat==="premium" || (selCar.rate||0)>=1580 ? 2400 : 2200);
+  var _startRates = {MPV:3000, SUV:3500, "Compact SUV":3500}; var _sr = _startRates[selCar.cat] || (selCar.cat==="premium" || (selCar.rate||0)>=1580 ? 2400 : 2200);
   document.getElementById("d-rate").innerHTML   = inr(_sr) + '<span style="font-size:.9rem;color:var(--ts);font-weight:400">/day</span>';
   document.getElementById("d-pills").innerHTML  =
     '<span class="pill">⚙️ ' + selCar.tm + '</span>' +

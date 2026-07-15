@@ -28,8 +28,8 @@ const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 // Per-hour tier rates by category (mirrors frontend calcDynamicPrice)
 // Tiers: [<12hr, <24hr, <48hr, <7days, 7+days]
 const CAT_HOURLY: Record<string, number[]> = {
-  "MPV": [150, 140, 120, 100,  90],
-  "SUV": [180, 168, 144, 120, 108],
+  "MPV": [130, 120, 105,  88,  80],
+  "SUV": [155, 145, 124, 103,  93],
 };
 const HATCH_COMPACT = [126, 118, 101,  84,  76];
 const HATCH_PREMIUM = [140, 130, 112,  93,  84];

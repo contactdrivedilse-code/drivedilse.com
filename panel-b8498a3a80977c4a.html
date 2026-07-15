@@ -364,7 +364,10 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 <!-- ── ADD / EDIT CAR MODAL ── -->
 <div class="modal-overlay" id="car-modal">
   <div class="modal-box" style="max-width:540px;width:100%;max-height:90vh;overflow-y:auto">
-    <div class="modal-title" id="car-modal-title">Add Car</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="modal-title" id="car-modal-title" style="margin-bottom:0">Add Car</div>
+      <button onclick="closeCarModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--ts);line-height:1;padding:2px 6px;border-radius:6px" title="Close">✕</button>
+    </div>
     <input type="hidden" id="cm-id">
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
@@ -2767,6 +2770,7 @@ async function submitCarForm(){
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
   } catch(e){
     toast("Failed: "+e.message,"error");
+  } finally {
     btn.textContent = "Save Car"; btn.disabled = false;
   }
 }

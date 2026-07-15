@@ -4036,10 +4036,10 @@ function getLeaseMonthly(car, plan){
 // Brackets: [0-12hr,  12-24hr,  24-168hr,  168hr+]
 // Targets: 1-day MPV≈₹3k, SUV≈₹3.5k; 14-day premium hatch≈₹17k (weekday)
 var CAT_BRACKETS = {
-  compact: [109, 68, 38, 33],   // 14-day ≈ ₹15k
-  premium: [121, 75, 42, 36],   // 14-day ≈ ₹17k
-  MPV:     [130, 81, 45, 39],   // 14-day ≈ ₹18k, 1-day ≈ ₹3k
-  SUV:     [156, 97, 54, 46],   // 14-day ≈ ₹22k, 1-day ≈ ₹3.5k
+  compact: [ 96, 60, 39, 34],   // 24hr ≈ ₹2.2k, 14-day ≈ ₹15.6k
+  premium: [105, 65, 43, 37],   // 24hr ≈ ₹2.4k, 14-day ≈ ₹17k
+  MPV:     [130, 81, 45, 39],   // 24hr ≈ ₹3k,   14-day ≈ ₹18k
+  SUV:     [156, 97, 54, 46],   // 24hr ≈ ₹3.5k, 14-day ≈ ₹22k
 };
 var HATCH_PPD_SPLIT = 1580;
 

@@ -2481,17 +2481,17 @@ window.addEventListener('scroll',function(){
           <div class="dt-pair">
             <div class="dt-pair-label">📍 Pickup</div>
             <div class="dt-controls">
-              <input type="date" class="dt-date-inp" id="d-pickup-date">
+              <input type="date" class="dt-date-inp" id="d-pickup-date" onchange="autoCalcPrice()">
               <span class="dt-divider">@</span>
-              <select class="dt-hour-sel" id="d-pickup-hour"></select>
+              <select class="dt-hour-sel" id="d-pickup-hour" onchange="autoCalcPrice()"></select>
             </div>
           </div>
           <div class="dt-pair">
             <div class="dt-pair-label">🏁 Drop</div>
             <div class="dt-controls">
-              <input type="date" class="dt-date-inp" id="d-drop-date">
+              <input type="date" class="dt-date-inp" id="d-drop-date" onchange="autoCalcPrice()">
               <span class="dt-divider">@</span>
-              <select class="dt-hour-sel" id="d-drop-hour"></select>
+              <select class="dt-hour-sel" id="d-drop-hour" onchange="autoCalcPrice()"></select>
             </div>
           </div>
         </div>
@@ -4617,6 +4617,9 @@ async function bfVerifyOtp(btn){
 }
 
 // ── PRICE ──
+function autoCalcPrice(){
+  if(selCar && getDt("d-pickup") && getDt("d-drop")) calcPrice();
+}
 function calcPrice(){
   var emailVal = document.getElementById("bf-email").value.trim();
   var alreadyVerified = bfEmailVerified && emailVal.toLowerCase() === bfVerifiedEmailValue;
@@ -4637,7 +4640,7 @@ function calcPrice(){
   }
   var pv = getDt("d-pickup");
   var dv = getDt("d-drop");
-  if(!pv || !dv){ alert("Select pickup and drop dates."); return; }
+  if(!pv || !dv){ if(selCar) alert("Select pickup and drop dates."); return; }
   var p = new Date(pv), d = new Date(dv);
   if(d <= p){ alert("Drop must be after pickup."); return; }
   var hrs = (d - p) / 3600000;

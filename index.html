@@ -132,6 +132,23 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .dt-date-inp{flex:1;border:none;background:transparent;font-size:.92rem;font-weight:700;color:var(--t);outline:none;font-family:'Inter',sans-serif;min-width:0;width:100%;cursor:pointer}
 .dt-date-inp::-webkit-calendar-picker-indicator{opacity:.45;cursor:pointer;width:16px;height:16px}
 .dt-divider{font-size:.8rem;color:var(--b);font-weight:700;flex-shrink:0}
+/* Custom date picker */
+.dt-trigger{flex:1;min-width:0;cursor:pointer;font-size:.92rem;font-weight:700;color:var(--t);padding:0;background:none;border:none;text-align:left;font-family:'Inter',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt-trigger:focus{outline:none}
+.cal-popup{background:var(--bg,#fff);border:1.5px solid var(--b,#e5e7eb);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.22);padding:14px;width:270px;user-select:none}
+.cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-hdr-lbl{font-weight:800;font-size:.88rem;color:var(--t)}
+.cal-nav-btn{background:none;border:none;cursor:pointer;font-size:1.3rem;padding:2px 8px;border-radius:8px;color:var(--t);line-height:1}
+.cal-nav-btn:hover{background:var(--ys,#fef9e7)}
+.cal-grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
+.cal-dow{font-size:.6rem;font-weight:700;color:var(--ts,#9ca3af);padding:4px 0;letter-spacing:.05em;text-transform:uppercase}
+.cal-d{padding:6px 0;border-radius:7px;font-size:.8rem;cursor:pointer;transition:background .1s;color:var(--t)}
+.cal-d:not(.off):not(.na):hover{background:var(--ys,#fef9e7)}
+.cal-d.off{color:var(--b,#d1d5db);pointer-events:none}
+.cal-d.na{color:#f87171;text-decoration:line-through;cursor:not-allowed;background:#fee2e2;border-radius:5px}
+.cal-d.today{font-weight:900;color:var(--yd,#c9a010)}
+.cal-d.sel{background:var(--y,#f5c518)!important;color:#111!important;font-weight:800;border-radius:7px}
+@media(prefers-color-scheme:dark){.cal-d.na{background:#3f1515;color:#f87171}}
 .dt-hour-sel{border:none;background:var(--wg);border-radius:8px;padding:5px 28px 5px 10px;font-size:.88rem;font-weight:700;color:var(--t);font-family:'Inter',sans-serif;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a8060' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;flex-shrink:0}
 .dt-hour-sel:focus{background-color:var(--b)}
 .inp::placeholder{color:#aaa}
@@ -2481,7 +2498,8 @@ window.addEventListener('scroll',function(){
           <div class="dt-pair">
             <div class="dt-pair-label">📍 Pickup</div>
             <div class="dt-controls">
-              <input type="date" class="dt-date-inp" id="d-pickup-date" onchange="autoCalcPrice()">
+              <button type="button" class="dt-trigger" id="d-pickup-trigger" onclick="openDateCal('d-pickup-date',this)">Select date</button>
+              <input type="date" id="d-pickup-date" style="display:none">
               <span class="dt-divider">@</span>
               <select class="dt-hour-sel" id="d-pickup-hour" onchange="autoCalcPrice()"></select>
             </div>
@@ -2489,7 +2507,8 @@ window.addEventListener('scroll',function(){
           <div class="dt-pair">
             <div class="dt-pair-label">🏁 Drop</div>
             <div class="dt-controls">
-              <input type="date" class="dt-date-inp" id="d-drop-date" onchange="autoCalcPrice()">
+              <button type="button" class="dt-trigger" id="d-drop-trigger" onclick="openDateCal('d-drop-date',this)">Select date</button>
+              <input type="date" id="d-drop-date" style="display:none">
               <span class="dt-divider">@</span>
               <select class="dt-hour-sel" id="d-drop-hour" onchange="autoCalcPrice()"></select>
             </div>
@@ -3844,6 +3863,8 @@ function setDt(base, d){
   if(!de||!he) return;
   de.value = d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
   he.value = d.getHours();
+  var trig=document.getElementById(base+"-trigger");
+  if(trig) trig.textContent=d.toLocaleDateString("en-IN",{day:"numeric",month:"short"});
 }
 // ── INIT ──
 (function(){
@@ -7553,6 +7574,105 @@ async function leasePayNow(){
     document.getElementById("lbm-msg").innerHTML = '<span style="color:#c0392b">' + esc(e.message || "Could not create order") + '</span>';
   }
 }
+
+// ── CUSTOM DATE PICKER ──
+var _calInputId="", _calIsDropPicker=false, _calYear=0, _calMonth=0;
+
+function getUnavailDates(car){
+  var out=new Set();
+  var todayMs=new Date(); todayMs.setHours(0,0,0,0); todayMs=todayMs.getTime();
+  function markRange(startISO,endISO){
+    var sMs=new Date(startISO).getTime(), eMs=new Date(endISO).getTime();
+    var d=new Date(Math.max(sMs,todayMs)); d.setHours(0,0,0,0);
+    while(d.getTime()<eMs){ out.add(toLocalDateStr(d)); d.setDate(d.getDate()+1); }
+  }
+  if(car.paused) car.paused.forEach(function(p){ markRange(p.start,p.end); });
+  BOOKINGS.forEach(function(b){
+    if(String(b.carId)===String(car.id)&&b.status!=="completed"&&b.status!=="cancelled")
+      markRange(b.pickup,b.drop);
+  });
+  getCachedBookings().forEach(function(cb){
+    if(cb.status==="cancelled") return;
+    var same=cb.carId?String(cb.carId)===String(car.id):cb.carName===car.name;
+    if(!same) return;
+    markRange(cb.pickup&&cb.pickup.date?cb.pickup.date:cb.pickup,
+              cb.drop&&cb.drop.date?cb.drop.date:cb.drop);
+  });
+  return out;
+}
+
+function openDateCal(inputId,trigEl){
+  _calInputId=inputId;
+  _calIsDropPicker=(inputId==="d-drop-date");
+  var cur=document.getElementById(inputId).value;
+  var dt=cur?new Date(cur+"T00:00:00"):new Date();
+  _calYear=dt.getFullYear(); _calMonth=dt.getMonth();
+  renderDateCal();
+  var pop=document.getElementById("cal-popup");
+  pop.style.display="block";
+  var rect=trigEl.getBoundingClientRect();
+  var top=rect.bottom+window.scrollY+6;
+  var left=rect.left+window.scrollX;
+  if(left+272>window.innerWidth-8) left=window.innerWidth-280;
+  if(left<8) left=8;
+  pop.style.top=top+"px"; pop.style.left=left+"px";
+  document.getElementById("cal-overlay").style.display="block";
+}
+
+function closeDateCal(){
+  document.getElementById("cal-popup").style.display="none";
+  document.getElementById("cal-overlay").style.display="none";
+}
+
+function renderDateCal(){
+  var unavail=selCar?getUnavailDates(selCar):new Set();
+  var today=new Date(); today.setHours(0,0,0,0);
+  var todayStr=toLocalDateStr(today);
+  var minStr=todayStr;
+  if(_calIsDropPicker){ var puv=document.getElementById("d-pickup-date").value; if(puv) minStr=puv; }
+  var selStr=document.getElementById(_calInputId).value||"";
+  var MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var first=new Date(_calYear,_calMonth,1), dim=new Date(_calYear,_calMonth+1,0).getDate();
+  var h='<div class="cal-hdr"><button class="cal-nav-btn" onclick="shiftCalM(-1)">&#8249;</button>'
+      +'<span class="cal-hdr-lbl">'+MN[_calMonth]+' '+_calYear+'</span>'
+      +'<button class="cal-nav-btn" onclick="shiftCalM(1)">&#8250;</button></div>'
+      +'<div class="cal-grid7">';
+  ["Su","Mo","Tu","We","Th","Fr","Sa"].forEach(function(d){h+='<div class="cal-dow">'+d+'</div>';});
+  for(var i=0;i<first.getDay();i++) h+='<div></div>';
+  for(var d=1;d<=dim;d++){
+    var ds=_calYear+"-"+String(_calMonth+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    var isPast=ds<minStr, isNA=unavail.has(ds);
+    var cls="cal-d"+(isPast?" off":isNA?" na":"")+(ds===todayStr?" today":"")+(ds===selStr?" sel":"");
+    var oc=(!isPast&&!isNA)?'onclick="pickCalDate(\''+ds+'\')"':'';
+    var ti=isNA?'title="Car is booked — unavailable"':(isPast?'title="Past date"':'');
+    h+='<div class="'+cls+'" '+oc+' '+ti+'>'+d+'</div>';
+  }
+  h+='</div>';
+  document.getElementById("cal-body").innerHTML=h;
+}
+
+function shiftCalM(dir){
+  _calMonth+=dir;
+  if(_calMonth<0){_calMonth=11;_calYear--;} if(_calMonth>11){_calMonth=0;_calYear++;}
+  renderDateCal();
+}
+
+function pickCalDate(ds){
+  document.getElementById(_calInputId).value=ds;
+  var trig=document.getElementById(_calInputId.replace("-date","-trigger"));
+  if(trig){ var dt2=new Date(ds+"T00:00:00"); trig.textContent=dt2.toLocaleDateString("en-IN",{day:"numeric",month:"short"}); }
+  closeDateCal();
+  autoCalcPrice();
+  // After picking pickup, auto-open drop calendar
+  if(!_calIsDropPicker){
+    setTimeout(function(){ var dt=document.getElementById("d-drop-trigger"); if(dt) openDateCal("d-drop-date",dt); },180);
+  }
+}
 </script>
+
+<!-- Custom date picker overlay -->
+<div id="cal-overlay" onclick="closeDateCal()" style="display:none;position:fixed;inset:0;z-index:9998"></div>
+<div id="cal-popup" class="cal-popup" style="display:none;position:absolute;z-index:9999"><div id="cal-body"></div></div>
+
 </body>
 </html>

@@ -4000,77 +4000,62 @@ function getDayType(dateStr){
   return "weekday";
 }
 function getDayMult(type){
-  if(type === "holiday") return 1.40;  // spec: +40% festival/holiday
-  if(type === "weekend") return 1.20;  // spec: +20% Fri-Sun
-  return 1.0;                          // spec: weekdays at base
-}
-// Lead time multiplier — urgency / advance booking
-function getLeadTimeMult(pickupISO){
-  var hoursAhead = (new Date(pickupISO) - Date.now()) / 3600000;
-  if(hoursAhead < 24)    return 1.15; // same-day or within 24 h
-  if(hoursAhead < 8*24)  return 1.0;  // standard 2-7 day window
-  return 1.20;                         // 8+ days: inventory protection
-}
-// Fleet utilization multiplier — derived from live search results
-function getUtilizationMult(carCat){
-  if(!carCat) return 1.0;
-  var inCat = FLEET.filter(function(c){ return c.cat === carCat; });
-  if(!inCat.length || inCat[0].availableNow === undefined) return 1.0;
-  var total   = inCat.length;
-  var avail   = inCat.filter(function(c){ return c.availableNow; }).length;
-  var utilPct = (total - avail) / total;
-  if(utilPct <= 0.30) return 0.85;  // low — stimulate demand
-  if(utilPct <= 0.70) return 1.0;   // healthy
-  if(utilPct <= 0.85) return 1.15;  // high
-  return 1.40;                       // critical — aggressive surge
+  if(type === "holiday") return 1.10;  // national holiday: +10%
+  if(type === "weekend") return 1.20;  // weekend (Sat/Sun): +20%
+  return 0.90;                         // weekday: −10%
 }
 // Returns the local YYYY-MM-DD for a JS Date (user's timezone = IST on Indian devices)
 function toLocalDateStr(dt){
   var y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,"0"), d2 = String(dt.getDate()).padStart(2,"0");
   return y+"-"+m+"-"+d2;
 }
-// Tier hourly rates calibrated for a ₹50k/month car (baseRate ≈ ₹1701/day).
-// All other cars scale proportionally via their baseRate.
-var BASE_PPD_REF = 1701;
-var TIER_RATES_HR = {lt12:80, lt24:60, lt48:52, lt168:40, gte168:52};
-function getTierHourlyRate(baseRate, hrs){
-  var factor = baseRate / BASE_PPD_REF;
-  if(hrs < 12)  return TIER_RATES_HR.lt12  * factor;
-  if(hrs < 24)  return TIER_RATES_HR.lt24  * factor;
-  if(hrs < 48)  return TIER_RATES_HR.lt48  * factor;
-  if(hrs < 168) return TIER_RATES_HR.lt168 * factor;
-  return TIER_RATES_HR.gte168 * factor;
+// Category-based per-hour rate tiers (before day-of-week adjustment)
+// Monthly targets: MPV ₹50k, SUV ₹60k, Compact hatch ₹42k, Premium hatch ₹46k
+// Tiers: [< 12hr, < 24hr, < 48hr, < 7 days, 7+ days]
+var CAT_HOURLY = {
+  "MPV": [150, 140, 120, 100,  90],
+  "SUV": [180, 168, 144, 120, 108],
+};
+var HATCH_COMPACT = [126, 118, 101,  84,  76];  // ~₹42k/mo (price_per_day < ₹1580 in DB)
+var HATCH_PREMIUM = [140, 130, 112,  93,  84];  // ~₹46k/mo
+var HATCH_PPD_SPLIT = 1580;
+
+function getCatHourlyRate(cat, baseRate, hrs){
+  var tiers = cat === "MPV" ? CAT_HOURLY["MPV"]
+            : cat === "SUV" ? CAT_HOURLY["SUV"]
+            : ((baseRate||0) < HATCH_PPD_SPLIT ? HATCH_COMPACT : HATCH_PREMIUM);
+  if(hrs < 12)  return tiers[0];
+  if(hrs < 24)  return tiers[1];
+  if(hrs < 48)  return tiers[2];
+  if(hrs < 168) return tiers[3];
+  return tiers[4];
 }
 
-// Final Price = Base × Lead Time × Calendar × Utilization  (cap: 1.6×)
+// Final Price = Hourly Rate × Day-of-week multiplier
 function calcDynamicPrice(baseRate, pickupISO, dropISO, carCat){
   var pickup = new Date(pickupISO), drop = new Date(dropISO);
   var hrs = (drop - pickup) / 3600000;
-  if(hrs <= 0) return {base:0,gst:0,total:0,hours:0,days:0,breakdown:[]};
-  var hourlyRate = getTierHourlyRate(baseRate, hrs);
-  var leadMult   = getLeadTimeMult(pickupISO);
-  var utilMult   = getUtilizationMult(carCat);
-  var rawBase = 0, breakdown = [], hasCap = false, cur = pickup.getTime();
+  if(hrs <= 0) return {base:0,gst:0,total:0,hours:0,days:0,breakdown:[],leadMult:1,utilMult:1,hasCap:false};
+  var hourlyRate = getCatHourlyRate(carCat, baseRate, hrs);
+  var rawBase = 0, breakdown = [], cur = pickup.getTime();
   while(cur < drop.getTime()){
     var chunkEnd = Math.min(cur + 24*3600000, drop.getTime());
     var chunkHrs = (chunkEnd - cur) / 3600000;
     var dateStr  = toLocalDateStr(new Date(cur));
     var type     = getDayType(dateStr);
     var calMult  = getDayMult(type);
-    var combined = leadMult * calMult * utilMult;
-    if(combined > 1.6){ combined = 1.6; hasCap = true; }
-    rawBase += hourlyRate * combined * chunkHrs;
+    rawBase += hourlyRate * calMult * chunkHrs;
     if(breakdown.length && breakdown[breakdown.length-1].type === type){
       breakdown[breakdown.length-1].hours += chunkHrs;
     } else {
-      breakdown.push({date:dateStr, type:type, mult:combined, hours:chunkHrs, rate:Math.round(hourlyRate*combined*24)});
+      breakdown.push({date:dateStr, type:type, mult:calMult, hours:chunkHrs, rate:Math.round(hourlyRate*calMult*24)});
     }
     cur = chunkEnd;
   }
   var base = Math.round(rawBase);
   var gst  = Math.round(base * 0.18);
   return {base:base, gst:gst, total:base+gst, hours:hrs, days:Math.max(1,Math.ceil(hrs/24)),
-          breakdown:breakdown, leadMult:leadMult, utilMult:utilMult, hasCap:hasCap};
+          breakdown:breakdown, leadMult:1, utilMult:1, hasCap:false};
 }
 // ─────────────────────────────────────────────────────────────────────────────
 

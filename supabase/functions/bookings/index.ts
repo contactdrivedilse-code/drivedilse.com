@@ -25,29 +25,35 @@ const CHECKIN_WINDOW_MINS = 30;
 function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
 const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 
-function calcMultiplier(hours: number): number {
-  const days = hours / 24;
-  if (hours <= 8)  return 1.30;
-  if (hours <= 12) return 1.15;
-  if (days <= 1)   return 1.00;
-  if (days <= 3)   return 0.95;
-  if (days <= 5)   return 0.92;
-  if (days <= 7)   return 0.90;
-  if (days <= 14)  return 0.85;
-  if (days <= 21)  return 0.80;
-  return 0.75;
+// Per-hour tier rates by category (mirrors frontend calcDynamicPrice)
+// Tiers: [<12hr, <24hr, <48hr, <7days, 7+days]
+const CAT_HOURLY: Record<string, number[]> = {
+  "MPV": [150, 140, 120, 100,  90],
+  "SUV": [180, 168, 144, 120, 108],
+};
+const HATCH_COMPACT = [126, 118, 101,  84,  76];
+const HATCH_PREMIUM = [140, 130, 112,  93,  84];
+
+function getCatHourlyRate(category: string, pricePerDay: number, hrs: number): number {
+  let tiers: number[];
+  if (category === "MPV")      tiers = CAT_HOURLY["MPV"];
+  else if (category === "SUV") tiers = CAT_HOURLY["SUV"];
+  else                          tiers = pricePerDay < 1580 ? HATCH_COMPACT : HATCH_PREMIUM;
+  if (hrs < 12)  return tiers[0];
+  if (hrs < 24)  return tiers[1];
+  if (hrs < 48)  return tiers[2];
+  if (hrs < 168) return tiers[3];
+  return tiers[4];
 }
 
-function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
-  const hours    = (drop.getTime() - pickup.getTime()) / 3600000;
-  const mult     = calcMultiplier(hours);
-  const base     = Math.round(pricePerDay * mult * hours / 24);
-  const gst      = Math.round(base * 0.18);
-  const total    = base + gst;
-  const full     = Math.round(pricePerDay * hours / 24);
-  const discount = Math.max(0, full - base);
-  const days     = Math.max(1, Math.ceil(hours / 24));
-  return { base, gst, total, discount, days };
+function calcPrice(pricePerDay: number, pickup: Date, drop: Date, category = "Hatchback") {
+  const hours = (drop.getTime() - pickup.getTime()) / 3600000;
+  const pph   = getCatHourlyRate(category, pricePerDay, hours);
+  const base  = Math.round(pph * hours);
+  const gst   = Math.round(base * 0.18);
+  const total = base + gst;
+  const days  = Math.max(1, Math.ceil(hours / 24));
+  return { base, gst, total, discount: 0, days };
 }
 
 async function getUser(req: Request) {
@@ -697,7 +703,7 @@ Deno.serve(async (req) => {
       const availableAt  = new Date(Date.now() + 4 * 3600000).toISOString();
 
       // Compute the original base/GST split before we overwrite drop_date below
-      const { base, gst, days } = calcPrice(b.price_per_day as number, new Date(b.pickup_date as string), new Date(b.drop_date as string));
+      const { base, gst, days } = calcPrice(b.price_per_day as number, new Date(b.pickup_date as string), new Date(b.drop_date as string), b.car_category as string || "Hatchback");
 
       // drop_date gets overwritten below for car-availability purposes, so
       // capture how late the return was (vs the originally scheduled drop)

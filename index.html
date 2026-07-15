@@ -2275,7 +2275,17 @@ window.addEventListener('scroll',function(){
   <div class="modal" style="max-width:500px;width:calc(100vw - 32px);max-height:90vh;overflow-y:auto">
     <button class="modal-close" onclick="closeModal('lease-modal')">&times;</button>
     <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.3rem;font-weight:900;margin-bottom:4px">Book Monthly Lease</div>
-    <div style="font-size:.82rem;color:var(--ts);margin-bottom:20px" id="lbm-car-name">—</div>
+    <div style="font-size:.82rem;color:var(--ts);margin-bottom:16px" id="lbm-car-name">—</div>
+
+    <!-- KM Plan -->
+    <div class="lbm-field">
+      <label>KM Plan</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button id="lbm-km-unlimited" class="lbm-month-btn sel" onclick="setLeaseKmPlan('unlimited')" style="flex:1">♾️ Unlimited KM</button>
+        <button id="lbm-km-limited"   class="lbm-month-btn"     onclick="setLeaseKmPlan('limited')"   style="flex:1">📍 Limited 6,000 km</button>
+      </div>
+      <div style="font-size:.7rem;color:var(--ts);margin-top:5px" id="lbm-km-note">No restrictions on kilometres driven each month</div>
+    </div>
 
     <!-- Start date + time -->
     <div class="lbm-field">
@@ -4009,6 +4019,18 @@ function toLocalDateStr(dt){
   var y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,"0"), d2 = String(dt.getDate()).padStart(2,"0");
   return y+"-"+m+"-"+d2;
 }
+// ── MONTHLY LEASE PRICES (GST inclusive, fixed per category) ──
+var LEASE_MONTHLY = {
+  unlimited: { "MPV":78000, "SUV":70000, compact:45000, premium:60000 },
+  limited:   { "MPV":68000, "SUV":60000, compact:38000, premium:50000 }
+};
+function getLeaseMonthly(car, plan){
+  var p = LEASE_MONTHLY[plan||"unlimited"];
+  if(car.cat==="MPV") return p["MPV"];
+  if(car.cat==="SUV") return p["SUV"];
+  return (car.rate||0) < 1580 ? p.compact : p.premium;
+}
+
 // Category-based per-hour rate tiers (before day-of-week adjustment)
 // Monthly targets: MPV ₹50k, SUV ₹60k, Compact hatch ₹42k, Premium hatch ₹46k
 // Tiers: [< 12hr, < 24hr, < 48hr, < 7 days, 7+ days]
@@ -7257,14 +7279,9 @@ function qlOfflineProceed(){
 
 // ── MONTHLY LEASE ──────────────────────────────────────────────────────────
 
-var _leaseCar = null, _leaseMonths = 1, _leasePriceResult = null;
+var _leaseCar = null, _leaseMonths = 1, _leasePriceResult = null, _leaseKmPlan = "unlimited";
 
-function leaseMonthlyEstimate(car){
-  // Estimate monthly price using dynamic pricing for 30 days from today at 10 AM
-  var now = new Date(); now.setHours(10,0,0,0);
-  var end = new Date(now.getTime() + 30*24*3600000);
-  return calcDynamicPrice(car.rate, now.toISOString(), end.toISOString()).total;
-}
+function leaseMonthlyEstimate(car){ return getLeaseMonthly(car, "unlimited"); }
 
 function showLease(){
   showPage("pg-lease");
@@ -7295,12 +7312,13 @@ function showLease(){
           '<span class="pill">⛽ ' + car.fuel + '</span>' +
           '<span class="pill">💺 ' + car.seats + ' Seats</span>' +
         '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px">' +
-          '<div>' +
-            '<div class="lease-monthly-price">' + inr(monthlyEst) + '</div>' +
-            '<div class="lease-month-sub">/ month (est.) · incl. GST</div>' +
+        '<div style="margin-bottom:14px">' +
+          '<div class="lease-monthly-price">' + inr(monthlyEst) + '<span style="font-size:.7rem;font-weight:600;color:var(--ts);margin-left:5px">/ mo</span></div>' +
+          '<div class="lease-month-sub">Unlimited KM · incl. GST</div>' +
+          '<div style="font-size:.72rem;color:var(--ts);margin-top:4px;display:flex;align-items:center;gap:5px">' +
+            '<span style="background:#f0f0f0;border-radius:10px;padding:2px 8px;font-weight:700">Limited 6,000 km</span>' +
+            inr(getLeaseMonthly(car,"limited")) + '/mo' +
           '</div>' +
-          '<div style="text-align:right;font-size:.74rem;color:var(--ts)">' + inr(Math.round(car.rate/24)) + '/hr</div>' +
         '</div>' +
         '<button class="lease-cta-btn" onclick="openLeaseForm(\'' + car.id + '\')">Lease This Car →</button>' +
       '</div>';
@@ -7312,9 +7330,13 @@ function openLeaseForm(carId){
   _leaseCar = null;
   for(var i=0;i<FLEET.length;i++){ if(String(FLEET[i].id)===String(carId)){ _leaseCar=FLEET[i]; break; } }
   if(!_leaseCar) return;
-  _leaseMonths = 1; _leasePriceResult = null;
+  _leaseMonths = 1; _leasePriceResult = null; _leaseKmPlan = "unlimited";
 
   document.getElementById("lbm-car-name").textContent = _leaseCar.name + " · " + _leaseCar.cat + " · " + _leaseCar.tm;
+  // Reset KM plan UI
+  document.getElementById("lbm-km-unlimited").className = "lbm-month-btn sel";
+  document.getElementById("lbm-km-limited").className   = "lbm-month-btn";
+  document.getElementById("lbm-km-note").textContent    = "No restrictions on kilometres driven each month";
 
   // Pre-fill guest fields from profile if signed in
   var lbmGuestFields = document.getElementById("lbm-guest-fields");
@@ -7341,6 +7363,16 @@ function openLeaseForm(carId){
   payBtn.textContent = "Select start & end date above"; payBtn.disabled = true;
 
   openModal("lease-modal");
+}
+
+function setLeaseKmPlan(plan){
+  _leaseKmPlan = plan;
+  document.getElementById("lbm-km-unlimited").className = "lbm-month-btn" + (plan==="unlimited"?" sel":"");
+  document.getElementById("lbm-km-limited").className   = "lbm-month-btn" + (plan==="limited"  ?" sel":"");
+  document.getElementById("lbm-km-note").textContent = plan==="unlimited"
+    ? "No restrictions on kilometres driven each month"
+    : "6,000 km included per month — additional km charged separately";
+  lbmCalc();
 }
 
 function lbmCalc(){
@@ -7377,18 +7409,24 @@ function lbmCalc(){
     return;
   }
 
-  noticeEl.innerHTML = '<span style="color:#15803d;font-weight:700">✓ ' + days + ' days (' + Math.round(hrs) + ' hrs)</span>';
+  noticeEl.innerHTML = '<span style="color:#15803d;font-weight:700">✓ ' + days + ' day' + (days===1?'':'s') + '</span>';
 
-  var pr = calcDynamicPrice(_leaseCar.rate, startISO, endISO);
-  _leasePriceResult = { base: pr.base, gst: pr.gst, total: pr.total, pickup: startISO, drop: endISO };
+  // Fixed monthly rate (GST inclusive) prorated by days
+  var monthlyRate  = getLeaseMonthly(_leaseCar, _leaseKmPlan);
+  var totalGstInc  = Math.round(monthlyRate * days / 30);
+  var base         = Math.round(totalGstInc / 1.18);
+  var gst          = totalGstInc - base;
+  var months       = (days / 30).toFixed(1).replace(/\.0$/, "");
 
-  document.getElementById("lbm-base").textContent  = inr(pr.base);
-  document.getElementById("lbm-dur").textContent   = days + " days";
-  document.getElementById("lbm-gst").textContent   = inr(pr.gst);
-  document.getElementById("lbm-total").textContent = inr(pr.total);
+  _leasePriceResult = { base: base, gst: gst, total: totalGstInc, pickup: startISO, drop: endISO, kmPlan: _leaseKmPlan };
+
+  document.getElementById("lbm-base").textContent  = inr(base);
+  document.getElementById("lbm-dur").textContent   = days + " days (" + months + " mo)";
+  document.getElementById("lbm-gst").textContent   = inr(gst);
+  document.getElementById("lbm-total").textContent = inr(totalGstInc);
   priceBox.style.display = "block";
 
-  payBtn.textContent = "Pay " + inr(pr.total + 1000) + " & Confirm Lease →";
+  payBtn.textContent = "Pay " + inr(totalGstInc + 1000) + " & Confirm Lease →";
   payBtn.disabled = false;
 }
 

@@ -4618,7 +4618,31 @@ async function bfVerifyOtp(btn){
 
 // ── PRICE ──
 function autoCalcPrice(){
-  if(selCar && getDt("d-pickup") && getDt("d-drop")) calcPrice();
+  if(!selCar) return;
+  var pv = getDt("d-pickup"), dv = getDt("d-drop");
+  if(!pv || !dv) return;
+  var p = new Date(pv), d = new Date(dv);
+  var hrs = (d - p) / 3600000;
+  if(hrs < 6 || hrs >= 15 * 24) return; // silent — don't alert on auto-trigger
+  var pr = calcDynamicPrice(selCar.rate, pv, dv, selCar.cat);
+  var base = pr.base, gst = pr.gst, total = pr.total;
+  var perhr = Math.round(total / hrs), h = Math.round(hrs);
+  var days = pr.days;
+  var dlbl = hrs < 24 ? (h + " hr" + (h===1?"":"s")) : (Math.round(days) + (days===1?" day":" days"));
+  priceResult = {base:base, gst:gst, total:total, perhr:perhr, h:h, dlbl:dlbl, disc:"", pickup:pv, drop:dv};
+  document.getElementById("r-total").textContent  = inr(total);
+  document.getElementById("r-dur").textContent    = dlbl;
+  document.getElementById("r-perhr").textContent  = inr(perhr) + "/hr";
+  document.getElementById("r-base").textContent   = inr(base);
+  document.getElementById("r-gst").textContent    = inr(gst);
+  document.getElementById("r-dlbl").textContent   = dlbl;
+  document.getElementById("r-fin").textContent    = inr(total);
+  document.getElementById("stb-total").textContent  = inr(total);
+  document.getElementById("tpc-total").textContent  = inr(total);
+  var db = document.getElementById("r-disc"); if(db) db.style.display = "none";
+  var bdEl = document.getElementById("r-day-breakdown"); if(bdEl){ bdEl.innerHTML=""; bdEl.style.display="none"; }
+  document.getElementById("price-section").style.display = "block";
+  document.getElementById("sticky-total-bar").classList.add("show");
 }
 function calcPrice(){
   var emailVal = document.getElementById("bf-email").value.trim();

@@ -28,10 +28,10 @@ const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 // Marginal bracket rates (₹/hr, excl GST) — mirrors frontend calcDynamicPrice
 // Each rate applies ONLY to hours within its bracket: [0-12hr, 12-24hr, 24-168hr, 168hr+]
 const CAT_BRACKETS: Record<string, number[]> = {
-  compact: [ 96, 60, 39, 34],  // 24hr ≈ ₹2.2k, 14-day ≈ ₹15.6k
-  premium: [105, 65, 43, 37],  // 24hr ≈ ₹2.4k, 14-day ≈ ₹17k
-  MPV:     [130, 81, 45, 39],  // 24hr ≈ ₹3k,   14-day ≈ ₹18k
-  SUV:     [156, 97, 54, 46],  // 24hr ≈ ₹3.5k, 14-day ≈ ₹22k
+  compact: [ 96, 60, 39, 48],  // 24hr≈₹2.2k | 7d≈₹8.8k | 14d≈₹18k | 30d≈₹40k
+  premium: [105, 65, 43, 54],  // 24hr≈₹2.4k | 7d≈₹9.7k | 14d≈₹20k | 30d≈₹45k
+  MPV:     [130, 81, 45, 64],  // 24hr≈₹3k   | 7d≈₹10.6k| 14d≈₹23k | 30d≈₹52k
+  SUV:     [156, 97, 54, 73],  // 24hr≈₹3.5k | 7d≈₹12.8k| 14d≈₹27k | 30d≈₹60k
 };
 const BRACKET_CUTS = [0, 12, 24, 168, Infinity];
 

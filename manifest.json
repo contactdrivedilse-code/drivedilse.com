@@ -1,7 +1,7 @@
 {
-  "name": "DriveDilSe — Car Rental & Fleet Leasing in Pune",
+  "name": "DriveDilSe — Self-Drive Car Leasing & Fleet Solutions in Pune",
   "short_name": "DriveDilSe",
-  "description": "Car rental & fleet leasing in Pune. Pick your dates and take the wheel.",
+  "description": "Self-drive car leasing in Pune. Pick your dates and take the wheel.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

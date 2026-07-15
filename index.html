@@ -132,10 +132,12 @@ body{font-family:'Inter',sans-serif;background:var(--w);color:var(--t);-webkit-f
 .dt-date-inp{flex:1;border:none;background:transparent;font-size:.92rem;font-weight:700;color:var(--t);outline:none;font-family:'Inter',sans-serif;min-width:0;width:100%;cursor:pointer}
 .dt-date-inp::-webkit-calendar-picker-indicator{opacity:.45;cursor:pointer;width:16px;height:16px}
 .dt-divider{font-size:.8rem;color:var(--b);font-weight:700;flex-shrink:0}
-/* Premium date-picker cards */
-.dt-pair-cal{cursor:pointer;position:relative;transition:border-color .18s,box-shadow .18s}
-.dt-pair-cal:hover{border-color:var(--yd);box-shadow:0 2px 14px rgba(197,154,16,.13)}
-.dt-cal-date{display:block;font-size:1.05rem;font-weight:800;letter-spacing:-.01em;margin:6px 0 0;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+/* Premium unified date-picker card */
+.dt-unified{display:flex;align-items:stretch;border:1.5px solid var(--b);border-radius:16px;overflow:hidden;background:var(--bg)}
+.dt-panel{flex:1;padding:14px 16px;cursor:pointer;transition:background .15s}
+.dt-panel:hover{background:var(--wg,#faf9f6)}
+.dt-divider-v{width:1px;background:var(--b);flex-shrink:0;margin:10px 0}
+.dt-cal-date{display:block;font-size:1.02rem;font-weight:800;letter-spacing:-.01em;margin:5px 0 0;color:var(--ts);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .dt-cal-date.has-date{color:var(--t)}
 /* Custom date picker */
 .dt-trigger{flex:1;min-width:0;cursor:pointer;font-size:.92rem;font-weight:700;color:var(--t);padding:0;background:none;border:none;text-align:left;font-family:'Inter',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2499,19 +2501,19 @@ window.addEventListener('scroll',function(){
         <div>This car is <strong>unavailable</strong> for your selected dates. Please <a onclick="startDateFlow()">choose different dates</a> to continue booking.</div>
       </div>
       <div id="booking-form">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-          <div class="dt-pair dt-pair-cal" onclick="openDateCal('d-pickup-date',this)">
+        <div class="dt-unified" style="margin-bottom:14px">
+          <div class="dt-panel" onclick="openDateCal('d-pickup-date',this)">
             <div class="dt-pair-label">📍 Pickup</div>
             <span id="d-pickup-trigger" class="dt-cal-date">Select date</span>
             <select class="dt-hour-sel" id="d-pickup-hour" onclick="event.stopPropagation()" onchange="autoCalcPrice()" style="width:100%;margin-top:8px;box-sizing:border-box"></select>
-            <input type="date" id="d-pickup-date" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none">
+            <input type="date" id="d-pickup-date" style="display:none">
           </div>
-          <div class="dt-pair dt-pair-cal" onclick="openDateCal('d-drop-date',this)">
+          <div class="dt-divider-v"></div>
+          <div class="dt-panel" onclick="openDateCal('d-drop-date',this)">
             <div class="dt-pair-label">🏁 Drop</div>
             <span id="d-drop-trigger" class="dt-cal-date">Select date</span>
             <select class="dt-hour-sel" id="d-drop-hour" onclick="event.stopPropagation()" onchange="autoCalcPrice()" style="width:100%;margin-top:8px;box-sizing:border-box"></select>
-            <input type="date" id="d-drop-date" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none">
-          </div>
+            <input type="date" id="d-drop-date" style="display:none">
           </div>
         </div>
         <div id="bf-signedin-badge" style="display:none;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.8rem;font-weight:700;color:#1a7a3c">✓ Signed in &amp; verified — booking as <span id="bf-signedin-name" style="margin-left:2px"></span></div>

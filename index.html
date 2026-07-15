@@ -7412,8 +7412,11 @@ function lbmCalc(){
   noticeEl.innerHTML = '<span style="color:#15803d;font-weight:700">✓ ' + days + ' day' + (days===1?'':'s') + '</span>';
 
   // Fixed monthly rate (GST inclusive) prorated by days
+  // 15 days = 60% of monthly (40% off), 30 days = 100%; linear between.
+  // Beyond 30 days: straight ratio (e.g. 45 days = 1.5×).
   var monthlyRate  = getLeaseMonthly(_leaseCar, _leaseKmPlan);
-  var totalGstInc  = Math.round(monthlyRate * days / 30);
+  var factor       = days <= 30 ? (0.60 + (days - 15) / 15 * 0.40) : (days / 30);
+  var totalGstInc  = Math.round(monthlyRate * factor);
   var base         = Math.round(totalGstInc / 1.18);
   var gst          = totalGstInc - base;
   var months       = (days / 30).toFixed(1).replace(/\.0$/, "");

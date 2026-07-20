@@ -44,19 +44,34 @@ async function hasDateConflict(carId: string, pISO: string, dISO: string, ownSes
 }
 const CONFLICT_MSG = "This car is paused or already booked for these dates. Please choose different dates or another car.";
 
-// Base tier hourly rates for the reference car (pricePerDay ≈ ₹1701).
-// All other cars scale proportionally: actual_rate = TIER_RATE × (car.pricePerDay / BASE_PPD)
-// Calibration: at lt24=60, a 24-hr weekday booking on the base car costs ≈ ₹1,530 incl. GST.
-const BASE_PPD    = 1701;
-const TIER_RATES  = { lt12: 80, lt24: 60, lt48: 52, lt168: 40, gte168: 52 };
+// Marginal bracket rates (₹/hr, excl GST) — must stay in sync with CAT_BRACKETS in index.html.
+// Brackets: [0-12hr, 12-24hr, 24-168hr, 168hr+]
+const CAT_BRACKETS: Record<string, number[]> = {
+  compact: [ 96, 60, 39, 48],
+  premium: [105, 65, 43, 54],
+  MPV:     [130, 81, 45, 64],
+  SUV:     [156, 97, 54, 73],
+};
+const HATCH_PPD_SPLIT = 1580;
+const BRACKET_CUTS = [0, 12, 24, 168, Infinity];
 
-function getTierHourlyRate(pricePerDay: number, totalHours: number): number {
-  const factor = pricePerDay / BASE_PPD;
-  if (totalHours < 12)  return TIER_RATES.lt12   * factor;
-  if (totalHours < 24)  return TIER_RATES.lt24   * factor;
-  if (totalHours < 48)  return TIER_RATES.lt48   * factor;
-  if (totalHours < 168) return TIER_RATES.lt168  * factor;
-  return TIER_RATES.gte168 * factor;
+function getCatBrackets(category: string, pricePerDay: number): number[] {
+  const cat = (category || "").toLowerCase();
+  if (cat === "mpv") return CAT_BRACKETS.MPV;
+  if (cat === "compact suv" || cat === "suv") return CAT_BRACKETS.SUV;
+  if (cat === "premium hatchback" || cat === "sedan") return CAT_BRACKETS.premium;
+  if (cat === "compact hatchback") return CAT_BRACKETS.compact;
+  return pricePerDay < HATCH_PPD_SPLIT ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
+}
+
+function getMarginalBase(rates: number[], fromHr: number, toHr: number): number {
+  let cost = 0;
+  for (let i = 0; i < rates.length; i++) {
+    const s = Math.max(fromHr, BRACKET_CUTS[i]);
+    const e = Math.min(toHr, BRACKET_CUTS[i + 1]);
+    if (e > s) cost += (e - s) * rates[i];
+  }
+  return cost;
 }
 
 // Indian national / public holidays — update annually.
@@ -94,7 +109,7 @@ function getDayType(dateStr: string): "holiday" | "weekend" | "weekday" {
 function getDayMultiplier(type: "holiday" | "weekend" | "weekday"): number {
   if (type === "holiday") return 1.10;
   if (type === "weekend") return 1.20;
-  return 0.90;
+  return 1.0;
 }
 
 // Converts a UTC ms timestamp to an IST calendar date string "YYYY-MM-DD".
@@ -103,23 +118,18 @@ function toISTDate(ms: number): string {
   return ist.toISOString().slice(0, 10);
 }
 
-function calcPrice(pricePerDay: number, pickup: Date, drop: Date) {
-  const totalMs = drop.getTime() - pickup.getTime();
-  const hours   = totalMs / 3600000;
+function calcPrice(pricePerDay: number, pickup: Date, drop: Date, category = "") {
+  const hours = (drop.getTime() - pickup.getTime()) / 3600000;
   if (hours <= 0) return { base: 0, gst: 0, total: 0, discount: 0, days: 0 };
 
-  // Select per-hour rate based on total booking duration, scaled to this car's pricePerDay.
-  const hourlyRate = getTierHourlyRate(pricePerDay, hours);
-
-  // Walk in 24-hour chunks applying day-type multiplier (weekday×0.9, weekend×1.2, holiday×1.1).
-  let rawBase = 0;
-  let cur = pickup.getTime();
+  const rates = getCatBrackets(category, pricePerDay);
+  let rawBase = 0, elapsed = 0, cur = pickup.getTime();
   while (cur < drop.getTime()) {
-    const chunkEnd  = Math.min(cur + 24 * 3600000, drop.getTime());
-    const chunkHrs  = (chunkEnd - cur) / 3600000;
-    const dateStr   = toISTDate(cur);
-    const mult      = getDayMultiplier(getDayType(dateStr));
-    rawBase += hourlyRate * mult * chunkHrs;
+    const chunkEnd = Math.min(cur + 24 * 3600000, drop.getTime());
+    const chunkHrs = (chunkEnd - cur) / 3600000;
+    const mult     = getDayMultiplier(getDayType(toISTDate(cur)));
+    rawBase += getMarginalBase(rates, elapsed, elapsed + chunkHrs) * mult;
+    elapsed += chunkHrs;
     cur = chunkEnd;
   }
   const base  = Math.round(rawBase);
@@ -305,7 +315,7 @@ Deno.serve(async (req) => {
       const gDurErr = durationError(pickup.toISOString(), drop.toISOString());
       if (gDurErr) return gDurErr;
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof gdc === "number" && gdc > 0 ? gdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
       const chosenDeposit = resolveDepositChoice(depositChoice);
@@ -348,7 +358,7 @@ Deno.serve(async (req) => {
       const c = car as Record<string, unknown> | null;
       if (!c) return json({ error: "Car not available" }, 404);
 
-      const { total: baseTotal } = calcPrice(c.price_per_day as number, new Date(pickupDate), new Date(dropDate));
+      const { total: baseTotal } = calcPrice(c.price_per_day as number, new Date(pickupDate), new Date(dropDate), (c.category as string) || "");
       const { discount, code } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
       if (!code) return json({ error: "Invalid or expired coupon code." }, 400);
       return json({ discount, code });
@@ -370,7 +380,7 @@ Deno.serve(async (req) => {
       if (await hasDateConflict(carId, pISO, dISO, oSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof odc === "number" && odc > 0 ? odc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
       const chosenDeposit = resolveDepositChoice(depositChoice);
@@ -408,7 +418,7 @@ Deno.serve(async (req) => {
       // preview step, did, and even that missed pauses). A booking made or
       // a pause added between /order and /verify could slip through.
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), vSessionId)) return json({ error: CONFLICT_MSG }, 400);
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const chosenDeposit = resolveDepositChoice(depositChoice);
@@ -484,7 +494,7 @@ Deno.serve(async (req) => {
       if (dDurErr) return dDurErr;
       if (await hasDateConflict(carId, pISO, dISO, dSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const total = baseTotal + deliveryFee - couponDiscount;
@@ -558,7 +568,7 @@ Deno.serve(async (req) => {
       const p = prof as Record<string, unknown>;
 
       const pickup = new Date(pISO2), drop = new Date(dISO2);
-      const { total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop);
+      const { total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee2 = typeof gddc === "number" && gddc > 0 ? gddc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal2, couponCode);
       const total = baseTotal2 + deliveryFee2 - couponDiscount;

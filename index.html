@@ -3633,14 +3633,8 @@ async function renderProfile(){
               checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#a16207;font-weight:700">✅ Payment done — upload your Aadhaar &amp; DL to confirm your booking. <button class="btn btn-sm" style="margin-left:6px;font-size:.72rem;background:#ffd400;color:var(--t);padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="goToVerify()">Complete KYC →</button></div>';
             }
           } else if(isConfirmed){
-            if(ks !== "verified"){
-              if(ks === "rejected"){
-                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#c0392b;font-weight:700">❌ KYC rejected. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#c0392b;color:#fff;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="goToVerify()">Re-submit Documents →</button></div>';
-              } else if(ks === "uploaded"){
-                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#e67e22;font-weight:700">⏳ KYC under review. Check-in unlocks once verified.</div>';
-              } else {
-                checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#888;font-weight:600">Upload Aadhaar + DL to unlock check-in. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#ffd400;color:var(--t);padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="goToVerify()">Complete KYC →</button></div>';
-              }
+            if(ks === "rejected"){
+              checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#c0392b;font-weight:700">❌ KYC rejected. <button class="btn btn-sm" style="margin-left:8px;font-size:.72rem;background:#c0392b;color:#fff;padding:4px 10px;border-radius:7px;border:none;cursor:pointer" onclick="goToVerify()">Re-submit Documents →</button></div>';
             } else if(b.depositChoice && !b.depositPaid){
               checkinBtn = '<div style="margin-top:6px;font-size:.75rem;color:#a16207;font-weight:700">🔒 Pay the refundable security deposit (₹'+(b.depositAmount||1000)+') to unlock check-in. <button class="btn btn-y btn-sm" style="margin-left:8px;font-size:.72rem" onclick="payDepositNow(\''+b._id+'\')">Pay Deposit →</button></div>';
             } else if(!photosUp){
@@ -5638,15 +5632,19 @@ async function payDepositNow(bookingId){
 }
 
 function openCheckin(bookingId, carName, pickupStr) {
-  // Block check-in if KYC not verified
-  var ks = userProfile && userProfile.kycStatus;
-  if(ks !== "verified"){
-    var msg = ks === "uploaded"
-      ? "Your KYC documents are under review. Check-in unlocks once verified by our team."
-      : "Please complete KYC verification (Aadhaar + Driving Licence) before check-in.";
-    alert(msg);
-    if(ks !== "uploaded") goToVerify();
-    return;
+  // Only enforce KYC gate for bookings not yet confirmed by admin.
+  // A "confirmed" booking means admin already approved — don't re-block.
+  var bkForKyc = window._bkdMap && window._bkdMap[bookingId];
+  if(!bkForKyc || bkForKyc.status !== "confirmed"){
+    var ks = userProfile && userProfile.kycStatus;
+    if(ks !== "verified"){
+      var msg = ks === "uploaded"
+        ? "Your KYC documents are under review. Check-in unlocks once verified by our team."
+        : "Please complete KYC verification (Aadhaar + Driving Licence) before check-in.";
+      alert(msg);
+      if(ks !== "uploaded") goToVerify();
+      return;
+    }
   }
   // Block check-in if the refundable deposit hasn't been paid yet
   // (bookings from before this feature have depositChoice=null and are exempt)

@@ -185,12 +185,12 @@ Deno.serve(async (req) => {
         .select("id, booking_id, customer, phone, car_name, pickup_date, notes, updated_at")
         .like("notes", "selfie:pending:%")
         .order("updated_at", { ascending: false });
-      const rows = ((data ?? []) as Record<string, unknown>[]).map((b) => ({
+      const rows = await Promise.all(((data ?? []) as Record<string, unknown>[]).map(async (b) => ({
         id: b.id, bookingId: b.booking_id, customer: b.customer, phone: b.phone,
         carName: b.car_name, pickupDate: b.pickup_date,
-        selfieUrl: (b.notes as string).replace("selfie:pending:", ""),
+        selfieUrl: await signStorageUrl(sb, (b.notes as string).replace("selfie:pending:", "")),
         submittedAt: b.updated_at,
-      }));
+      })));
       return json(rows);
     }
 

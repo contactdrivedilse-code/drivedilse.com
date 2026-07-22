@@ -37,7 +37,7 @@ const BRACKET_CUTS = [0, 12, 24, 168, Infinity];
 
 function getCatBrackets(category: string, pricePerDay: number): number[] {
   if (category === "MPV") return CAT_BRACKETS.MPV;
-  if (category === "SUV") return CAT_BRACKETS.SUV;
+  if (category === "SUV" || category === "Compact SUV") return CAT_BRACKETS.SUV;
   return pricePerDay < 1580 ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
 }
 

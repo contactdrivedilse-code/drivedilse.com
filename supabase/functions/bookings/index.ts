@@ -201,6 +201,29 @@ Deno.serve(async (req) => {
         signBookingPhotos(mapBooking(b, extMap[b.id as string], reviewMap[b.id as string])))));
     }
 
+    // POST /:id/selfie — customer uploads selfie to storage; fleet manager verifies from admin panel
+    const selfieUploadMatch = path.match(/^\/([^/]+)\/selfie$/);
+    if (req.method === "POST" && selfieUploadMatch) {
+      const id = selfieUploadMatch[1];
+      const { data: booking } = await sb.from("bookings").select("id, status, user_id").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const b = booking as Record<string, unknown> | null;
+      if (!b) return json({ error: "Booking not found" }, 404);
+      if (b.status !== "confirmed") return json({ error: "Booking not in confirmed state" }, 400);
+
+      const body = await req.json() as { selfie?: string };
+      if (!body.selfie) return json({ error: "selfie required" }, 400);
+
+      const base64 = body.selfie.replace(/^data:image\/[^;]+;base64,/, "");
+      const buf    = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      const sPath  = `${id}/selfie.jpg`;
+      const { error: upErr } = await sb.storage.from("checkin").upload(sPath, buf, { contentType: "image/jpeg", upsert: true });
+      if (upErr) throw upErr;
+      const selfieUrl = sb.storage.from("checkin").getPublicUrl(sPath).data.publicUrl;
+
+      await sb.from("bookings").update({ notes: "selfie:pending:" + selfieUrl, updated_at: new Date().toISOString() }).eq("id", id);
+      return json({ success: true });
+    }
+
     // GET /:id/selfie-status — customer polls for selfie verification result
     const selfieStatusMatch = path.match(/^\/([^/]+)\/selfie-status$/);
     if (req.method === "GET" && selfieStatusMatch) {

@@ -5530,22 +5530,18 @@ function submitSelfieVerify(){
   result.innerHTML = '<div style="text-align:center;padding:16px;color:var(--ts);font-size:.85rem">🔍 Submitting selfie…</div>';
   document.getElementById("selfie-btns").style.display = "none";
 
-  var profilePhoto = localStorage.getItem("dds_profile_photo");
+  var _h = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
+  if(authToken && !authToken.startsWith("demo_")) _h["x-user-token"] = authToken;
+  var _sfPostUrl = API + "/bookings/" + ciBookingId + "/selfie" + (authToken && !authToken.startsWith("demo_") ? "?_ut=" + encodeURIComponent(authToken) : "");
 
-  // Store selfie for fleet manager review (localStorage for admin panel display)
-  var pendingVerif = JSON.parse(localStorage.getItem("dds_pending_selfie") || "[]");
-  var existing = pendingVerif.findIndex(function(v){ return v.bookingId === ciBookingId; });
-  var record = { bookingId: ciBookingId, selfie: selfieDataUrl, profilePhoto: profilePhoto, ts: new Date().toISOString(), status: "pending" };
-  if(existing > -1) pendingVerif[existing] = record; else pendingVerif.push(record);
-  localStorage.setItem("dds_pending_selfie", JSON.stringify(pendingVerif));
-
-  setTimeout(function(){
-    showSelfieWaiting(result);
-    // Start polling for verification status
-    if(authToken && !authToken.startsWith("demo_")){
-      startSelfiePolling(result);
-    }
-  }, 800);
+  fetch(_sfPostUrl, { method: "POST", headers: _h, body: JSON.stringify({ selfie: selfieDataUrl }) })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.error){ document.getElementById("ci-selfie-err").textContent = d.error; document.getElementById("ci-selfie-err").style.display="block"; document.getElementById("selfie-btns").style.display="flex"; return; }
+      showSelfieWaiting(result);
+      if(authToken && !authToken.startsWith("demo_")) startSelfiePolling(result);
+    })
+    .catch(function(e){ document.getElementById("ci-selfie-err").textContent = "Failed to upload selfie. Please try again."; document.getElementById("ci-selfie-err").style.display="block"; document.getElementById("selfie-btns").style.display="flex"; });
 }
 
 function showSelfieWaiting(result){

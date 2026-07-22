@@ -1381,85 +1381,64 @@ async function renderKycApprovals(isLocal, c){
 }
 
 function updateFaceVerifyBadge(){
-  var pending = JSON.parse(localStorage.getItem("dds_pending_selfie") || "[]").filter(function(v){ return v.status === "pending"; });
-  var badge = document.getElementById("nb-faceverify");
-  if(badge){ badge.textContent = pending.length; badge.style.display = pending.length ? "inline-flex" : "none"; }
+  adminFetch("/admin/pending-selfies").then(function(r){ return r.json(); }).then(function(rows){
+    var badge = document.getElementById("nb-faceverify");
+    if(badge){ badge.textContent = rows.length; badge.style.display = rows.length ? "inline-flex" : "none"; }
+  }).catch(function(){});
 }
 
 function renderFaceVerify(c){
-  updateFaceVerifyBadge();
-  var records = JSON.parse(localStorage.getItem("dds_pending_selfie") || "[]");
+  c.innerHTML = '<div class="page-title">Face Verification</div><div class="page-sub" style="color:var(--ts)">Loading…</div>';
+  adminFetch("/admin/pending-selfies").then(function(r){ return r.json(); }).then(function(records){
 
-  if(!records.length){
-    c.innerHTML = '<div class="page-title">Face Verification</div><div class="page-sub">Selfie identity checks for customer check-ins.</div>' +
-      '<div class="empty"><div class="empty-icon">✅</div><div class="empty-msg">No pending face verifications.</div></div>';
-    return;
-  }
+    if(!records.length){
+      c.innerHTML = '<div class="page-title">Face Verification</div><div class="page-sub">Selfie identity checks for customer check-ins.</div>' +
+        '<div class="empty"><div class="empty-icon">✅</div><div class="empty-msg">No pending face verifications.</div></div>';
+      return;
+    }
 
-  var cards = records.map(function(v, i){
-    var statusBadge = v.status === "approved"
-      ? '<span style="background:#dcfce7;color:#15803d;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">✅ Approved</span>'
-      : v.status === "rejected"
-      ? '<span style="background:#fee2e2;color:#b91c1c;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">❌ Rejected</span>'
-      : '<span style="background:#fef9c3;color:#a16207;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">⏳ Pending Review</span>';
+    var cards = records.map(function(v, i){
+      var selfieImg = v.selfieUrl
+        ? '<img src="'+v.selfieUrl+'" style="width:140px;height:140px;border-radius:50%;object-fit:cover;border:3px solid var(--yd);display:block;margin:0 auto">'
+        : '<div style="width:140px;height:140px;border-radius:50%;background:var(--wg);border:3px dashed var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:2.5rem">🤳</div>';
+      var ts = v.submittedAt ? new Date(v.submittedAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) : "";
+      return '<div class="card" style="margin-bottom:16px">' +
+        '<div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between">' +
+          '<div><span class="card-title">'+v.carName+' — '+v.customer+'</span><br><span style="font-size:.72rem;color:var(--ts)">'+v.bookingId+' &nbsp;·&nbsp; '+ts+'</span></div>' +
+          '<span style="background:#fef9c3;color:#a16207;padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">⏳ Pending</span>' +
+        '</div>' +
+        '<div style="text-align:center;padding:20px 0">'+selfieImg+
+          '<div style="font-size:.75rem;font-weight:700;color:var(--ts);margin-top:10px;letter-spacing:.5px;text-transform:uppercase">Check-In Selfie</div>' +
+          '<div style="font-size:.8rem;color:var(--ts);margin-top:6px">'+v.phone+'</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;justify-content:center;padding:0 24px 20px">' +
+          '<button class="btn btn-y btn-sm" onclick="faceVerifyAction(\''+v.id+'\',\'approved\',this)">✅ Approve</button>' +
+          '<button class="btn" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:8px 18px;font-size:.82rem;font-weight:700;cursor:pointer" onclick="faceVerifyAction(\''+v.id+'\',\'rejected\',this)">❌ Reject</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
 
-    var profileImg = v.profilePhoto
-      ? '<img src="'+v.profilePhoto+'" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--yd);display:block;margin:0 auto">'
-      : '<div style="width:110px;height:110px;border-radius:50%;background:var(--wg);border:3px dashed var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:2rem">👤</div>';
-
-    var selfieImg = v.selfie
-      ? '<img src="'+v.selfie+'" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--yd);display:block;margin:0 auto">'
-      : '<div style="width:110px;height:110px;border-radius:50%;background:var(--wg);border:3px dashed var(--b);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:2rem">🤳</div>';
-
-    var actions = v.status === "pending"
-      ? '<button class="btn btn-y btn-sm" onclick="faceVerifyAction('+i+',\'approved\')">✅ Approve</button>' +
-        '<button class="btn" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:8px 18px;font-size:.82rem;font-weight:700;cursor:pointer" onclick="faceVerifyAction('+i+',\'rejected\')">❌ Reject</button>'
-      : '<button class="btn btn-g btn-sm" onclick="faceVerifyAction('+i+',\'pending\')">↺ Reset</button>';
-
-    var ts = v.ts ? new Date(v.ts).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"}) : "";
-
-    return '<div class="card" style="margin-bottom:16px">' +
-      '<div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between">' +
-        '<div><span class="card-title">Booking: '+v.bookingId+'</span><span style="font-size:.72rem;color:var(--ts);margin-left:12px">'+ts+'</span></div>' +
-        statusBadge +
-      '</div>' +
-      '<div style="display:flex;gap:32px;align-items:center;justify-content:center;padding:24px;flex-wrap:wrap">' +
-        '<div style="text-align:center">'+profileImg+'<div style="font-size:.75rem;font-weight:700;color:var(--ts);margin-top:10px;letter-spacing:.5px;text-transform:uppercase">Profile Photo</div></div>' +
-        '<div style="font-size:2rem;color:var(--ts)">↔</div>' +
-        '<div style="text-align:center">'+selfieImg+'<div style="font-size:.75rem;font-weight:700;color:var(--ts);margin-top:10px;letter-spacing:.5px;text-transform:uppercase">Check-In Selfie</div></div>' +
-      '</div>' +
-      '<div style="display:flex;gap:10px;justify-content:center;padding:0 24px 20px">'+actions+'</div>' +
-    '</div>';
-  }).join("");
-
-  c.innerHTML = '<div class="page-title">Face Verification</div>' +
-    '<div class="page-sub">'+records.length+' selfie submission'+(records.length!==1?'s':'')+'</div>' +
-    cards;
+    c.innerHTML = '<div class="page-title">Face Verification</div>' +
+      '<div class="page-sub">'+records.length+' selfie submission'+(records.length!==1?'s':'')+'</div>' +
+      cards;
+  }).catch(function(e){
+    c.innerHTML = '<div class="page-title">Face Verification</div><div style="color:#c0392b;padding:16px">Failed to load: '+e.message+'</div>';
+  });
 }
 
-async function faceVerifyAction(idx, status){
-  var records = JSON.parse(localStorage.getItem("dds_pending_selfie") || "[]");
-  var record = records[idx];
-  if(!record) return;
-
-  // Call backend to update booking notes with selfie status
-  if(adminToken && adminToken !== "local"){
-    try {
-      var reason = status === "rejected" ? prompt("Reason for rejection (optional):") || "Identity could not be verified" : "";
-      await adminFetch("/admin/selfie/" + record.bookingId, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: status, reason: reason })
-      });
-    } catch(e){ toast("Backend update failed: " + e.message, "error"); }
-  }
-
-  // Update localStorage for same-device display
-  records[idx].status = status;
-  localStorage.setItem("dds_pending_selfie", JSON.stringify(records));
-  updateFaceVerifyBadge();
-  toast(status === "approved" ? "✅ Selfie approved — customer notified" : "❌ Selfie rejected — customer notified", status === "approved" ? "success" : "error");
-  renderFaceVerify(document.getElementById("content"));
+async function faceVerifyAction(bookingId, status, btn){
+  if(btn){ btn.disabled = true; btn.textContent = "…"; }
+  try {
+    var reason = status === "rejected" ? prompt("Reason for rejection (optional):") || "Identity could not be verified" : "";
+    await adminFetch("/admin/selfie/" + bookingId, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: status, reason: reason })
+    });
+    updateFaceVerifyBadge();
+    toast(status === "approved" ? "✅ Selfie approved — customer notified" : "❌ Selfie rejected — customer notified", status === "approved" ? "success" : "error");
+    renderFaceVerify(document.getElementById("content"));
+  } catch(e){ toast("Failed: " + e.message, "error"); if(btn){ btn.disabled=false; btn.textContent=status==="approved"?"✅ Approve":"❌ Reject"; } }
 }
 
 var _revBookings = [], _revFilter = "all", _revFrom = "", _revTo = "";

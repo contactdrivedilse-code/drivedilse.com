@@ -128,10 +128,10 @@ function validateImage(file: File): string | null {
 }
 
 async function getAdmin(req: Request, requireAdmin = false) {
-  const url = new URL(req.url);
-  const token = req.headers.get("x-admin-token")
-    || url.searchParams.get("_t")
-    || getBearer(req);
+  // Token accepted from x-admin-token header or Authorization: Bearer only.
+  // Never from URL query params — tokens in URLs end up in server logs,
+  // browser history, and Referrer headers.
+  const token = req.headers.get("x-admin-token") || getBearer(req);
   if (!token) return null;
   try {
     const p = await verifyJwt(token, Deno.env.get("ADMIN_JWT_SECRET")!) as { role?: string };
@@ -148,16 +148,22 @@ Deno.serve(async (req) => {
 
   try {
     // POST /login
+    // A deliberate 800 ms delay on failure slows password guessing to ~75/min
+    // even without account lockout — enough to make automated attacks impractical.
     if (req.method === "POST" && path === "/login") {
       const { password, role } = await req.json();
       if (role === "fleet") {
-        if (password !== Deno.env.get("FLEET_PASSWORD"))
+        if (password !== Deno.env.get("FLEET_PASSWORD")) {
+          await new Promise((r) => setTimeout(r, 800));
           return json({ error: "Invalid password" }, 401);
+        }
         const token = await signJwt({ role: "fleet" }, Deno.env.get("ADMIN_JWT_SECRET")!, 12 * 60 * 60);
         return json({ token, role: "fleet" });
       }
-      if (password !== Deno.env.get("ADMIN_PASSWORD"))
+      if (password !== Deno.env.get("ADMIN_PASSWORD")) {
+        await new Promise((r) => setTimeout(r, 800));
         return json({ error: "Invalid password" }, 401);
+      }
       const token = await signJwt({ role: "admin" }, Deno.env.get("ADMIN_JWT_SECRET")!, 24 * 60 * 60);
       return json({ token, role: "admin" });
     }

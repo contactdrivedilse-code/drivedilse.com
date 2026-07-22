@@ -8,6 +8,20 @@ const sb = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+// KYC documents: JPEG/PNG/WEBP photos or PDF scans, max 5 MB each.
+const ALLOWED_KYC_TYPES = new Set([
+  "image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf",
+]);
+const MAX_KYC_BYTES = 5 * 1024 * 1024;
+
+function validateKycFile(file: File): string | null {
+  if (!ALLOWED_KYC_TYPES.has(file.type))
+    return "Only JPEG, PNG, WEBP, or PDF files are accepted";
+  if (file.size > MAX_KYC_BYTES)
+    return "File must be smaller than 5 MB";
+  return null;
+}
+
 // Replace stored public KYC URLs with short-lived signed URLs so private
 // buckets remain viewable by the owning customer.
 async function signProfileKyc(p: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -85,8 +99,8 @@ Deno.serve(async (req) => {
   const path = url.pathname.replace("/auth", "") || "/";
 
   try {
-    // POST /send-otp — OTP is always emailed, never texted. `phone` is kept
-    // only as the contact field on the profile; `email` is the verification channel.
+    // POST /send-otp
+    // Rate limited: one OTP per 60 seconds per email address.
     if (req.method === "POST" && path === "/send-otp") {
       const { phone, email } = await req.json();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -94,27 +108,52 @@ Deno.serve(async (req) => {
       if (phone && !/^[6-9]\d{9}$/.test(phone))
         return json({ error: "Invalid Indian mobile number" }, 400);
 
-      const otp       = generateOtp();
-      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-      const emailLc   = String(email).trim().toLowerCase();
+      const emailLc = String(email).trim().toLowerCase();
 
-      // Look up by email first (the identity key for OTP); fall back to phone
-      // so an existing phone-only profile (e.g. from a guest booking) gets merged.
-      let { data: existing, error: lookupErr } = await sb.from("profiles").select("id").ilike("email", emailLc).maybeSingle();
+      // Look up by email first; fall back to phone so an existing phone-only
+      // profile (e.g. from a guest booking) gets merged.
+      let { data: existing, error: lookupErr } = await sb
+        .from("profiles")
+        .select("id, otp_expiry")
+        .ilike("email", emailLc)
+        .maybeSingle();
       if (lookupErr) throw lookupErr;
       if (!existing && phone) {
-        const byPhone = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
+        const byPhone = await sb.from("profiles").select("id, otp_expiry").eq("phone", phone).maybeSingle();
         if (byPhone.error) throw byPhone.error;
         existing = byPhone.data;
       }
 
+      // Enforce 60-second resend cooldown. otp_expiry is set 10 min from when
+      // the OTP was issued, so last-sent ≈ otp_expiry − 10 min.
       if (existing) {
-        const updates: Record<string, unknown> = { otp, otp_expiry: otpExpiry, email: emailLc };
+        const ex = existing as Record<string, unknown>;
+        if (ex.otp_expiry) {
+          const sentAt = new Date(ex.otp_expiry as string).getTime() - 10 * 60 * 1000;
+          if (Date.now() - sentAt < 60 * 1000)
+            return json({ error: "Please wait a moment before requesting another code" }, 429);
+        }
+      }
+
+      const otp       = generateOtp();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      if (existing) {
+        const updates: Record<string, unknown> = {
+          otp, otp_expiry: otpExpiry, email: emailLc,
+          otp_attempts: 0, otp_attempts_locked_until: null,
+        };
         if (phone) updates.phone = phone;
-        const { error: updErr } = await sb.from("profiles").update(updates).eq("id", (existing as Record<string, string>).id);
+        const { error: updErr } = await sb
+          .from("profiles")
+          .update(updates)
+          .eq("id", (existing as Record<string, string>).id);
         if (updErr) throw updErr;
       } else {
-        const { error: insErr } = await sb.from("profiles").insert({ id: crypto.randomUUID(), phone: phone || null, email: emailLc, otp, otp_expiry: otpExpiry });
+        const { error: insErr } = await sb.from("profiles").insert({
+          id: crypto.randomUUID(), phone: phone || null, email: emailLc,
+          otp, otp_expiry: otpExpiry, otp_attempts: 0,
+        });
         if (insErr) throw insErr;
       }
 
@@ -123,6 +162,7 @@ Deno.serve(async (req) => {
     }
 
     // POST /verify-otp
+    // Locked after 5 consecutive failures for 15 minutes.
     if (req.method === "POST" && path === "/verify-otp") {
       const { phone, otp, name, email } = await req.json();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -132,12 +172,11 @@ Deno.serve(async (req) => {
       const { data: user, error: userErr } = await sb.from("profiles").select("*").ilike("email", emailLc).maybeSingle();
       if (userErr) throw userErr;
       const u = user as Record<string, unknown> | null;
-      // Test-OTP bypass is OFF unless explicitly enabled. Previously it
-      // defaulted to "1234" for ANY identity, allowing account takeover.
-      const testOtp = Deno.env.get("TEST_OTP");
+
+      const testOtp   = Deno.env.get("TEST_OTP");
       const isTestOtp = Deno.env.get("ALLOW_TEST_OTP") === "true" && !!testOtp && otp === testOtp;
+
       if (!u) {
-        // Auto-create profile for test OTP
         if (!isTestOtp) return json({ error: "Invalid or expired OTP" }, 400);
         const id = crypto.randomUUID();
         await sb.from("profiles").insert({ id, phone: phone || null, email: emailLc, name: name ?? "", phone_verified: true });
@@ -145,10 +184,32 @@ Deno.serve(async (req) => {
         const token = await signJwt({ id, phone: phone ?? "", email: emailLc }, JWT_SECRET, 30 * 24 * 60 * 60);
         return json({ token, user: { _id: id, id, phone: phone ?? "", email: emailLc, name: name ?? "", phoneVerified: true, emailVerified: true, kyc: { status: "pending" } } });
       }
-      if (!isTestOtp && (u.otp !== otp || !u.otp_expiry || new Date(u.otp_expiry as string) < new Date()))
-        return json({ error: "Invalid or expired OTP" }, 400);
 
-      const updates: Record<string, unknown> = { otp: "", otp_expiry: null, phone_verified: true };
+      // Check lockout before doing anything with the OTP.
+      if (!isTestOtp && u.otp_attempts_locked_until && new Date(u.otp_attempts_locked_until as string) > new Date())
+        return json({ error: "Too many failed attempts. Please try again in 15 minutes." }, 429);
+
+      const otpValid = isTestOtp
+        || (u.otp === otp && !!u.otp_expiry && new Date(u.otp_expiry as string) >= new Date());
+
+      if (!otpValid) {
+        // Increment failure counter; lock the account for 15 min after 5 fails.
+        const attempts = ((u.otp_attempts as number) || 0) + 1;
+        const lockedUntil = attempts >= 5
+          ? new Date(Date.now() + 15 * 60 * 1000).toISOString()
+          : null;
+        await sb.from("profiles").update({
+          otp_attempts: attempts,
+          otp_attempts_locked_until: lockedUntil,
+        }).eq("id", u.id as string);
+        return json({ error: "Invalid or expired OTP" }, 400);
+      }
+
+      // Successful verify — clear OTP state and reset attempt counter.
+      const updates: Record<string, unknown> = {
+        otp: "", otp_expiry: null, phone_verified: true,
+        otp_attempts: 0, otp_attempts_locked_until: null,
+      };
       if (name && !u.name) updates.name = name;
       if (phone && !u.phone) updates.phone = phone;
       await sb.from("profiles").update(updates).eq("id", u.id);
@@ -172,13 +233,11 @@ Deno.serve(async (req) => {
 
     // POST /profile — KYC with file uploads
     if (req.method === "POST" && path === "/profile") {
-      // Try JWT auth first; fallback to phone from form data
       let profileId: string | null = null;
       const jwtUser = await getUser(req);
       if (jwtUser) {
         profileId = jwtUser.id;
       } else {
-        // Clone request body to read form data for phone lookup
         const tempForm = await req.clone().formData().catch(() => null);
         const phone = tempForm?.get("phone") as string | null;
         if (phone) {
@@ -203,6 +262,8 @@ Deno.serve(async (req) => {
 
       const aadhaarFile = formData.get("aadhaar") as File | null;
       if (aadhaarFile) {
+        const fileErr = validateKycFile(aadhaarFile);
+        if (fileErr) return json({ error: `Aadhaar: ${fileErr}` }, 400);
         const ext  = aadhaarFile.type.includes("pdf") ? "pdf" : "jpg";
         const buf  = new Uint8Array(await aadhaarFile.arrayBuffer());
         const path = `${profileId}/aadhaar.${ext}`;
@@ -215,14 +276,19 @@ Deno.serve(async (req) => {
 
       const photoFile = formData.get("profile_photo") as File | null;
       if (photoFile) {
-        const buf   = new Uint8Array(await photoFile.arrayBuffer());
-        const ppath = `${profileId}/profile.jpg`;
-        const { error: perr } = await sb.storage.from("kyc").upload(ppath, buf, { contentType: "image/jpeg", upsert: true });
-        if (!perr) updates.profile_photo_url = sb.storage.from("kyc").getPublicUrl(ppath).data.publicUrl;
+        const fileErr = validateKycFile(photoFile);
+        if (!fileErr) {
+          const buf   = new Uint8Array(await photoFile.arrayBuffer());
+          const ppath = `${profileId}/profile.jpg`;
+          const { error: perr } = await sb.storage.from("kyc").upload(ppath, buf, { contentType: "image/jpeg", upsert: true });
+          if (!perr) updates.profile_photo_url = sb.storage.from("kyc").getPublicUrl(ppath).data.publicUrl;
+        }
       }
 
       const dlFile = formData.get("dl") as File | null;
       if (dlFile) {
+        const fileErr = validateKycFile(dlFile);
+        if (fileErr) return json({ error: `Driving licence: ${fileErr}` }, 400);
         const ext  = dlFile.type.includes("pdf") ? "pdf" : "jpg";
         const buf  = new Uint8Array(await dlFile.arrayBuffer());
         const path = `${profileId}/dl.${ext}`;
@@ -234,7 +300,6 @@ Deno.serve(async (req) => {
 
       await sb.from("profiles").update(updates).eq("id", profileId);
       const { data: updated } = await sb.from("profiles").select("*").eq("id", profileId).maybeSingle();
-      // Issue fresh token so frontend session is renewed
       const freshToken = jwtUser ? null : await signJwt({ id: profileId, phone: (existing as Record<string,unknown>).phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ success: true, user: await signProfileKyc(mapProfile(updated as Record<string, unknown>)), ...(freshToken ? { token: freshToken } : {}) });
     }

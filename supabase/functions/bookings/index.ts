@@ -212,6 +212,9 @@ Deno.serve(async (req) => {
 
       const body = await req.json() as { selfie?: string };
       if (!body.selfie) return json({ error: "selfie required" }, 400);
+      // A 5 MB image encodes to ≈6.7 MB of base64 (≈6.7M chars).
+      if (body.selfie.length > 7 * 1024 * 1024)
+        return json({ error: "Selfie image too large (max 5 MB)" }, 413);
 
       const base64 = body.selfie.replace(/^data:image\/[^;]+;base64,/, "");
       const buf    = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -258,6 +261,9 @@ Deno.serve(async (req) => {
       const sides = ["front","rear","passengerSide","driverSide"];
       const missing = sides.filter(s => !body[s]);
       if (missing.length) return json({ error: `Missing photos: ${missing.join(", ")}` }, 400);
+      // Each photo: 5 MB image ≈ 6.7 MB base64
+      const oversized = sides.find(s => body[s] && body[s].length > 7 * 1024 * 1024);
+      if (oversized) return json({ error: `Photo "${oversized}" too large (max 5 MB each)` }, 413);
 
       const urls: Record<string, string> = {};
       await Promise.all(sides.map(async (s) => {
@@ -559,6 +565,8 @@ Deno.serve(async (req) => {
       for (let i = 0; i < 10; i++) {
         const file = fd.get("photo" + i) as File | null;
         if (!file) break;
+        const imgErr = validateImage(file);
+        if (imgErr) return json({ error: `photo${i}: ${imgErr}` }, 400);
         const buf  = new Uint8Array(await file.arrayBuffer());
         const fpath = `${id}/damage_${typeVal}_${i}_${Date.now()}.jpg`;
         const { error: upErr } = await sb.storage.from("checkin").upload(fpath, buf, { contentType: file.type, upsert: true });

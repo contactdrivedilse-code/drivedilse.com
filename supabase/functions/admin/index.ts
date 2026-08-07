@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
       const queries: Promise<unknown>[] = [
         sb.from("cars").select("*", { count: "exact", head: true }).eq("active", true),
         sb.from("bookings").select("*", { count: "exact", head: true }),
-        sb.from("profiles").select("*", { count: "exact", head: true }).eq("phone_verified", true),
+        sb.from("profiles").select("*", { count: "exact", head: true }),
       ];
       if (isAdmin) queries.push(sb.from("bookings").select("total").eq("payment_status", "paid"));
       const results = await Promise.all(queries) as Record<string, unknown>[];
@@ -555,7 +555,7 @@ Deno.serve(async (req) => {
     if (req.method === "GET" && path === "/customers") {
       const { data, error } = await sb.from("profiles")
         .select("id, phone, name, dob, email, aadhaar_url, dl_url, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
-        .eq("phone_verified", true).order("created_at", { ascending: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
       const rows = (data ?? []) as Record<string, unknown>[];
 

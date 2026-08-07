@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
       const u = user as Record<string, unknown> | null;
       if (!u) {
         const id = crypto.randomUUID();
-        await sb.from("profiles").insert({ id, phone, name: name ?? "" });
+        await sb.from("profiles").insert({ id, phone, name: name ?? "", phone_verified: true });
         user = { id, name: name ?? "" };
       } else if (name && !u.name) {
         await sb.from("profiles").update({ name }).eq("id", u.id);
@@ -539,7 +539,7 @@ Deno.serve(async (req) => {
       let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
       if (!prof) {
         const id = crypto.randomUUID();
-        await sb.from("profiles").insert({ id, phone, name: name ?? "" });
+        await sb.from("profiles").insert({ id, phone, name: name ?? "", phone_verified: true });
         const { data: newProf } = await sb.from("profiles").select("*").eq("id", id).maybeSingle();
         prof = newProf;
       } else if (name && !(prof as Record<string, unknown>).name) {

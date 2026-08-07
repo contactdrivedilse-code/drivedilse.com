@@ -870,18 +870,14 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   .hdr .btn{padding:6px 10px !important;font-size:.68rem !important;border-radius:8px;white-space:nowrap}
   .logo-img{height:38px}
   .logo-brand{font-size:.92rem}
-
-  /* Booking form (car detail page) — date input was getting squeezed to
-     near-zero width next to the hour dropdown in a 2-column grid; stack
-     them instead. Also tighten overall sizing so it feels hand-sized on
-     a phone rather than blown up. */
+  /* Hero stats row: wrap on narrow phones */
+  .hero-stats-row{flex-wrap:wrap;gap:16px}
+  /* Calendar popup: constrain to viewport width */
+  .cal-popup{width:calc(100vw - 24px);max-width:310px}
+  /* Booking form (car detail page) */
   #booking-form > div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important}
   .dt-pair{padding:10px 12px}
   .dt-controls{flex-wrap:wrap}
-  /* iOS Safari auto-zooms the whole page when a focused input/select has
-     font-size below 16px — that's what caused the page to "jump" zoomed
-     in when tapping the date field. Never go below 16px on any tappable
-     form control on mobile. */
   .dt-date-inp{flex:1 1 auto;min-width:108px;font-size:16px}
   .dt-hour-sel{font-size:16px;padding:5px 24px 5px 8px}
   .rate-box{padding:14px 16px;margin-bottom:14px}
@@ -889,6 +885,49 @@ footer{background:var(--w);border-top:1.5px solid rgba(201,160,16,.25);padding:4
   #bf-signedin-badge{font-size:.74rem !important;padding:8px 10px !important}
   #booking-form .btn-lg, .detail-right .btn-lg{padding:13px;font-size:.88rem}
   #d-name{font-size:1.5rem !important}
+  /* Price result card */
+  .price-result{padding:16px}
+  .price-grid{grid-template-columns:1fr}
+  /* Section padding */
+  .section,.features-sec,.faq-sec,#how-sec,.cta-band{padding:44px 16px}
+  /* Detail page */
+  .detail-grid{padding:20px 16px}
+  .detail-strip{padding-left:14px;padding-right:14px}
+  /* Car card in carousel */
+  .fleet-carousel .car-card{flex:0 0 calc(100vw - 48px)}
+  /* Trust strip */
+  .trust-strip{flex-direction:column;gap:8px;text-align:center}
+  .trust-strip .ts-sep{display:none}
+  /* Delivery mode grid */
+  .delivery-mode-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* Extra-small phones (360px and below — Galaxy A-series, older Androids) */
+@media(max-width:360px){
+  .hero h1{font-size:1.75rem !important}
+  .hero-inner{padding:64px 14px 44px}
+  .hdr{padding-left:10px;padding-right:10px}
+  .logo-brand{font-size:.82rem}
+  .logo-img{height:34px}
+  .hdr .btn{font-size:.62rem !important;padding:5px 8px !important}
+  /* Prevent horizontal scroll from anything overflowing */
+  .hero-stats-row{flex-direction:column;gap:12px}
+  .hero-stat-item{gap:8px}
+  /* Car carousel */
+  .fleet-carousel .car-card{flex:0 0 calc(100vw - 36px)}
+  /* Calendar popup full-width on tiny phones */
+  .cal-popup{width:calc(100vw - 16px);max-width:100%;padding:10px}
+  /* Sections */
+  .section,.features-sec,.faq-sec,#how-sec,.cta-band{padding:36px 12px}
+  footer{padding:24px 14px}
+  /* Modal */
+  .modal{padding:20px 14px}
+  /* Booking form */
+  .rate-box{padding:12px 14px}
+  #d-rate{font-size:1.35rem !important}
+  .price-result{padding:14px}
+  /* Delivery modes */
+  .dmode{font-size:.65rem;padding:8px 2px}
 }
 
 /* ============================================================

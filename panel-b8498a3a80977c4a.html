@@ -178,11 +178,38 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   .sidebar.open{display:block;transform:translateX(0)}
   .sidebar-backdrop.open{display:block;position:fixed;top:58px;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:190}
   .content-area{padding:20px 16px}
+  /* Date range picker — on tablet/phone make it a fixed full-screen overlay */
+  .drp-panel{position:fixed;top:0;left:0;right:0;bottom:0;min-width:unset;width:100%;max-height:100vh;
+    overflow-y:auto;border-radius:0;z-index:600;flex-direction:column}
+  .drp-presets{width:100%;border-right:none;border-bottom:1px solid var(--b);display:flex;flex-wrap:wrap;padding:12px;gap:6px}
+  .drp-preset{width:auto;display:inline-block;padding:7px 14px;border:1px solid var(--b);border-radius:20px;font-size:.78rem}
+  .drp-calendars{flex-direction:column;padding:16px;gap:0}
+  .drp-cal+.drp-cal{padding-left:0;border-left:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--b)}
+  .drp-footer{padding:12px 16px}
+  /* Modal full-width on mobile */
+  .modal-box{width:calc(100vw - 24px);max-width:100%;padding:24px 18px;border-radius:16px;max-height:90vh;overflow-y:auto}
 }
 @media(max-width:600px){
   .login-box{padding:32px 24px;margin:16px}
   .stat-grid{grid-template-columns:repeat(2,1fr)}
   .v-grid{grid-template-columns:1fr}
+  /* Top bar: hide role name on very small screens to avoid wrapping */
+  .admin-name{display:none}
+  .top-bar{padding:0 14px}
+  /* Toolbar: allow filter buttons to wrap */
+  .toolbar{gap:7px}
+  .filter-btn{padding:6px 10px;font-size:.72rem}
+  .search-inp{min-width:0;width:100%}
+  /* Card body padding */
+  .card-hdr{padding:12px 14px}
+  .card-body{padding:14px}
+  /* Page title */
+  .page-title{font-size:1.3rem}
+  /* Stat cards smaller on tiny screens */
+  .stat-card{padding:14px 10px}
+  .stat-num{font-size:1.2rem}
+  /* Buttons */
+  .btn-sm{padding:6px 10px;font-size:.74rem}
 }
 .drm-month-title{text-align:center;font-weight:800;font-size:.9rem;margin-bottom:10px;color:var(--t)}
 .drm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}

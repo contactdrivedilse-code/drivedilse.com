@@ -6772,7 +6772,11 @@ function closeDeliveryPickerModal(){
 
 function updateDeliveryTotal(){
   if(!priceResult) return;
-  var newTotal = priceResult.total + deliveryCharge + tripProtectionFee + depositFee - couponDiscount;
+  // GST applies to (base fare + delivery charge), not base alone
+  var gst = Math.round((priceResult.base + deliveryCharge) * 0.18);
+  var gstEl = document.getElementById("r-gst");
+  if(gstEl) gstEl.textContent = inr(gst);
+  var newTotal = priceResult.base + deliveryCharge + gst + tripProtectionFee + depositFee - couponDiscount;
   var row = document.getElementById("r-delivery-row");
   var amt = document.getElementById("r-delivery-amt");
   var tpRow = document.getElementById("r-tripprotect-row");

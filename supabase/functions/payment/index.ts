@@ -315,12 +315,13 @@ Deno.serve(async (req) => {
       const gDurErr = durationError(pickup.toISOString(), drop.toISOString());
       if (gDurErr) return gDurErr;
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
+      const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof gdc === "number" && gdc > 0 ? gdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
-      const total = baseTotal + deliveryFee + depositNow - couponDiscount;
+      const gst = Math.round((baseFare + deliveryFee) * 0.18);
+      const total = baseFare + deliveryFee + gst + depositNow - couponDiscount;
 
       let { data: user } = await sb.from("profiles").select("id, name").eq("phone", phone).maybeSingle();
       const u = user as Record<string, unknown> | null;
@@ -380,12 +381,13 @@ Deno.serve(async (req) => {
       if (await hasDateConflict(carId, pISO, dISO, oSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
+      const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof odc === "number" && odc > 0 ? odc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
-      const total = baseTotal + deliveryFee + depositNow - couponDiscount;
+      const gst = Math.round((baseFare + deliveryFee) * 0.18);
+      const total = baseFare + deliveryFee + gst + depositNow - couponDiscount;
 
       const order = await razorpayCreate({ amount: total * 100, currency: "INR", receipt: makeBookingId(), notes: { carId, phone: user.phone } });
       return json({
@@ -418,12 +420,13 @@ Deno.serve(async (req) => {
       // preview step, did, and even that missed pauses). A booking made or
       // a pause added between /order and /verify could slip through.
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), vSessionId)) return json({ error: CONFLICT_MSG }, 400);
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
+      const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositPaidNow = chosenDeposit === "now";
-      const total = baseTotal + deliveryFee + (depositPaidNow ? DEPOSIT_AMOUNT : 0) - couponDiscount;
+      const gst = Math.round((baseFare + deliveryFee) * 0.18);
+      const total = baseFare + deliveryFee + gst + (depositPaidNow ? DEPOSIT_AMOUNT : 0) - couponDiscount;
       const bookingId = makeBookingId();
       const isConfirmed = p.kyc_status === "verified";
 
@@ -484,10 +487,11 @@ Deno.serve(async (req) => {
       if (dDurErr) return dDurErr;
       if (await hasDateConflict(carId, pISO, dISO, dSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
-      const { total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
+      const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
-      const total = baseTotal + deliveryFee - couponDiscount;
+      const gst = Math.round((baseFare + deliveryFee) * 0.18);
+      const total = baseFare + deliveryFee + gst - couponDiscount;
       const bookingId = makeBookingId();
       const isConfirmedDirect = p.kyc_status === "verified";
 
@@ -548,10 +552,11 @@ Deno.serve(async (req) => {
       const p = prof as Record<string, unknown>;
 
       const pickup = new Date(pISO2), drop = new Date(dISO2);
-      const { total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
+      const { base: baseFare2, total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee2 = typeof gddc === "number" && gddc > 0 ? gddc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal2, couponCode);
-      const total = baseTotal2 + deliveryFee2 - couponDiscount;
+      const gst2 = Math.round((baseFare2 + deliveryFee2) * 0.18);
+      const total = baseFare2 + deliveryFee2 + gst2 - couponDiscount;
       const bookingId = makeBookingId();
       const isConfirmedGuest = p.kyc_status === "verified";
 

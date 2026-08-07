@@ -551,16 +551,30 @@ Deno.serve(async (req) => {
     }
 
 
-    // GET /customers — returns all profiles; no URL signing in list (use /customers/:id/docs for signed URLs)
+    // GET /customers — returns all profiles with booking count
     if (req.method === "GET" && path === "/customers") {
       const { data, error } = await sb.from("profiles")
         .select("id, phone, name, dob, email, aadhaar_url, dl_url, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return json((data ?? []).map((u: Record<string, unknown>) => ({
+      const profiles = (data ?? []) as Record<string, unknown>[];
+
+      // Fetch booking counts for all phones in one query
+      const phones = profiles.map(u => u.phone as string).filter(Boolean);
+      const { data: bkData } = phones.length
+        ? await sb.from("bookings").select("phone").in("phone", phones).neq("status", "cancelled")
+        : { data: [] };
+      const bkCount: Record<string, number> = {};
+      for (const b of (bkData ?? []) as Record<string, unknown>[]) {
+        const ph = b.phone as string;
+        bkCount[ph] = (bkCount[ph] || 0) + 1;
+      }
+
+      return json(profiles.map((u: Record<string, unknown>) => ({
         _id: u.id, id: u.id,
         phone: u.phone, name: u.name, email: u.email, dob: u.dob,
         createdAt: u.created_at,
+        bookingCount: bkCount[u.phone as string] || 0,
         kyc: {
           status: u.kyc_status || "pending",
           hasAadhaar: !!(u.aadhaar_url),

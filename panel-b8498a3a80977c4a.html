@@ -1385,7 +1385,7 @@ async function renderKycApprovals(isLocal, c){
 }
 
 function updateFaceVerifyBadge(){
-  adminFetch("/admin/pending-selfies").then(function(r){ return r.json(); }).then(function(rows){
+  adminFetch("/admin/pending-selfies").then(function(rows){
     var badge = document.getElementById("nb-faceverify");
     if(badge){ badge.textContent = rows.length; badge.style.display = rows.length ? "inline-flex" : "none"; }
   }).catch(function(){});
@@ -1393,7 +1393,7 @@ function updateFaceVerifyBadge(){
 
 function renderFaceVerify(c){
   c.innerHTML = '<div class="page-title">Face Verification</div><div class="page-sub" style="color:var(--ts)">Loading…</div>';
-  adminFetch("/admin/pending-selfies").then(function(r){ return r.json(); }).then(function(records){
+  adminFetch("/admin/pending-selfies").then(function(records){
 
     if(!records.length){
       c.innerHTML = '<div class="page-title">Face Verification</div><div class="page-sub">Selfie identity checks for customer check-ins.</div>' +

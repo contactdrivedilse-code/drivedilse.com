@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
         signBookingPhotos(mapBooking(b, extMap[b.id as string], reviewMap[b.id as string])))));
     }
 
-    // POST /:id/selfie — customer uploads selfie to storage; fleet manager verifies from admin panel
+    // POST /:id/selfie — customer uploads selfie to storage; auto-approved (no manual review needed)
     const selfieUploadMatch = path.match(/^\/([^/]+)\/selfie$/);
     if (req.method === "POST" && selfieUploadMatch) {
       const id = selfieUploadMatch[1];
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
       if (upErr) throw upErr;
       const selfieUrl = sb.storage.from("checkin").getPublicUrl(sPath).data.publicUrl;
 
-      await sb.from("bookings").update({ notes: "selfie:pending:" + selfieUrl, updated_at: new Date().toISOString() }).eq("id", id);
+      await sb.from("bookings").update({ notes: "selfie:approved", updated_at: new Date().toISOString() }).eq("id", id);
       return json({ success: true });
     }
 

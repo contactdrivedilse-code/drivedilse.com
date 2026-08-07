@@ -5,7 +5,7 @@ import { signStorageUrl } from "../_shared/storage.ts";
 import { sendEmail, escapeHtml, sendBookingConfirmationEmail } from "../_shared/email.ts";
 import { putFile, deleteFile } from "../_shared/github.ts";
 import { slugify, buildBlogPostHtml, buildBlogIndexHtml, buildSitemapXml, type BlogPost } from "../_shared/blog.ts";
-import { fetchInvoicePdf, raiseInvoiceForBooking } from "../_shared/zoho.ts";
+// Zoho Books invoice generation removed
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -550,16 +550,6 @@ Deno.serve(async (req) => {
       return json({ otp: bk.checkout_otp });
     }
 
-    // GET /bookings/:id/invoice — admin download of Zoho invoice PDF (no user_id check)
-    const adminInvMatch = path.match(/^\/bookings\/([^/]+)\/invoice$/);
-    if (req.method === "GET" && adminInvMatch) {
-      const { data: b } = await sb.from("bookings").select("zoho_invoice_id, booking_id").eq("id", adminInvMatch[1]).maybeSingle();
-      const bk = b as Record<string, unknown> | null;
-      if (!bk) return json({ error: "Booking not found" }, 404);
-      if (!bk.zoho_invoice_id) return json({ error: "Invoice not available" }, 404);
-      const pdf = await fetchInvoicePdf(bk.zoho_invoice_id as string);
-      return new Response(pdf, { headers: { ...corsHeaders, "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="invoice-${bk.booking_id}.pdf"` } });
-    }
 
     // GET /customers
     if (req.method === "GET" && path === "/customers") {
@@ -643,20 +633,6 @@ Deno.serve(async (req) => {
             status: "confirmed", checkin_otp: generateOtp(), updated_at: new Date().toISOString(),
           }).eq("id", row.id as string)
         ));
-        // Raise Zoho invoices for newly confirmed bookings (best-effort, non-blocking)
-        ((toConfirm ?? []) as Record<string, unknown>[]).forEach((row) => {
-          const deliveryFee = (row.delivery_fee as number) ?? 0;
-          const couponDiscount = (row.coupon_discount as number) ?? 0;
-          const invoiceTotal = (row.total as number) - couponDiscount;
-          raiseInvoiceForBooking({
-            bookingId: row.booking_id as string, carName: row.car_name as string,
-            customer: p2.name as string, phone: p2.phone as string,
-            email: (p2.email as string) ?? "", base: row.total as number, gst: 0,
-            deliveryFee, couponDiscount, total: invoiceTotal,
-            days: (row.days as number) ?? 1, extensions: [], checkedOutAt: new Date().toISOString(),
-          }).then(({ invoiceId }) => sb.from("bookings").update({ zoho_invoice_id: invoiceId }).eq("id", row.id as string))
-            .catch((e) => console.error("Zoho invoice failed (KYC approval)", row.booking_id, (e as Error).message));
-        });
       }
       const p = data as Record<string, unknown>;
       return json({

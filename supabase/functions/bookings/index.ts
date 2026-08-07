@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight, corsHeaders } from "../_shared/cors.ts";
 import { verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
-import { raiseInvoiceForBooking, fetchInvoicePdf } from "../_shared/zoho.ts";
+// Zoho Books invoice generation removed
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -753,49 +753,10 @@ Deno.serve(async (req) => {
         settlement_late_hours: lateHours,
       }).eq("id", id);
 
-      // Best-effort: raise a Zoho Books invoice for the completed trip.
-      // Never blocks the customer's checkout response if Zoho is down/misconfigured.
-      try {
-        const { data: profile } = await sb.from("profiles").select("email").eq("id", b.user_id as string).maybeSingle();
-        const { data: exts } = await sb.from("extensions").select("hours, cost").eq("booking_id", id);
-        const { invoiceId } = await raiseInvoiceForBooking({
-          bookingId: b.booking_id as string,
-          carName: b.car_name as string,
-          customer: b.customer as string,
-          phone: b.phone as string,
-          email: (profile as Record<string, unknown> | null)?.email as string || "",
-          base, gst, days,
-          deliveryFee: (b.delivery_fee as number) ?? 0,
-          couponDiscount: (b.coupon_discount as number) ?? 0,
-          total: b.total as number,
-          extensions: (exts ?? []) as { hours: number; cost: number }[],
-          checkedOutAt,
-        });
-        await sb.from("bookings").update({ zoho_invoice_id: invoiceId }).eq("id", id);
-      } catch (zErr) {
-        console.error("Zoho invoice failed for booking", id, (zErr as Error).message);
-      }
 
       return json({ success: true, message: "Booking closed. Thank you for driving with DriveDilSe!" });
     }
 
-    // GET /:id/invoice — download the Zoho Books invoice PDF for a completed booking
-    const invoiceMatch = path.match(/^\/([^/]+)\/invoice$/);
-    if (req.method === "GET" && invoiceMatch) {
-      const id = invoiceMatch[1];
-      const { data: booking } = await sb.from("bookings").select("zoho_invoice_id, booking_id").eq("id", id).eq("user_id", user.id).maybeSingle();
-      const b = booking as Record<string, unknown> | null;
-      if (!b) return json({ error: "Booking not found" }, 404);
-      if (!b.zoho_invoice_id) return json({ error: "Invoice not available yet" }, 404);
-      const pdf = await fetchInvoicePdf(b.zoho_invoice_id as string);
-      return new Response(pdf, {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `inline; filename="invoice-${b.booking_id}.pdf"`,
-        },
-      });
-    }
 
     // /:id/review — leave a review for a completed trip's car (one per booking)
     const reviewMatch = path.match(/^\/([^/]+)\/review$/);

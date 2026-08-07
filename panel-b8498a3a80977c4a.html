@@ -1977,9 +1977,13 @@ async function renderSettlements(isLocal, c){
           '<div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Suggested Refund</div>' +
           '<div style="font-weight:800;font-size:1.1rem;color:var(--yd)">'+inr(s.suggestedRefund||0)+'</div>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center">' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">' +
           '<input class="inp" type="number" id="settle-amt-'+b._id+'" value="'+(s.suggestedRefund||0)+'" style="flex:1" min="0">' +
-          '<button class="btn btn-y btn-sm" onclick="initiateSettleRefund(\''+b._id+'\')">Refund →</button>' +
+          '<button class="btn btn-y btn-sm" onclick="initiateSettleRefund(\''+b._id+'\')" title="Trigger Razorpay refund (only works if deposit was paid online)">💳 Razorpay</button>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button class="btn btn-g btn-sm" style="flex:1" onclick="markDepositRefundManual(\''+b._id+'\',\'cash\')">💵 Returned Cash</button>' +
+          '<button class="btn btn-g btn-sm" style="flex:1" onclick="markDepositRefundManual(\''+b._id+'\',\'gpay\')">📱 Sent via GPay</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1994,12 +1998,26 @@ async function renderSettlements(isLocal, c){
 async function initiateSettleRefund(id){
   var inp = document.getElementById("settle-amt-"+id);
   var amount = parseFloat(inp.value) || 0;
-  if(!confirm("Refund "+inr(amount)+" to this customer's original payment method via Razorpay?")) return;
+  if(!confirm("Refund "+inr(amount)+" via Razorpay? (Only works if deposit was paid online through the app)")) return;
   try {
     await adminFetch("/admin/bookings/"+id+"/deposit/settle-refund", {
       method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ amount: amount })
     });
     toast("Refund initiated.", "success");
+    navTo("settlements", document.querySelector('[data-tab="settlements"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function markDepositRefundManual(id, method){
+  var inp = document.getElementById("settle-amt-"+id);
+  var amount = parseFloat(inp ? inp.value : 0) || 0;
+  var label = method === "gpay" ? "GPay" : "Cash";
+  if(!confirm("Confirm you have "+( method==="gpay" ? "sent ₹"+amount+" via GPay" : "returned ₹"+amount+" in cash")+" to the customer?")) return;
+  try {
+    await adminFetch("/admin/bookings/"+id+"/deposit-refund/mark-done", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ method: method, amount: amount })
+    });
+    toast("Deposit refund marked as returned via "+label+".", "success");
     navTo("settlements", document.querySelector('[data-tab="settlements"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }

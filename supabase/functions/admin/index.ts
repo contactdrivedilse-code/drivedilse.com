@@ -428,12 +428,17 @@ Deno.serve(async (req) => {
       return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
     }
 
-    // POST /bookings/:id/deposit-refund/mark-done — admin confirms a manual
-    // deposit refund (UPI/bank transfer) when Razorpay couldn't auto-refund it
+    // POST /bookings/:id/deposit-refund/mark-done — admin confirms manual deposit refund
+    // Body: { method: "cash" | "gpay", amount?: number }
     const markDepositRefundMatch = path.match(/^\/bookings\/([^/]+)\/deposit-refund\/mark-done$/);
     if (req.method === "POST" && markDepositRefundMatch && isAdmin) {
+      const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+      const method = (body.method === "gpay" ? "gpay" : "cash") as string;
+      const { data: bkRow } = await sb.from("bookings").select("deposit_amount, settlement_suggested_refund").eq("id", markDepositRefundMatch[1]).maybeSingle();
+      const bkr = bkRow as Record<string, unknown> | null;
+      const refundAmt = Number(body.amount) || Number(bkr?.settlement_suggested_refund) || Number(bkr?.deposit_amount) || 0;
       const { data, error } = await sb.from("bookings")
-        .update({ deposit_refund_status: "refunded_manually", updated_at: new Date().toISOString() })
+        .update({ deposit_refund_status: "refunded_manually", deposit_refund_id: method, deposit_refund_amount: refundAmt, updated_at: new Date().toISOString() })
         .eq("id", markDepositRefundMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);

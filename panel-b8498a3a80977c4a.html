@@ -273,6 +273,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="sidebar-section">Manage</div>
       <div class="nav-item" data-tab="schedule"  onclick="navTo('schedule',this)"> <span class="nav-icon">📅</span>Today's Schedule</div>
       <div class="nav-item" data-tab="fleet"     onclick="navTo('fleet',this)">    <span class="nav-icon">🚗</span>Fleet</div>
+      <div class="nav-item" data-tab="pricing"   onclick="navTo('pricing',this)"> <span class="nav-icon">📈</span>Smart Pricing <span class="nav-badge" id="nb-pricing">0</span></div>
       <div class="nav-item" data-tab="coupons"   onclick="navTo('coupons',this)">  <span class="nav-icon">🎁</span>Coupons</div>
       <div class="nav-item" data-tab="blog"      onclick="navTo('blog',this)">     <span class="nav-icon">📝</span>Blog</div>
       <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
@@ -852,6 +853,8 @@ async function renderTab(tab){
     await renderSchedule(isLocal, c);
   } else if(tab === "fleet"){
     await renderFleet(isLocal, c);
+  } else if(tab === "pricing"){
+    await renderPricing(isLocal, c);
   } else if(tab === "coupons"){
     await renderCoupons(isLocal, c);
   } else if(tab === "blog"){
@@ -878,7 +881,7 @@ async function renderDashboard(isLocal, c){
         {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab:"fleet"},
         {icon:"📋", num: allBookings.length,   lbl: "Total Bookings",   tab:"bookings"},
         {icon:"🟢", num: allBookings.filter(function(b){ return b.status==="active"; }).length,    lbl: "Active Drives", tab:"active"},
-        {icon:"🟡", num: allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"; }).length, lbl: "Upcoming", tab:"upcoming"},
+        {icon:"🟡", num: allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length, lbl: "Upcoming", tab:"upcoming"},
         {icon:"👥", num: dash.totalCustomers,  lbl: "Customers",        tab:"customers"},
       ];
       if(currentRole !== "fleet"){
@@ -1143,6 +1146,7 @@ async function renderBookings(statusFilter, isLocal, c){
     '<div class="toolbar">' +
       '<input class="search-inp" id="bk-search" placeholder="Search by ID, car, name, phone..." oninput="filterBookingTable()">' +
       '<button class="filter-btn on" onclick="filterBookingStatus(null,this)">All</button>' +
+      '<button class="filter-btn" onclick="filterBookingStatus(\'pending_kyc\',this)">KYC Pending</button>' +
       '<button class="filter-btn" onclick="filterBookingStatus(\'confirmed\',this)">Confirmed</button>' +
       '<button class="filter-btn" onclick="filterBookingStatus(\'active\',this)">Active</button>' +
       '<button class="filter-btn" onclick="filterBookingStatus(\'completed\',this)">Completed</button>' +
@@ -2019,6 +2023,62 @@ async function initiateSettleRefund(id){
 var COUPONS_CACHE = [];
 var _couponShowPrivate = false;
 var _couponSearch = "";
+
+async function renderPricing(isLocal, c){
+  var suggestions = [];
+  if(!isLocal){
+    try {
+      suggestions = await adminFetch("/admin/pricing/suggestions");
+    } catch(e){ isLocal = true; }
+  }
+
+  if(isLocal){
+    c.innerHTML = '<div class="page-title">Smart Pricing</div><div class="page-sub">Could not load pricing suggestions — please log in again.</div>';
+    return;
+  }
+
+  var badge = document.getElementById("nb-pricing");
+  if(badge) badge.textContent = suggestions.length;
+
+  var rows = suggestions.map(function(s){
+    var delta = s.suggested_price - s.current_price;
+    var deltaLbl = (delta >= 0 ? "+₹" : "-₹") + Math.abs(delta);
+    var deltaColor = delta >= 0 ? "#15803d" : "#b42318";
+    return '<div class="v-card">' +
+      '<div class="v-body">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
+          '<div style="font-weight:800;font-size:.95rem">'+esc(s.category)+'</div>' +
+          '<span style="font-size:.75rem;font-weight:700;color:'+deltaColor+'">'+deltaLbl+'/day</span>' +
+        '</div>' +
+        '<div style="font-size:.78rem;color:var(--ts);line-height:1.7;margin-bottom:12px">' +
+          'Current price: <b>₹'+s.current_price+'</b><br>' +
+          'Competitor average: <b>₹'+s.competitor_avg+'</b><br>' +
+          'Suggested price: <b>₹'+s.suggested_price+'</b>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn btn-y btn-sm" style="flex:1" onclick="applyPricingSuggestion(\''+s.id+'\')">✅ Apply</button>' +
+          '<button class="btn btn-g btn-sm" style="flex:1" onclick="dismissPricingSuggestion(\''+s.id+'\')">✖️ Dismiss</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  c.innerHTML =
+    '<div class="page-title">Smart Pricing</div>' +
+    '<div class="page-sub" style="margin-bottom:14px">Pricing suggestions from the daily competitor scrape (Zoomcar, Revv, Myles). Applying updates price_per_day for every active car in that category.</div>' +
+    '<div class="v-grid">' + (rows || '<div class="page-sub">No pending suggestions right now.</div>') + '</div>';
+}
+
+async function applyPricingSuggestion(id){
+  if(!confirm("Apply this suggested price to all active cars in this category?")) return;
+  await adminFetch("/admin/pricing/suggestions/"+id+"/apply", { method: "POST" });
+  navTo("pricing", document.querySelector('[data-tab="pricing"]'));
+}
+
+async function dismissPricingSuggestion(id){
+  await adminFetch("/admin/pricing/suggestions/"+id+"/dismiss", { method: "POST" });
+  navTo("pricing", document.querySelector('[data-tab="pricing"]'));
+}
 
 async function renderCoupons(isLocal, c){
   var coupons = [];

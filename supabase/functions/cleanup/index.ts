@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+﻿import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 
 const sb = createClient(
@@ -7,7 +7,7 @@ const sb = createClient(
 );
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   // Simple secret check so it can't be called publicly without auth
   const secret = req.headers.get("x-cleanup-secret");
@@ -45,3 +45,4 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+

@@ -1,4 +1,4 @@
-import { json, preflight } from "../_shared/cors.ts";
+﻿import { json, preflight } from "../_shared/cors.ts";
 
 const SYSTEM = `You are a helpful assistant for DriveDilSe, a premium self-drive car rental platform in Pune, India.
 
@@ -7,18 +7,18 @@ Key facts:
 - Located in Pune, Maharashtra
 - Minimum booking: 6 hours
 - Pricing is GST-inclusive, no hidden charges
-- Damage deductible: ₹2,000 (only if new damage occurs)
+- Damage deductible: â‚¹2,000 (only if new damage occurs)
 - Doorstep delivery and pickup available
-- Booking steps: Pick dates → Choose car → Pay online → Upload Aadhaar + DL → Get Check-In OTP at handover
+- Booking steps: Pick dates â†’ Choose car â†’ Pay online â†’ Upload Aadhaar + DL â†’ Get Check-In OTP at handover
 - Contact: contact.drivedilse@gmail.com | WhatsApp: +91 99999 99999
 - Discount tiers: 5% off (2-3 days), 8% (4-5 days), 10% (6-7 days), 15% (up to 14 days), 20% (up to 21 days), 25% (longer)
-- Cars available: Hatchbacks, SUVs, MPVs — all well-maintained
+- Cars available: Hatchbacks, SUVs, MPVs â€” all well-maintained
 - Cancellation and extensions supported from the profile page
 
 Keep answers short, friendly, and helpful. If unsure, suggest contacting on WhatsApp.`;
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   try {
     const { messages } = await req.json();
@@ -49,3 +49,4 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+

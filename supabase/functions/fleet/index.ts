@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+﻿import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 
 const sb = createClient(
@@ -18,7 +18,7 @@ function mapCar(c: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   const url  = new URL(req.url);
   const path = url.pathname.replace("/fleet", "") || "/";
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       const dISO   = new Date(drop).toISOString();
       const nowISO = new Date().toISOString();
 
-      // Build hold query — exclude the requesting customer's own hold so they
+      // Build hold query â€” exclude the requesting customer's own hold so they
       // aren't blocked by their own reservation.
       let holdsQ = sb.from("car_holds").select("car_id")
         .lt("pickup_date", dISO).gt("drop_date", pISO).gt("expires_at", nowISO);
@@ -59,8 +59,8 @@ Deno.serve(async (req) => {
       return json((cars ?? []).filter((c: Record<string, unknown>) => !blocked.has(c.id as string)).map(mapCar));
     }
 
-    // GET /holds?pickup=&drop=&session= — returns active holds by OTHER sessions
-    // so the fleet page can show "On Hold — check back in X min" on car cards.
+    // GET /holds?pickup=&drop=&session= â€” returns active holds by OTHER sessions
+    // so the fleet page can show "On Hold â€” check back in X min" on car cards.
     if (req.method === "GET" && path === "/holds") {
       const pickup  = url.searchParams.get("pickup");
       const drop    = url.searchParams.get("drop");
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       })));
     }
 
-    // GET /:id/next-available?from=ISO — when a car is booked/paused over the
+    // GET /:id/next-available?from=ISO â€” when a car is booked/paused over the
     // requested dates, tells the customer the earliest moment it's free again.
     const nextAvailMatch = path.match(/^\/([^/]+)\/next-available$/);
     if (req.method === "GET" && nextAvailMatch) {
@@ -120,8 +120,8 @@ Deno.serve(async (req) => {
       return json({ nextAvailable: isFree ? null : candidate.toISOString() });
     }
 
-    // GET /coupons — active, publicly-visible offers for guests. Exclusive/
-    // one-time codes (is_public = false) are intentionally left out here —
+    // GET /coupons â€” active, publicly-visible offers for guests. Exclusive/
+    // one-time codes (is_public = false) are intentionally left out here â€”
     // they only work if the customer types the exact code in at checkout.
     if (req.method === "GET" && path === "/coupons") {
       const { data, error } = await sb.from("coupons").select("*").eq("active", true).eq("is_public", true).order("created_at", { ascending: false });
@@ -133,14 +133,14 @@ Deno.serve(async (req) => {
       })));
     }
 
-    // GET / — all active cars
+    // GET / â€” all active cars
     if (req.method === "GET" && (path === "/" || path === "")) {
       const { data, error } = await sb.from("cars").select("*").eq("active", true);
       if (error) throw error;
       return json((data ?? []).map(mapCar));
     }
 
-    // GET /reviews/latest?limit=12 — latest customer reviews across all cars,
+    // GET /reviews/latest?limit=12 â€” latest customer reviews across all cars,
     // shown automatically in the homepage reviews marquee
     if (req.method === "GET" && path === "/reviews/latest") {
       const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 12));
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
       })));
     }
 
-    // GET /:carId/reviews?limit=5 — reviews + average rating for one car,
+    // GET /:carId/reviews?limit=5 â€” reviews + average rating for one car,
     // shown automatically on that car's detail page
     const carReviewsMatch = path.match(/^\/([^/]+)\/reviews$/);
     if (req.method === "GET" && carReviewsMatch) {
@@ -190,3 +190,4 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+

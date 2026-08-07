@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+﻿import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
@@ -43,7 +43,7 @@ function generateOtp(): string {
 
 async function sendEmailOtp(email: string, otp: string) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
-  if (!apiKey) { console.log(`[OTP] ${email} → ${otp}`); return; }
+  if (!apiKey) { console.log(`[OTP] ${email} â†’ ${otp}`); return; }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ async function getUser(req: Request) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   const url  = new URL(req.url);
   const path = url.pathname.replace("/auth", "") || "/";
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       }
 
       // Enforce 60-second resend cooldown. otp_expiry is set 10 min from when
-      // the OTP was issued, so last-sent ≈ otp_expiry − 10 min.
+      // the OTP was issued, so last-sent â‰ˆ otp_expiry âˆ’ 10 min.
       if (existing) {
         const ex = existing as Record<string, unknown>;
         if (ex.otp_expiry) {
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
         return json({ error: "Invalid or expired OTP" }, 400);
       }
 
-      // Successful verify — clear OTP state and reset attempt counter.
+      // Successful verify â€” clear OTP state and reset attempt counter.
       const updates: Record<string, unknown> = {
         otp: "", otp_expiry: null, phone_verified: true,
         otp_attempts: 0, otp_attempts_locked_until: null,
@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
       return json(await signProfileKyc(mapProfile(data as Record<string, unknown>)));
     }
 
-    // POST /profile — KYC with file uploads
+    // POST /profile â€” KYC with file uploads
     if (req.method === "POST" && path === "/profile") {
       let profileId: string | null = null;
       const jwtUser = await getUser(req);
@@ -309,3 +309,4 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+

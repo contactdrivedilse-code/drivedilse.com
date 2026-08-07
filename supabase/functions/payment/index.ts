@@ -227,7 +227,7 @@ function mapBooking(b: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   const url  = new URL(req.url);
   const path = url.pathname.replace("/payment", "") || "/";

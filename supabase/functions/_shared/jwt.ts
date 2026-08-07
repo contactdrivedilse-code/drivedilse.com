@@ -36,10 +36,8 @@ export function getBearer(req: Request): string | null {
   return auth.startsWith("Bearer ") ? auth.slice(7) : null;
 }
 
-// Returns user JWT from x-user-token, _ut query param, or Authorization Bearer
+// Returns user JWT from x-user-token header or Authorization Bearer.
+// Never from URL query params — tokens in URLs end up in server logs and browser history.
 export function getUserToken(req: Request): string | null {
-  const url = new URL(req.url);
-  return req.headers.get("x-user-token")
-    || url.searchParams.get("_ut")
-    || getBearer(req);
+  return req.headers.get("x-user-token") || getBearer(req);
 }

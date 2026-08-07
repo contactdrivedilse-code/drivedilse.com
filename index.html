@@ -5176,7 +5176,7 @@ async function vmSubmit(){
       var _kyUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
       var _kyH = { "Authorization": "Bearer " + ANON_KEY };
       if(_kyUt) _kyH["x-user-token"] = _kyUt;
-      var kycResp = await fetch(API + "/auth/profile" + (_kyUt ? "?_ut=" + encodeURIComponent(_kyUt) : ""), {
+      var kycResp = await fetch(API + "/auth/profile", {
         method: "POST", headers: _kyH, body: fd
       });
       if(!kycResp.ok){ var ke = await kycResp.json(); throw new Error(ke.error || "Upload failed"); }
@@ -5480,7 +5480,7 @@ async function saveProfilePhoto(dataUrl){
       var _ppUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
       var _ppH = { "Authorization": "Bearer " + ANON_KEY };
       if(_ppUt) _ppH["x-user-token"] = _ppUt;
-      await fetch(API + "/auth/profile" + (_ppUt ? "?_ut=" + encodeURIComponent(_ppUt) : ""), {
+      await fetch(API + "/auth/profile", {
         method: "POST", headers: _ppH, body: fd
       });
     } catch(e){ console.warn("Profile photo upload failed:", e.message); }
@@ -5575,7 +5575,7 @@ function submitSelfieVerify(){
 
   var _h = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
   if(authToken && !authToken.startsWith("demo_")) _h["x-user-token"] = authToken;
-  var _sfPostUrl = API + "/bookings/" + ciBookingId + "/selfie" + (authToken && !authToken.startsWith("demo_") ? "?_ut=" + encodeURIComponent(authToken) : "");
+  var _sfPostUrl = API + "/bookings/" + ciBookingId + "/selfie";
 
   fetch(_sfPostUrl, { method: "POST", headers: _h, body: JSON.stringify({ selfie: selfieDataUrl }) })
     .then(function(r){ return r.json(); })
@@ -5603,7 +5603,7 @@ function startSelfiePolling(result){
     var _h = { "Authorization": "Bearer " + ANON_KEY };
     var _ut2 = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     if(_ut2) _h["x-user-token"] = _ut2;
-    var _sfUrl = API + "/bookings/" + ciBookingId + "/selfie-status" + (_ut2 ? "?_ut=" + encodeURIComponent(_ut2) : "");
+    var _sfUrl = API + "/bookings/" + ciBookingId + "/selfie-status";
     fetch(_sfUrl, { headers: _h })
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -5771,7 +5771,7 @@ async function ciUploadPhotos() {
     var _ciUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     var _ciH  = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
     if(_ciUt) _ciH["x-user-token"] = _ciUt;
-    var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin-b64" + (_ciUt ? "?_ut=" + encodeURIComponent(_ciUt) : "");
+    var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin-b64";
     var _ciAbort = new AbortController();
     var _ciTimer = setTimeout(function(){ _ciAbort.abort(); }, 90000);
     var resp = await fetch(_ciUrl, { method:"POST", headers:_ciH, body:JSON.stringify(photos), signal:_ciAbort.signal });
@@ -5813,7 +5813,7 @@ async function ciVerifyOtp() {
     var _ovUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     var _ovH = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
     if(_ovUt) _ovH["x-user-token"] = _ovUt;
-    var _ovUrl = API + "/bookings/" + ciBookingId + "/checkin/verify" + (_ovUt ? "?_ut=" + encodeURIComponent(_ovUt) : "");
+    var _ovUrl = API + "/bookings/" + ciBookingId + "/checkin/verify";
     var resp = await fetch(_ovUrl, {
       method: "POST",
       headers: _ovH,
@@ -5901,7 +5901,7 @@ async function uploadDamagePhotos(bookingId, photos, type){
     var _dmUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     var _dmH = { "Authorization": "Bearer " + ANON_KEY };
     if(_dmUt) _dmH["x-user-token"] = _dmUt;
-    await fetch(API+"/bookings/"+bookingId+"/damage" + (_dmUt ? "?_ut=" + encodeURIComponent(_dmUt) : ""), {
+    await fetch(API+"/bookings/"+bookingId+"/damage", {
       method:"POST", headers: _dmH, body: fd
     });
   } catch(e){ console.warn("Damage photo upload failed:", e.message); }
@@ -5955,7 +5955,7 @@ async function coVerifyOtp() {
     var _coUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     var _coH = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
     if(_coUt) _coH["x-user-token"] = _coUt;
-    var resp = await fetch(API + "/bookings/" + coBookingId + "/checkout/verify" + (_coUt ? "?_ut=" + encodeURIComponent(_coUt) : ""), {
+    var resp = await fetch(API + "/bookings/" + coBookingId + "/checkout/verify", {
       method: "POST", headers: _coH, body: JSON.stringify({ otp: otp })
     });
     var data = await resp.json();

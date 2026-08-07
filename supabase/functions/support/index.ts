@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+﻿import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { sendEmail, SUPPORT_INBOX, escapeHtml } from "../_shared/email.ts";
 
@@ -8,13 +8,13 @@ const sb = createClient(
 );
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   const url  = new URL(req.url);
   const path = url.pathname.replace("/support", "") || "/";
 
   try {
-    // POST /tickets — raise a support ticket from the chat widget (no auth required)
+    // POST /tickets â€” raise a support ticket from the chat widget (no auth required)
     if (req.method === "POST" && path === "/tickets") {
       const { name, phone, email, message } = await req.json();
       if (!name || !String(name).trim()) return json({ error: "Name is required" }, 400);
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
         `New support ticket from ${data.name}`,
         `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
           <h2 style="color:#161616">New Support Ticket</h2>
-          <p><strong>Name:</strong> ${escapeHtml(data.name)}<br/><strong>Phone:</strong> ${escapeHtml(data.phone)}<br/><strong>Email:</strong> ${escapeHtml(data.email) || "—"}</p>
+          <p><strong>Name:</strong> ${escapeHtml(data.name)}<br/><strong>Phone:</strong> ${escapeHtml(data.phone)}<br/><strong>Email:</strong> ${escapeHtml(data.email) || "â€”"}</p>
           <p style="background:#f6f6f6;border-radius:8px;padding:12px">${escapeHtml(data.message)}</p>
           <p style="color:#666;font-size:13px">Ticket ID: ${data.id}</p>
         </div>`,
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       if (data.email) {
         await sendEmail(
           data.email,
-          "We've received your support ticket — DriveDilSe",
+          "We've received your support ticket â€” DriveDilSe",
           `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
             <h2 style="color:#161616">DriveDilSe</h2>
             <p>Hi ${escapeHtml(data.name)}, thanks for reaching out!</p>
@@ -65,3 +65,4 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+

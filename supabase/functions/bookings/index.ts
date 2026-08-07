@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+﻿import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight, corsHeaders } from "../_shared/cors.ts";
 import { verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
@@ -25,13 +25,13 @@ const CHECKIN_WINDOW_MINS = 30;
 function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
 const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 
-// Marginal bracket rates (₹/hr, excl GST) — mirrors frontend calcDynamicPrice
+// Marginal bracket rates (â‚¹/hr, excl GST) â€” mirrors frontend calcDynamicPrice
 // Each rate applies ONLY to hours within its bracket: [0-12hr, 12-24hr, 24-168hr, 168hr+]
 const CAT_BRACKETS: Record<string, number[]> = {
-  compact: [ 96, 60, 39, 48],  // 24hr≈₹2.2k | 7d≈₹8.8k | 14d≈₹18k | 30d≈₹40k
-  premium: [105, 65, 43, 54],  // 24hr≈₹2.4k | 7d≈₹9.7k | 14d≈₹20k | 30d≈₹45k
-  MPV:     [130, 81, 45, 64],  // 24hr≈₹3k   | 7d≈₹10.6k| 14d≈₹23k | 30d≈₹52k
-  SUV:     [156, 97, 54, 73],  // 24hr≈₹3.5k | 7d≈₹12.8k| 14d≈₹27k | 30d≈₹60k
+  compact: [ 96, 60, 39, 48],  // 24hrâ‰ˆâ‚¹2.2k | 7dâ‰ˆâ‚¹8.8k | 14dâ‰ˆâ‚¹18k | 30dâ‰ˆâ‚¹40k
+  premium: [105, 65, 43, 54],  // 24hrâ‰ˆâ‚¹2.4k | 7dâ‰ˆâ‚¹9.7k | 14dâ‰ˆâ‚¹20k | 30dâ‰ˆâ‚¹45k
+  MPV:     [130, 81, 45, 64],  // 24hrâ‰ˆâ‚¹3k   | 7dâ‰ˆâ‚¹10.6k| 14dâ‰ˆâ‚¹23k | 30dâ‰ˆâ‚¹52k
+  SUV:     [156, 97, 54, 73],  // 24hrâ‰ˆâ‚¹3.5k | 7dâ‰ˆâ‚¹12.8k| 14dâ‰ˆâ‚¹27k | 30dâ‰ˆâ‚¹60k
 };
 const BRACKET_CUTS = [0, 12, 24, 168, Infinity];
 
@@ -143,9 +143,9 @@ function refundPctForCancellation(pickupDateIso: string): number {
 
 function refundReasonText(pct: number, total: number): string {
   if (!(total > 0)) return "No payment is on record for this booking, so there's nothing to refund.";
-  if (pct === 1)   return "Cancelled more than 48 hours before pickup — full refund of the booking fee, per our cancellation policy.";
-  if (pct === 0.5) return "Cancelled 24–48 hours before pickup — 50% refund of the booking fee, per our cancellation policy.";
-  return "Cancelled less than 24 hours before pickup — the booking fee is non-refundable per our cancellation policy.";
+  if (pct === 1)   return "Cancelled more than 48 hours before pickup â€” full refund of the booking fee, per our cancellation policy.";
+  if (pct === 0.5) return "Cancelled 24â€“48 hours before pickup â€” 50% refund of the booking fee, per our cancellation policy.";
+  return "Cancelled less than 24 hours before pickup â€” the booking fee is non-refundable per our cancellation policy.";
 }
 
 async function razorpayRefund(paymentId: string, amountPaise: number) {
@@ -161,7 +161,7 @@ async function razorpayRefund(paymentId: string, amountPaise: number) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   const url  = new URL(req.url);
   const path = url.pathname.replace("/bookings", "") || "/";
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: "Unauthorized" }, 401);
 
   try {
-    // GET / — user's bookings
+    // GET / â€” user's bookings
     if (req.method === "GET" && (path === "/" || path === "")) {
       const { data: bookings, error } = await sb.from("bookings").select("*")
         .eq("user_id", user.id).order("pickup_date", { ascending: true });
@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
         signBookingPhotos(mapBooking(b, extMap[b.id as string], reviewMap[b.id as string])))));
     }
 
-    // POST /:id/selfie — customer uploads selfie to storage; auto-approved (no manual review needed)
+    // POST /:id/selfie â€” customer uploads selfie to storage; auto-approved (no manual review needed)
     const selfieUploadMatch = path.match(/^\/([^/]+)\/selfie$/);
     if (req.method === "POST" && selfieUploadMatch) {
       const id = selfieUploadMatch[1];
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
 
       const body = await req.json() as { selfie?: string };
       if (!body.selfie) return json({ error: "selfie required" }, 400);
-      // A 5 MB image encodes to ≈6.7 MB of base64 (≈6.7M chars).
+      // A 5 MB image encodes to â‰ˆ6.7 MB of base64 (â‰ˆ6.7M chars).
       if (body.selfie.length > 7 * 1024 * 1024)
         return json({ error: "Selfie image too large (max 5 MB)" }, 413);
 
@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
-    // GET /:id/selfie-status — customer polls for selfie verification result
+    // GET /:id/selfie-status â€” customer polls for selfie verification result
     const selfieStatusMatch = path.match(/^\/([^/]+)\/selfie-status$/);
     if (req.method === "GET" && selfieStatusMatch) {
       const id = selfieStatusMatch[1];
@@ -243,7 +243,7 @@ Deno.serve(async (req) => {
       return json({ status: "pending" });
     }
 
-    // POST /:id/checkin-b64 — receive base64 photos, upload to storage, generate OTP
+    // POST /:id/checkin-b64 â€” receive base64 photos, upload to storage, generate OTP
     const checkinB64Match = path.match(/^\/([^/]+)\/checkin-b64$/);
     if (req.method === "POST" && checkinB64Match) {
       const id = checkinB64Match[1];
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
       const sides = ["front","rear","passengerSide","driverSide"];
       const missing = sides.filter(s => !body[s]);
       if (missing.length) return json({ error: `Missing photos: ${missing.join(", ")}` }, 400);
-      // Each photo: 5 MB image ≈ 6.7 MB base64
+      // Each photo: 5 MB image â‰ˆ 6.7 MB base64
       const oversized = sides.find(s => body[s] && body[s].length > 7 * 1024 * 1024);
       if (oversized) return json({ error: `Photo "${oversized}" too large (max 5 MB each)` }, 413);
 
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
         urls[s] = sb.storage.from("checkin").getPublicUrl(path).data.publicUrl;
       }));
 
-      // Check-in OTP is generated when the booking is confirmed, not here —
+      // Check-in OTP is generated when the booking is confirmed, not here â€”
       // only fall back to generating one if an older booking somehow lacks it.
       const otp = (b.checkin_otp as string) || generateOtp();
       await sb.from("bookings").update({
@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
       return json({ success: true, message: "Photos uploaded. Get your check-in OTP from the DriveDilSe representative." });
     }
 
-    // POST /:id/checkin-urls — receive pre-uploaded photo URLs, generate OTP
+    // POST /:id/checkin-urls â€” receive pre-uploaded photo URLs, generate OTP
     const checkinUrlsMatch = path.match(/^\/([^/]+)\/checkin-urls$/);
     if (req.method === "POST" && checkinUrlsMatch) {
       const id = checkinUrlsMatch[1];
@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
       return json({ success: true, message: "Photos saved. Get your check-in OTP from the DriveDilSe representative." });
     }
 
-    // POST /:id/checkin — upload 4 photos (legacy, kept for compatibility)
+    // POST /:id/checkin â€” upload 4 photos (legacy, kept for compatibility)
     const checkinMatch = path.match(/^\/([^/]+)\/checkin$/);
     if (req.method === "POST" && checkinMatch) {
       const id = checkinMatch[1];
@@ -356,7 +356,7 @@ Deno.serve(async (req) => {
       return json({ success: true, message: "Photos uploaded. Get your check-in OTP from the DriveDilSe representative." });
     }
 
-    // POST /:id/deposit/order — create a Razorpay order to pay the
+    // POST /:id/deposit/order â€” create a Razorpay order to pay the
     // refundable deposit for a "pay later" booking, before/at check-in
     const depositOrderMatch = path.match(/^\/([^/]+)\/deposit\/order$/);
     if (req.method === "POST" && depositOrderMatch) {
@@ -402,7 +402,7 @@ Deno.serve(async (req) => {
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
       if (b.status !== "confirmed") return json({ error: "Booking is not in confirmed state" }, 400);
-      // deposit_choice is null for bookings made before this feature shipped —
+      // deposit_choice is null for bookings made before this feature shipped â€”
       // those were never asked for a deposit, so don't retroactively block them.
       if (b.deposit_choice && !b.deposit_paid) return json({ error: "Please pay the refundable security deposit before check-in." }, 400);
       if (!b.checkin_otp) return json({ error: "Upload car photos first" }, 400);
@@ -502,7 +502,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // PUT /:id/reschedule — change booking pickup/drop dates
+    // PUT /:id/reschedule â€” change booking pickup/drop dates
     const rescheduleMatch = path.match(/^\/([^/]+)\/reschedule$/);
     if (req.method === "PUT" && rescheduleMatch) {
       const id = rescheduleMatch[1];
@@ -521,7 +521,7 @@ Deno.serve(async (req) => {
 
       const pISOR = newPickup.toISOString(), dISOR = newDrop.toISOString();
 
-      // Conflict check — exclude current booking
+      // Conflict check â€” exclude current booking
       const { data: conflict } = await sb.from("bookings").select("id")
         .eq("car_id", b.car_id as string).neq("id", id)
         .in("status", ["confirmed", "active", "completed"])
@@ -529,7 +529,7 @@ Deno.serve(async (req) => {
       if (conflict) return json({ error: "Car is not available for the selected dates" }, 400);
 
       // Lock the effective per-hour rate from the original booking so customers
-      // always reschedule at the same rate they paid — no new duration multipliers.
+      // always reschedule at the same rate they paid â€” no new duration multipliers.
       const { data: extsForRs } = await sb.from("extensions").select("cost").eq("booking_id", id);
       const extTotalRs = (extsForRs ?? []).reduce((s, e) => s + (((e as Record<string, unknown>).cost as number) || 0), 0);
       const origPickup = new Date(b.pickup_date as string);
@@ -551,7 +551,7 @@ Deno.serve(async (req) => {
       return json({ success: true, booking: mapBooking(updated as Record<string, unknown>) });
     }
 
-    // POST /:id/damage — upload damage photos (pre check-in or post checkout)
+    // POST /:id/damage â€” upload damage photos (pre check-in or post checkout)
     const damageMatch = path.match(/^\/([^/]+)\/damage$/);
     if (req.method === "POST" && damageMatch) {
       const id  = damageMatch[1];
@@ -583,7 +583,7 @@ Deno.serve(async (req) => {
       return json({ success: true, uploaded: photos.length });
     }
 
-    // POST /:id/extend/direct — extend without Razorpay (when payment gateway not configured)
+    // POST /:id/extend/direct â€” extend without Razorpay (when payment gateway not configured)
     const extDirectMatch = path.match(/^\/([^/]+)\/extend\/direct$/);
     if (req.method === "POST" && extDirectMatch) {
       const id = extDirectMatch[1];
@@ -626,7 +626,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // GET /:id/cancel-preview — refund amount the user would get right now
+    // GET /:id/cancel-preview â€” refund amount the user would get right now
     const cancelPreviewMatch = path.match(/^\/([^/]+)\/cancel-preview$/);
     if (req.method === "GET" && cancelPreviewMatch) {
       const id = cancelPreviewMatch[1];
@@ -658,7 +658,7 @@ Deno.serve(async (req) => {
       const pct = refundPctForCancellation(b.pickup_date as string);
       const totalAmt = Number(b.total) || 0;
       // Deposit paid at booking time ("now") is bundled into the same
-      // Razorpay payment as the booking fee — strip it out before applying
+      // Razorpay payment as the booking fee â€” strip it out before applying
       // the cancellation-tier percentage, since the deposit is always
       // 100% refundable regardless of timing, unlike the booking fee.
       const depositBundled = b.deposit_choice === "now" && !!b.deposit_paid;
@@ -686,7 +686,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Deposit refund — always 100%, independent of the booking-fee tier.
+      // Deposit refund â€” always 100%, independent of the booking-fee tier.
       let depositRefundAmount = 0;
       let depositRefundStatus = "not_applicable";
       let depositRefundId: string | null = null;
@@ -742,13 +742,13 @@ Deno.serve(async (req) => {
 
       // drop_date gets overwritten below for car-availability purposes, so
       // capture how late the return was (vs the originally scheduled drop)
-      // right now — this is the only moment that original value is available.
+      // right now â€” this is the only moment that original value is available.
       const lateMs    = Date.now() - new Date(b.drop_date as string).getTime();
       const lateHours = lateMs > 0 ? Math.ceil(lateMs / 3600000) : 0;
 
       await sb.from("bookings").update({
         checkout_otp_verified: true, checked_out_at: checkedOutAt,
-        drop_date: availableAt, // overwrite original drop — car free after 4h
+        drop_date: availableAt, // overwrite original drop â€” car free after 4h
         status: "completed", updated_at: checkedOutAt,
         settlement_late_hours: lateHours,
       }).eq("id", id);
@@ -758,7 +758,7 @@ Deno.serve(async (req) => {
     }
 
 
-    // /:id/review — leave a review for a completed trip's car (one per booking)
+    // /:id/review â€” leave a review for a completed trip's car (one per booking)
     const reviewMatch = path.match(/^\/([^/]+)\/review$/);
     if (req.method === "GET" && reviewMatch) {
       const { data } = await sb.from("car_reviews").select("rating, review_text").eq("booking_id", reviewMatch[1]).maybeSingle();
@@ -803,3 +803,4 @@ Deno.serve(async (req) => {
     return json({ error: (e as Error).message }, 500);
   }
 });
+

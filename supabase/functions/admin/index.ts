@@ -141,32 +141,46 @@ async function getAdmin(req: Request, requireAdmin = false) {
   } catch { return null; }
 }
 
+// Per-role login failure tracker: locksout after 10 consecutive failures for 15 min.
+// In-memory: effective per function instance; resets on cold start, which is acceptable.
+const loginFailures = new Map<string, { count: number; lockedUntil: number }>();
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return preflight();
+  if (req.method === "OPTIONS") return preflight(req);
 
   const url  = new URL(req.url);
   const path = url.pathname.replace("/admin", "") || "/";
 
   try {
     // POST /login
-    // A deliberate 800 ms delay on failure slows password guessing to ~75/min
-    // even without account lockout — enough to make automated attacks impractical.
+    // 800 ms delay on failure + lockout after 10 consecutive failures for 15 min.
     if (req.method === "POST" && path === "/login") {
       const { password, role } = await req.json();
+      const failKey = (role === "fleet") ? "fleet" : "admin";
+      const fail = loginFailures.get(failKey) ?? { count: 0, lockedUntil: 0 };
+      if (fail.lockedUntil > Date.now())
+        return json({ error: "Too many failed attempts. Try again in 15 minutes." }, 429, req);
+
       if (role === "fleet") {
         if (password !== Deno.env.get("FLEET_PASSWORD")) {
+          fail.count++; if (fail.count >= 10) fail.lockedUntil = Date.now() + 15 * 60 * 1000;
+          loginFailures.set(failKey, fail);
           await new Promise((r) => setTimeout(r, 800));
-          return json({ error: "Invalid password" }, 401);
+          return json({ error: "Invalid password" }, 401, req);
         }
+        loginFailures.delete(failKey);
         const token = await signJwt({ role: "fleet" }, Deno.env.get("ADMIN_JWT_SECRET")!, 12 * 60 * 60);
-        return json({ token, role: "fleet" });
+        return json({ token, role: "fleet" }, 200, req);
       }
       if (password !== Deno.env.get("ADMIN_PASSWORD")) {
+        fail.count++; if (fail.count >= 10) fail.lockedUntil = Date.now() + 15 * 60 * 1000;
+        loginFailures.set(failKey, fail);
         await new Promise((r) => setTimeout(r, 800));
-        return json({ error: "Invalid password" }, 401);
+        return json({ error: "Invalid password" }, 401, req);
       }
+      loginFailures.delete(failKey);
       const token = await signJwt({ role: "admin" }, Deno.env.get("ADMIN_JWT_SECRET")!, 24 * 60 * 60);
-      return json({ token, role: "admin" });
+      return json({ token, role: "admin" }, 200, req);
     }
 
     // All routes below require admin or fleet auth

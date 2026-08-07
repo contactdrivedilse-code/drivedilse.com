@@ -567,18 +567,47 @@ Deno.serve(async (req) => {
         .select("id, phone, name, dob, email, aadhaar_url, dl_url, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
         .eq("phone_verified", true).order("created_at", { ascending: false });
       if (error) throw error;
-      return json(await Promise.all((data ?? []).map(async (u: Record<string, unknown>) => ({
+      const rows = (data ?? []) as Record<string, unknown>[];
+
+      // Batch-sign all KYC storage URLs in one API call per bucket instead of
+      // N*2 individual createSignedUrl calls (which timeout with 30+ customers).
+      const PUBLIC_PATH_RE = /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/;
+      type UrlEntry = { rowIndex: number; field: "aadhaar" | "dl"; bucket: string; path: string };
+      const entries: UrlEntry[] = [];
+      rows.forEach((u, i) => {
+        for (const [field, key] of [["aadhaar", "aadhaar_url"], ["dl", "dl_url"]] as [string, string][]) {
+          const raw = u[key] as string | null;
+          if (!raw) continue;
+          const m = raw.match(PUBLIC_PATH_RE);
+          if (!m) continue;
+          entries.push({ rowIndex: i, field: field as "aadhaar" | "dl", bucket: m[1], path: decodeURIComponent(m[2].split("?")[0]) });
+        }
+      });
+
+      // Group by bucket and sign in bulk
+      const byBucket: Record<string, UrlEntry[]> = {};
+      for (const e of entries) { (byBucket[e.bucket] ??= []).push(e); }
+      const signedFor: Record<number, { aadhaar?: string; dl?: string }> = {};
+      await Promise.all(Object.entries(byBucket).map(async ([bucket, items]) => {
+        const { data: signed } = await sb.storage.from(bucket).createSignedUrls(items.map(i => i.path), 3600);
+        (signed ?? []).forEach((s, idx) => {
+          const { rowIndex, field } = items[idx];
+          (signedFor[rowIndex] ??= {})[field] = s.signedUrl || undefined;
+        });
+      }));
+
+      return json(rows.map((u, i) => ({
         _id: u.id, id: u.id,
         phone: u.phone, name: u.name, email: u.email, dob: u.dob,
         createdAt: u.created_at,
         kyc: {
           status: u.kyc_status || "pending",
-          aadhaarUrl: (await signStorageUrl(sb, u.aadhaar_url as string)) || null,
-          dlUrl: (await signStorageUrl(sb, u.dl_url as string)) || null,
+          aadhaarUrl: signedFor[i]?.aadhaar || null,
+          dlUrl: signedFor[i]?.dl || null,
           aadhaarUploaded: u.aadhaar_uploaded,
           dlVerified: u.dl_verified,
         },
-      }))));
+      })));
     }
 
     // PUT /customers/:id/kyc
@@ -794,6 +823,53 @@ Deno.serve(async (req) => {
       const { error } = await sb.from("car_pauses").delete().eq("id", deletePauseMatch[2]).eq("car_id", deletePauseMatch[1]);
       if (error) throw error;
       return json({ success: true });
+    }
+
+    // GET /pricing/suggestions — Admin only. Lists pending smart-pricing
+    // suggestions derived from the competitor scraper (see
+    // scripts/competitor-pricing/scrape.mjs). Suggestions are never
+    // auto-applied to cars.price_per_day; admin approves each one.
+    if (req.method === "GET" && path === "/pricing/suggestions") {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { data, error } = await sb.from("pricing_suggestions")
+        .select("*").eq("status", "pending").order("created_at", { ascending: false });
+      if (error) throw error;
+      return json(data);
+    }
+
+    // POST /pricing/suggestions/:id/apply — Admin only. Applies the
+    // suggested price to every active car in that category.
+    const applySuggestionMatch = path.match(/^\/pricing\/suggestions\/([^/]+)\/apply$/);
+    if (req.method === "POST" && applySuggestionMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { data: suggestion } = await sb.from("pricing_suggestions")
+        .select("*").eq("id", applySuggestionMatch[1]).maybeSingle();
+      if (!suggestion) return json({ error: "Suggestion not found" }, 404);
+      const s = suggestion as Record<string, unknown>;
+      if (s.status !== "pending") return json({ error: "Suggestion already resolved" }, 400);
+
+      const { error: updateErr } = await sb.from("cars")
+        .update({ price_per_day: s.suggested_price })
+        .eq("category", s.category).eq("active", true);
+      if (updateErr) throw updateErr;
+
+      const { data, error } = await sb.from("pricing_suggestions")
+        .update({ status: "applied", resolved_at: new Date().toISOString() })
+        .eq("id", applySuggestionMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      return json(data);
+    }
+
+    // POST /pricing/suggestions/:id/dismiss — Admin only.
+    const dismissSuggestionMatch = path.match(/^\/pricing\/suggestions\/([^/]+)\/dismiss$/);
+    if (req.method === "POST" && dismissSuggestionMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { data, error } = await sb.from("pricing_suggestions")
+        .update({ status: "dismissed", resolved_at: new Date().toISOString() })
+        .eq("id", dismissSuggestionMatch[1]).eq("status", "pending").select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Suggestion not found or already resolved" }, 404);
+      return json(data);
     }
 
     // POST /fleet/:id/manual-booking — Fleet Manager only. Records a booking made

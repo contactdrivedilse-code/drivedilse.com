@@ -2888,6 +2888,7 @@ async function renderCustomers(isLocal, c){
         '<div style="font-size:.73rem;color:var(--ts)">Joined '+new Date(u.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})+'</div>' +
       '</div></div></td>' +
       '<td>+91 '+u.phone+'</td>' +
+      '<td style="color:var(--ts)">'+(u.email||"—")+'</td>' +
       '<td>'+kycBadge+'</td>' +
       '<td>'+docCell(u.kyc&&u.kyc.aadhaarUrl,"Aadhaar")+'</td>' +
       '<td>'+docCell(u.kyc&&u.kyc.dlUrl,"DL")+'</td>' +

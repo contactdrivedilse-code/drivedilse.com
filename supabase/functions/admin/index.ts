@@ -79,6 +79,7 @@ function mapBooking(b: Record<string, unknown>) {
     days: b.days, pricePerDay: b.price_per_day, total: b.total,
     deposit: b.deposit, discount: b.discount,
     depositAmount: b.deposit_amount ?? 0, depositChoice: b.deposit_choice ?? "later", depositPaid: b.deposit_paid ?? false,
+    depositMethod: b.deposit_paid ? (b.deposit_razorpay_payment_id === "cash" ? "cash" : b.deposit_razorpay_payment_id === "gpay" ? "gpay" : b.deposit_razorpay_payment_id ? "online" : null) : null,
     settlement: b.settlement_filled_at ? {
       filledAt: b.settlement_filled_at, lateHours: b.settlement_late_hours ?? 0,
       damageAmount: b.settlement_damage_amount ?? 0, fastagAmount: b.settlement_fastag_amount ?? 0,
@@ -439,12 +440,14 @@ Deno.serve(async (req) => {
       return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
     }
 
-    // POST /bookings/:id/deposit/mark-paid — admin manually marks the
-    // deposit collected (e.g. cash at handover) for pay-later bookings
+    // POST /bookings/:id/deposit/mark-paid — admin manually marks deposit collected
+    // Body: { method: "cash" | "gpay" }
     const markDepositPaidMatch = path.match(/^\/bookings\/([^/]+)\/deposit\/mark-paid$/);
     if (req.method === "POST" && markDepositPaidMatch && isAdmin) {
+      const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+      const method = (body.method === "gpay" ? "gpay" : "cash") as string;
       const { data, error } = await sb.from("bookings")
-        .update({ deposit_paid: true, deposit_paid_at: new Date().toISOString(), deposit_razorpay_payment_id: "manual", updated_at: new Date().toISOString() })
+        .update({ deposit_paid: true, deposit_paid_at: new Date().toISOString(), deposit_razorpay_payment_id: method, updated_at: new Date().toISOString() })
         .eq("id", markDepositPaidMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Booking not found" }, 404);

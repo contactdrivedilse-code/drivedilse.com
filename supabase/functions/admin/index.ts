@@ -551,53 +551,36 @@ Deno.serve(async (req) => {
     }
 
 
-    // GET /customers
+    // GET /customers — returns all profiles; no URL signing in list (use /customers/:id/docs for signed URLs)
     if (req.method === "GET" && path === "/customers") {
       const { data, error } = await sb.from("profiles")
         .select("id, phone, name, dob, email, aadhaar_url, dl_url, aadhaar_uploaded, dl_verified, kyc_status, phone_verified, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const rows = (data ?? []) as Record<string, unknown>[];
-
-      // Batch-sign all KYC storage URLs in one API call per bucket instead of
-      // N*2 individual createSignedUrl calls (which timeout with 30+ customers).
-      const PUBLIC_PATH_RE = /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/;
-      type UrlEntry = { rowIndex: number; field: "aadhaar" | "dl"; bucket: string; path: string };
-      const entries: UrlEntry[] = [];
-      rows.forEach((u, i) => {
-        for (const [field, key] of [["aadhaar", "aadhaar_url"], ["dl", "dl_url"]] as [string, string][]) {
-          const raw = u[key] as string | null;
-          if (!raw) continue;
-          const m = raw.match(PUBLIC_PATH_RE);
-          if (!m) continue;
-          entries.push({ rowIndex: i, field: field as "aadhaar" | "dl", bucket: m[1], path: decodeURIComponent(m[2].split("?")[0]) });
-        }
-      });
-
-      // Group by bucket and sign in bulk
-      const byBucket: Record<string, UrlEntry[]> = {};
-      for (const e of entries) { (byBucket[e.bucket] ??= []).push(e); }
-      const signedFor: Record<number, { aadhaar?: string; dl?: string }> = {};
-      await Promise.all(Object.entries(byBucket).map(async ([bucket, items]) => {
-        const { data: signed } = await sb.storage.from(bucket).createSignedUrls(items.map(i => i.path), 3600);
-        (signed ?? []).forEach((s, idx) => {
-          const { rowIndex, field } = items[idx];
-          (signedFor[rowIndex] ??= {})[field] = s.signedUrl || undefined;
-        });
-      }));
-
-      return json(rows.map((u, i) => ({
+      return json((data ?? []).map((u: Record<string, unknown>) => ({
         _id: u.id, id: u.id,
         phone: u.phone, name: u.name, email: u.email, dob: u.dob,
         createdAt: u.created_at,
         kyc: {
           status: u.kyc_status || "pending",
-          aadhaarUrl: signedFor[i]?.aadhaar || null,
-          dlUrl: signedFor[i]?.dl || null,
+          hasAadhaar: !!(u.aadhaar_url),
+          hasDl: !!(u.dl_url),
           aadhaarUploaded: u.aadhaar_uploaded,
           dlVerified: u.dl_verified,
         },
       })));
+    }
+
+    // GET /customers/:id/docs — sign and return KYC doc URLs on demand
+    const custDocsMatch = path.match(/^\/customers\/([^/]+)\/docs$/);
+    if (req.method === "GET" && custDocsMatch) {
+      const { data: p } = await sb.from("profiles").select("aadhaar_url, dl_url").eq("id", custDocsMatch[1]).maybeSingle();
+      if (!p) return json({ error: "Not found" }, 404);
+      const pr = p as Record<string, unknown>;
+      return json({
+        aadhaarUrl: await signStorageUrl(sb, pr.aadhaar_url as string),
+        dlUrl: await signStorageUrl(sb, pr.dl_url as string),
+      });
     }
 
     // PUT /customers/:id/kyc

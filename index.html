@@ -6579,8 +6579,8 @@ var dropAddress = "";
 
 function makeMapWithPin(mapId, hintId, onMove){
   var map = L.map(mapId, {zoomControl:true, scrollWheelZoom:true}).setView([HUB_LAT, HUB_LON], 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:19}).addTo(map);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    {attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>', maxZoom:19, subdomains:'abcd'}).addTo(map);
   // Hub dot
   L.marker([HUB_LAT, HUB_LON], {
     icon: L.divIcon({html:'<div style="background:#c0392b;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>',iconSize:[14,14],iconAnchor:[7,7],className:""}),
@@ -6600,6 +6600,7 @@ var heroDeliveryMap = null, heroDeliveryMarker = null;
 var heroDropMap = null, heroDropMarker = null;
 
 function initHeroDeliveryMap(){
+  if(typeof L === "undefined"){ setTimeout(initHeroDeliveryMap, 200); return; }
   if(heroDeliveryMap){ heroDeliveryMap.invalidateSize(); return; }
   var obj = makeMapWithPin("hero-delivery-map", "hero-delivery-map-hint", function(pin, map, hintId){
     reverseAndUpdateFee(pin.getLatLng(), "pickup", hintId);
@@ -6620,6 +6621,7 @@ function initHeroDeliveryMap(){
 }
 
 function initHeroDropMap(){
+  if(typeof L === "undefined"){ setTimeout(initHeroDropMap, 200); return; }
   if(heroDropMap){ heroDropMap.invalidateSize(); return; }
   var obj = makeMapWithPin("hero-drop-map", "hero-drop-map-hint", function(pin){
     reverseAndUpdateFee(pin.getLatLng(), "drop", "hero-drop-map-hint");
@@ -6630,9 +6632,13 @@ function initHeroDropMap(){
 function reverseAndUpdateFee(ll, which, hintId){
   var dist = roadKm(HUB_LAT, HUB_LON, ll.lat, ll.lng);
   if(which==="pickup"){ pickupDist=dist; } else { dropDist=dist; }
+  // Show fee immediately from distance — address label filled in async below
+  calcAndShowDeliveryTotal();
+  var ctrl = new AbortController();
+  var abort = setTimeout(function(){ ctrl.abort(); }, 6000);
   fetch("https://nominatim.openstreetmap.org/reverse?lat="+ll.lat+"&lon="+ll.lng+"&format=json&zoom=17",
-        {headers:{"User-Agent":"DriveDilSe/1.0"}})
-    .then(function(r){ return r.json(); })
+        {headers:{"Accept-Language":"en"}, signal: ctrl.signal})
+    .then(function(r){ clearTimeout(abort); return r.json(); })
     .then(function(d){
       var label = d.display_name ? d.display_name.split(",").slice(0,4).join(",") : "Selected location";
       var addrEl = document.getElementById("hero-" + (which==="pickup" ? "delivery-address" : "drop-address"));
@@ -6641,7 +6647,7 @@ function reverseAndUpdateFee(ll, which, hintId){
       if(hintId) document.getElementById(hintId).textContent = "📍 "+label.split(",")[0];
       calcAndShowDeliveryTotal();
     })
-    .catch(function(){ calcAndShowDeliveryTotal(); });
+    .catch(function(){ clearTimeout(abort); /* fee already shown from distance above */ });
 }
 
 function calcAndShowDeliveryTotal(){
@@ -6709,10 +6715,13 @@ async function calcDeliveryCharge(which, ctx){
   if(res) res.innerHTML='<span style="color:var(--ts)">📍 Locating address…</span>';
   try {
     var q    = encodeURIComponent(addr+", Pune");
+    var ctrl2 = new AbortController();
+    var abort2 = setTimeout(function(){ ctrl2.abort(); }, 8000);
     var r    = await fetch("https://nominatim.openstreetmap.org/search?q="+q+"&format=json&limit=1",
-                   {headers:{"User-Agent":"DriveDilSe/1.0"}});
+                   {headers:{"Accept-Language":"en"}, signal: ctrl2.signal});
+    clearTimeout(abort2);
     var data = await r.json();
-    if(!data.length) throw new Error("Address not found. Try a more specific address in Pune.");
+    if(!data.length) throw new Error("Address not found. Try landmark + area (e.g. 'Aundh, Pune').");
     var lat  = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
     var dist = roadKm(HUB_LAT, HUB_LON, lat, lon);
     if(which==="drop"){
@@ -6724,7 +6733,8 @@ async function calcDeliveryCharge(which, ctx){
     }
     calcAndShowDeliveryTotal();
   } catch(e){
-    if(res) res.innerHTML='<span style="color:#c0392b">'+esc(e.message)+'</span>';
+    var msg = e.name==="AbortError" ? "Location lookup timed out — drag the pin on the map instead." : e.message;
+    if(res) res.innerHTML='<span style="color:#c0392b">'+esc(msg)+'</span>';
   }
 }
 
@@ -6764,7 +6774,13 @@ function openDeliveryPickerModal(){
   _deliveryBlockOriginalNext = block.nextSibling;
   modalBody.appendChild(block);
   openModal("delivery-picker-modal");
-  if(heroDeliveryWanted){ setTimeout(function(){ initHeroDeliveryMap(); }, 50); }
+  if(heroDeliveryWanted){
+    setTimeout(function(){
+      initHeroDeliveryMap();
+      // Flexi drop map also needs invalidateSize after the block moves containers
+      if(heroDropMap) heroDropMap.invalidateSize();
+    }, 80);
+  }
 }
 function closeDeliveryPickerModal(){
   var block = document.getElementById("doorstep-delivery-block");

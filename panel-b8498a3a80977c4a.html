@@ -673,6 +673,25 @@ var DEMO_CUSTOMERS = [
 function inr(n){ return "₹" + Number(Math.round(Number(n)*100)/100).toLocaleString("en-IN", {maximumFractionDigits:2}); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); }
 
+// Derive price components from a booking object.
+// total = baseFare + deliveryFee + gst + depositNow - couponDiscount
+// gst   = (baseFare + deliveryFee) * 0.18
+function calcBreakdown(b){
+  var total          = Number(b.total) || 0;
+  var deliveryFee    = Number(b.deliveryFee) || 0;
+  var depositAmount  = Number(b.depositAmount) || 0;
+  var depositPaid    = !!(b.depositPaid);
+  var depositChoice  = b.depositChoice || "later";
+  var couponDiscount = Number(b.couponDiscount) || 0;
+  // depositNow: deposit bundled into booking payment (choice="now" and paid at booking time)
+  var depositNow = (depositPaid && depositChoice === "now") ? depositAmount : 0;
+  // taxable = baseFare + deliveryFee; total = taxable*1.18 + depositNow - couponDiscount
+  var taxable  = Math.round((total - depositNow + couponDiscount) / 1.18);
+  var baseFare = Math.max(0, taxable - deliveryFee);
+  var gst      = Math.max(0, total - depositNow + couponDiscount - taxable);
+  return { baseFare:baseFare, deliveryFee:deliveryFee, gst:gst, depositNow:depositNow, depositAmount:depositAmount, depositPaid:depositPaid, couponDiscount:couponDiscount, total:total };
+}
+
 function toast(msg, type){
   var t = document.getElementById("toast");
   t.textContent = msg;
@@ -1295,6 +1314,25 @@ function buildTable(bks, showActions){
           }).join('') + '</select></td>'
       : '';
     var isFleet = currentRole === "fleet";
+    var bk = calcBreakdown(b);
+    var totalCell = '<td style="white-space:nowrap">' +
+      '<div style="font-weight:800;font-size:.92rem">'+inr(bk.total)+'</div>' +
+      '<div style="font-size:.68rem;color:var(--ts);margin-top:3px;line-height:1.55">' +
+        'Base <strong>'+inr(bk.baseFare)+'</strong>' +
+        (bk.deliveryFee ? ' · Del <strong style="color:#2563eb">'+inr(bk.deliveryFee)+'</strong>' : '') +
+        ' · GST <strong>'+inr(bk.gst)+'</strong>' +
+        (bk.couponDiscount ? ' · Coupon <strong style="color:#15803d">-'+inr(bk.couponDiscount)+'</strong>' : '') +
+      '</div>' +
+      (bk.depositAmount ? '<div style="font-size:.68rem;margin-top:2px;color:'+(bk.depositPaid?'#15803d':'#92400e')+'">' +
+        '🔒 Deposit '+inr(bk.depositAmount)+' — '+(bk.depositNow ? 'paid at booking' : (bk.depositPaid ? 'paid separately' : '⏳ unpaid')) +
+      '</div>' : '') +
+    '</td>';
+    var depCell = '<td style="white-space:nowrap;font-size:.78rem">' +
+      (bk.depositAmount
+        ? '<div style="font-weight:700;color:'+(bk.depositPaid?'#15803d':'#92400e')+'">'+inr(bk.depositAmount)+'</div>' +
+          '<div style="font-size:.65rem;color:var(--ts)">'+(bk.depositPaid ? '✅ Paid' : '⏳ Unpaid')+'</div>'
+        : '<span style="color:var(--ts)">—</span>') +
+    '</td>';
     return '<tr>' +
       '<td style="font-weight:700;color:var(--yd);font-family:monospace;cursor:pointer;text-decoration:underline" onclick="openBkDetailsModal(\''+(b._id||b.bookingId)+'\')">'+(b.bookingId||b._id||"—")+'</td>' +
       '<td style="font-weight:600">'+carName+'</td>' +
@@ -1302,7 +1340,7 @@ function buildTable(bks, showActions){
       '<td style="color:var(--ts)">'+phone+'</td>' +
       '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(pickup).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
       '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(drop).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
-      (isFleet ? '' : '<td style="font-weight:700">'+inr(b.total)+'</td>') +
+      (isFleet ? depCell : totalCell) +
       '<td>'+badge(b.status)+'</td>' +
       (isFleet ? '' : '<td>'+payBadge+'</td>') +
       otpCell +
@@ -1314,7 +1352,7 @@ function buildTable(bks, showActions){
   var actHdr = showActions ? '<th>Change Status</th>' : '';
   return '<table class="adm-table"><thead><tr>' +
     '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th>' +
-    (isFleet ? '' : '<th>Total</th>') +
+    (isFleet ? '<th>Deposit</th>' : '<th>Amount Breakdown</th>') +
     '<th>Status</th>' +
     (isFleet ? '' : '<th>Payment</th>') +
     '<th>Check-In OTP</th><th>Check-Out OTP</th>' + actHdr +
@@ -2228,6 +2266,31 @@ function openBkDetailsModal(id){
   var preExistingCi = parseDamagePhotos(b.notes, "damage_checkin");
   var preExistingCo = parseDamagePhotos(b.notes, "damage_checkout");
 
+  var bkd = calcBreakdown(b);
+  var priceBreakdownHtml =
+    '<div style="background:var(--s);border:1.5px solid var(--b);border-radius:10px;padding:14px 16px;margin:14px 0;font-size:.82rem">' +
+      '<div style="font-weight:700;font-size:.78rem;letter-spacing:.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">💰 Price Breakdown</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px">' +
+        '<div style="display:flex;justify-content:space-between"><span style="color:var(--ts)">Base Fare</span><span style="font-weight:700">'+inr(bkd.baseFare)+'</span></div>' +
+        (bkd.deliveryFee ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--ts)">Delivery Charge</span><span style="font-weight:700;color:#2563eb">'+inr(bkd.deliveryFee)+'</span></div>' : '') +
+        '<div style="display:flex;justify-content:space-between"><span style="color:var(--ts)">GST (18% on base'+(bkd.deliveryFee?' + delivery':'')+')</span><span style="font-weight:700">'+inr(bkd.gst)+'</span></div>' +
+        (bkd.couponDiscount ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--ts)">Coupon Discount</span><span style="font-weight:700;color:#15803d">− '+inr(bkd.couponDiscount)+'</span></div>' : '') +
+        (bkd.depositNow ? '<div style="display:flex;justify-content:space-between"><span style="color:var(--ts)">Security Deposit (paid now)</span><span style="font-weight:700">'+inr(bkd.depositNow)+'</span></div>' : '') +
+        '<div style="border-top:1.5px solid var(--b);margin-top:6px;padding-top:8px;display:flex;justify-content:space-between">' +
+          '<span style="font-weight:800;font-size:.9rem">Total Charged</span>' +
+          '<span style="font-weight:900;font-size:1rem;color:var(--yd)">'+inr(bkd.total)+'</span>' +
+        '</div>' +
+        (bkd.depositAmount && !bkd.depositNow
+          ? '<div style="margin-top:6px;padding:8px 10px;border-radius:7px;background:'+(bkd.depositPaid?'#f0fdf4':'#fffbeb')+';border:1px solid '+(bkd.depositPaid?'#bbf7d0':'#fde68a')+';display:flex;justify-content:space-between;align-items:center">' +
+              '<span style="color:var(--ts)">Security Deposit (separate)</span>' +
+              '<span style="font-weight:700;color:'+(bkd.depositPaid?'#15803d':'#92400e')+'">' +
+                inr(bkd.depositAmount) + ' · ' + (bkd.depositPaid ? '✅ Paid' : '⏳ Unpaid') +
+              '</span>' +
+            '</div>'
+          : '') +
+      '</div>' +
+    '</div>';
+
   var html =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;font-size:.85rem">' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Car</div><div style="font-weight:700">'+carName+'</div></div>' +
@@ -2236,8 +2299,8 @@ function openBkDetailsModal(id){
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Phone</div><div>'+phone+'</div></div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Pickup</div><div>'+(pickup?new Date(pickup).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Drop</div><div>'+(drop?new Date(drop).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
-      (b.total!=null ? '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Total</div><div style="font-weight:700">'+inr(b.total)+'</div></div>' : '') +
     '</div>' +
+    priceBreakdownHtml +
     (currentRole === "admin" ? depositSectionHtml(b) : '') +
     (currentRole === "admin" && b.status === "cancelled" && b.refund ? refundSectionHtml(b) : '') +
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +

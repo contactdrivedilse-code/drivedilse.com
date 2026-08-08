@@ -921,8 +921,11 @@ async function renderDashboard(isLocal, c){
       updateBadges();
       var paidBks = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
       var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);
-      var gst = Math.round(rev * 18 / 118 * 100) / 100;
-      var bookingFee = rev - gst;
+      var deliveryFeeTotal = paidBks.reduce(function(s,b){ return s+(Number(b.deliveryFee)||0); },0);
+      var depositCollected = allBookings.reduce(function(s,b){ return s+(b.depositPaid?Number(b.depositAmount)||0:0); },0);
+      var depositRefunded  = allBookings.reduce(function(s,b){ return s+(b.refund&&b.refund.depositRefundDone?Number(b.depositAmount)||0:0); },0);
+      var gst = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
+      var bookingFee = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
       stats = [
         {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab:"fleet"},
         {icon:"📋", num: allBookings.length,   lbl: "Total Bookings",   tab:"bookings"},
@@ -931,9 +934,12 @@ async function renderDashboard(isLocal, c){
         {icon:"👥", num: dash.totalCustomers,  lbl: "Customers",        tab:"customers"},
       ];
       if(currentRole !== "fleet"){
-        stats.push({icon:"💰", num: inr(bookingFee), lbl: "Booking Fee Collected", tab:"revenue"});
-        stats.push({icon:"🧾", num: inr(gst),        lbl: "GST Collected (18%)",   tab:"revenue"});
-        stats.push({icon:"📈", num: inr(rev),         lbl: "Total Revenue",         tab:"revenue"});
+        stats.push({icon:"💰", num: inr(bookingFee),      lbl: "Booking Fee Collected",  tab:"revenue"});
+        stats.push({icon:"🚚", num: inr(deliveryFeeTotal),lbl: "Delivery Fee Collected",  tab:"revenue"});
+        stats.push({icon:"🧾", num: inr(gst),             lbl: "GST Collected (18%)",     tab:"revenue"});
+        stats.push({icon:"🔒", num: inr(depositCollected),lbl: "Deposit Collected",        tab:"revenue"});
+        stats.push({icon:"↩️", num: inr(depositRefunded), lbl: "Deposit Refunded",         tab:"revenue"});
+        stats.push({icon:"📈", num: inr(rev+depositCollected-depositRefunded), lbl: "Total Revenue", tab:"revenue"});
       }
     } catch(e){ isLocal = true; }
   }
@@ -943,8 +949,11 @@ async function renderDashboard(isLocal, c){
     updateBadges();
     var demoPaidBks = DEMO_BOOKINGS.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
     var demoRev = demoPaidBks.reduce(function(s,b){ return s+b.total; },0);
-    var demoGst = Math.round(demoRev * 18 / 118 * 100) / 100;
-    var demoFee = demoRev - demoGst;
+    var demoDel  = demoPaidBks.reduce(function(s,b){ return s+(Number(b.deliveryFee)||0); },0);
+    var demoDepCol = DEMO_BOOKINGS.reduce(function(s,b){ return s+(b.depositPaid?Number(b.depositAmount)||0:0); },0);
+    var demoDepRef = DEMO_BOOKINGS.reduce(function(s,b){ return s+(b.refund&&b.refund.depositRefundDone?Number(b.depositAmount)||0:0); },0);
+    var demoGst = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
+    var demoFee = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
     stats = [
       {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles", tab:"fleet"},
       {icon:"📋",num:DEMO_BOOKINGS.length,lbl:"Total Bookings",  tab:"bookings"},
@@ -953,9 +962,12 @@ async function renderDashboard(isLocal, c){
       {icon:"👥",num:DEMO_CUSTOMERS.length,lbl:"Customers", tab:"customers"},
     ];
     if(currentRole !== "fleet"){
-      stats.push({icon:"💰",num:inr(demoFee),lbl:"Booking Fee Collected", tab:"revenue"});
-      stats.push({icon:"🧾",num:inr(demoGst),lbl:"GST Collected (18%)",   tab:"revenue"});
-      stats.push({icon:"📈",num:inr(demoRev),lbl:"Total Revenue",         tab:"revenue"});
+      stats.push({icon:"💰",num:inr(demoFee),    lbl:"Booking Fee Collected", tab:"revenue"});
+      stats.push({icon:"🚚",num:inr(demoDel),    lbl:"Delivery Fee Collected",tab:"revenue"});
+      stats.push({icon:"🧾",num:inr(demoGst),    lbl:"GST Collected (18%)",   tab:"revenue"});
+      stats.push({icon:"🔒",num:inr(demoDepCol), lbl:"Deposit Collected",      tab:"revenue"});
+      stats.push({icon:"↩️",num:inr(demoDepRef), lbl:"Deposit Refunded",       tab:"revenue"});
+      stats.push({icon:"📈",num:inr(demoRev+demoDepCol-demoDepRef),lbl:"Total Revenue",tab:"revenue"});
     }
   }
   var statHtml = stats.map(function(s){

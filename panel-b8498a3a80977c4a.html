@@ -64,6 +64,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .page-title{font-family:Georgia,serif;font-size:1.6rem;font-weight:900;margin-bottom:4px}
 .page-sub{color:var(--ts);font-size:.85rem;margin-bottom:28px}
 
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,.4)}50%{box-shadow:0 0 0 6px rgba(34,197,94,.1)}}
 /* ── STAT CARDS ── */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
 .stat-card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:20px;text-align:center;box-shadow:0 2px 10px rgba(200,160,0,.06);user-select:none}
@@ -988,6 +989,15 @@ async function renderDashboard(isLocal, c){
     return '<div class="stat-card"'+clickable+'><div class="stat-icon">'+s.icon+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
   }).join("");
 
+  // Load duty status for fleet managers
+  var dutyHtml = "";
+  if(currentRole === "fleet" && !isLocal){
+    try {
+      var duty = await adminFetch("/duty/status");
+      dutyHtml = renderDutyCard(duty);
+    } catch(e){ dutyHtml = ""; }
+  }
+
   c.innerHTML =
     '<div class="page-title">Dashboard</div>' +
     '<div class="page-sub">Overview of DriveDilSe operations.</div>' +
@@ -995,7 +1005,96 @@ async function renderDashboard(isLocal, c){
       ? '<div style="background:#fff3cd;border:1px solid #e8b800;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#856404;display:flex;align-items:center;gap:8px">⚠️ <strong>Demo mode</strong> — backend unreachable. Showing sample data.</div>'
       : '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#15803d;display:flex;align-items:center;gap:8px">✅ <strong>Live Backend Connected</strong> — showing real data from database.</div>'
     ) +
+    dutyHtml +
     '<div class="stat-grid">' + statHtml + '</div>';
+
+  // Start live timer if on duty
+  if(currentRole === "fleet" && !isLocal) startDutyTimer();
+}
+
+var _dutyTimerInterval = null;
+var _dutyStartTs = null;
+
+function renderDutyCard(duty){
+  var TARGET_HRS = duty.targetHours || 360;
+  var completedHrs = (duty.completedSecsThisMonth || 0) / 3600;
+  var pct = Math.min(100, Math.round(completedHrs / TARGET_HRS * 100));
+  var overtime = Math.max(0, completedHrs - TARGET_HRS);
+  var remaining = Math.max(0, TARGET_HRS - completedHrs);
+  var progressColor = overtime > 0 ? "#c0392b" : (pct > 80 ? "#15803d" : "var(--yd)");
+
+  var monthName = new Date().toLocaleString("en-IN",{month:"long",year:"numeric"});
+  _dutyStartTs = duty.punchedIn && duty.currentSession ? new Date(duty.currentSession.startedAt).getTime() : null;
+
+  var sessionHtml = "";
+  if(duty.punchedIn && duty.currentSession){
+    sessionHtml =
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;box-shadow:0 0 0 3px #bbf7d0;animation:pulse 1.5s infinite"></span>' +
+        '<span style="font-weight:700;color:#15803d">On Duty</span>' +
+        '<span style="color:var(--ts);font-size:.82rem">· Started '+new Date(duty.currentSession.startedAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})+'</span>' +
+        '<span id="duty-session-timer" style="font-family:monospace;font-weight:700;color:#15803d;margin-left:4px;font-size:.9rem"></span>' +
+      '</div>';
+  } else {
+    sessionHtml = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="width:10px;height:10px;border-radius:50%;background:#e5e7eb;display:inline-block"></span><span style="color:var(--ts);font-weight:600">Off Duty</span></div>';
+  }
+
+  return '<div style="background:var(--w);border:2px solid var(--b);border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 12px rgba(200,160,0,.08)">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">' +
+      '<div>' +
+        '<div style="font-weight:900;font-size:1.05rem;margin-bottom:2px">⏱ Duty Tracker — '+monthName+'</div>' +
+        '<div style="font-size:.78rem;color:var(--ts)">Monthly target: '+TARGET_HRS+' hrs (12 hrs/day × 30 days)</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        (duty.punchedIn
+          ? '<button class="btn btn-red btn-sm" style="padding:10px 20px;font-size:.88rem;font-weight:700" onclick="dutyPunchOut()">⏹ End Duty</button>'
+          : '<button class="btn btn-g btn-sm" style="padding:10px 20px;font-size:.88rem;font-weight:700;background:#15803d;color:#fff;border-color:#15803d" onclick="dutyPunchIn()">▶ Start Duty</button>') +
+      '</div>' +
+    '</div>' +
+    sessionHtml +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;font-size:.82rem">' +
+      '<div style="background:var(--s);border-radius:10px;padding:10px 12px;text-align:center"><div style="color:var(--ts);font-size:.7rem;margin-bottom:2px">Completed</div><div style="font-weight:900;font-size:1.1rem;color:var(--yd)">'+completedHrs.toFixed(1)+' hrs</div></div>' +
+      '<div style="background:var(--s);border-radius:10px;padding:10px 12px;text-align:center"><div style="color:var(--ts);font-size:.7rem;margin-bottom:2px">Remaining</div><div style="font-weight:900;font-size:1.1rem;color:'+(remaining>0?"#2563eb":"#15803d")+'">'+remaining.toFixed(1)+' hrs</div></div>' +
+      (overtime > 0 ? '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;text-align:center"><div style="color:#991b1b;font-size:.7rem;margin-bottom:2px">Overtime</div><div style="font-weight:900;font-size:1.1rem;color:#c0392b">+'+overtime.toFixed(1)+' hrs</div></div>' : '') +
+    '</div>' +
+    '<div style="margin-top:4px">' +
+      '<div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--ts);margin-bottom:4px"><span>'+pct+'% of monthly target</span><span>'+completedHrs.toFixed(1)+' / '+TARGET_HRS+' hrs</span></div>' +
+      '<div style="background:var(--b);border-radius:100px;height:10px;overflow:hidden">' +
+        '<div style="height:100%;width:'+pct+'%;background:'+progressColor+';border-radius:100px;transition:width .4s"></div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function startDutyTimer(){
+  if(_dutyTimerInterval) clearInterval(_dutyTimerInterval);
+  if(!_dutyStartTs) return;
+  function tick(){
+    var el = document.getElementById("duty-session-timer");
+    if(!el){ clearInterval(_dutyTimerInterval); return; }
+    var secs = Math.floor((Date.now() - _dutyStartTs) / 1000);
+    var h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = secs%60;
+    el.textContent = "("+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")+")";
+  }
+  tick();
+  _dutyTimerInterval = setInterval(tick, 1000);
+}
+
+async function dutyPunchIn(){
+  try {
+    await adminFetch("/duty/punch-in", {method:"POST"});
+    toast("Duty started! Have a great shift. 🚗", "success");
+    await renderTab("dashboard");
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function dutyPunchOut(){
+  try {
+    var res = await adminFetch("/duty/punch-out", {method:"POST"});
+    var hrs = res.durationSecs ? (res.durationSecs/3600).toFixed(2) : "—";
+    toast("Duty ended. Session: "+hrs+" hrs.", "success");
+    await renderTab("dashboard");
+  } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
 function renderScheduleCard(items, isLocal){

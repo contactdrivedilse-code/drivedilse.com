@@ -33,13 +33,17 @@ async function rebuildBlogIndexAndSitemap(): Promise<void> {
 async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<string, unknown>> {
   const ci = (b.checkin ?? {}) as Record<string, unknown>;
   const photos = (ci.photos ?? {}) as Record<string, unknown>;
-  const [front, rear, passengerSide, driverSide] = await Promise.all([
+  const supaUrl = Deno.env.get("SUPABASE_URL")!;
+  // Selfie is stored at {bookingUUID}/selfie.jpg in the checkin bucket
+  const selfiePublicUrl = `${supaUrl}/storage/v1/object/public/checkin/${b._id as string}/selfie.jpg`;
+  const [front, rear, passengerSide, driverSide, selfieUrl] = await Promise.all([
     signStorageUrl(sb, photos.front as string),
     signStorageUrl(sb, photos.rear as string),
     signStorageUrl(sb, photos.passengerSide as string),
     signStorageUrl(sb, photos.driverSide as string),
+    signStorageUrl(sb, selfiePublicUrl),
   ]);
-  return { ...b, checkin: { ...ci, photos: { front, rear, passengerSide, driverSide } } };
+  return { ...b, checkin: { ...ci, photos: { front, rear, passengerSide, driverSide }, selfieUrl } };
 }
 
 function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = []) {
@@ -1179,6 +1183,70 @@ Deno.serve(async (req) => {
       await deleteFile(`blog/${p.slug}.html`, `Unpublish blog post: ${p.title}`);
       await rebuildBlogIndexAndSitemap();
       return json({ success: true });
+    }
+
+    // ── DUTY TRACKING ───────────────────────────────────────────────────
+    // GET  /duty/status   — current punch state + monthly totals
+    // POST /duty/punch-in  — fleet starts duty
+    // POST /duty/punch-out — fleet ends duty
+    // GET  /duty/logs     — admin views all logs (optional ?month=YYYY-MM)
+
+    if (path === "/duty/status" && req.method === "GET") {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      // Active session (punched in, not yet out)
+      const { data: active } = await sb.from("duty_logs")
+        .select("*").is("punched_out_at", null).order("punched_in_at", { ascending: false }).limit(1).maybeSingle();
+      // All completed sessions this month
+      const { data: logs } = await sb.from("duty_logs")
+        .select("punched_in_at,punched_out_at")
+        .gte("punched_in_at", monthStart)
+        .not("punched_out_at", "is", null);
+      const completedSecs = ((logs ?? []) as Record<string, string>[]).reduce((s, r) => {
+        return s + (new Date(r.punched_out_at).getTime() - new Date(r.punched_in_at).getTime()) / 1000;
+      }, 0);
+      return json({
+        punchedIn: !!active,
+        currentSession: active ? { id: active.id, startedAt: active.punched_in_at } : null,
+        completedSecsThisMonth: completedSecs,
+        monthStart,
+        targetHours: 360,
+      });
+    }
+
+    if (path === "/duty/punch-in" && req.method === "POST") {
+      // Prevent double punch-in
+      const { data: active } = await sb.from("duty_logs")
+        .select("id").is("punched_out_at", null).limit(1).maybeSingle();
+      if (active) return json({ error: "Already on duty. Punch out first." }, 400);
+      const { data, error: insErr } = await sb.from("duty_logs")
+        .insert({ punched_in_at: new Date().toISOString() }).select("*").single();
+      if (insErr) throw insErr;
+      return json({ success: true, session: data });
+    }
+
+    if (path === "/duty/punch-out" && req.method === "POST") {
+      const { data: active } = await sb.from("duty_logs")
+        .select("*").is("punched_out_at", null).order("punched_in_at", { ascending: false }).limit(1).maybeSingle();
+      if (!active) return json({ error: "Not currently on duty." }, 400);
+      const now = new Date().toISOString();
+      const secs = (new Date(now).getTime() - new Date((active as Record<string, string>).punched_in_at).getTime()) / 1000;
+      const { data, error: upErr } = await sb.from("duty_logs")
+        .update({ punched_out_at: now }).eq("id", (active as Record<string, string>).id).select("*").single();
+      if (upErr) throw upErr;
+      return json({ success: true, session: data, durationSecs: secs });
+    }
+
+    if (path === "/duty/logs" && req.method === "GET" && isAdmin) {
+      const month = url.searchParams.get("month"); // YYYY-MM
+      let q = sb.from("duty_logs").select("*").order("punched_in_at", { ascending: false });
+      if (month) {
+        const from = new Date(month + "-01").toISOString();
+        const to   = new Date(new Date(month + "-01").getFullYear(), new Date(month + "-01").getMonth() + 1, 1).toISOString();
+        q = q.gte("punched_in_at", from).lt("punched_in_at", to);
+      }
+      const { data } = await q;
+      return json(data ?? []);
     }
 
     return json({ error: "Not found" }, 404);

@@ -588,6 +588,16 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<div class="modal-overlay" id="deposit-breakdown-modal">
+  <div class="modal-box" style="max-width:720px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="dbm-title">Deposit Breakdown</div>
+    <div id="dbm-body"></div>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="document.getElementById('deposit-breakdown-modal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="bk-details-modal">
   <div class="modal-box" style="max-width:640px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title">Booking Details — <span id="bkdm-id" style="color:var(--yd);font-family:monospace"></span></div>
@@ -937,8 +947,8 @@ async function renderDashboard(isLocal, c){
         stats.push({icon:"💰", num: inr(bookingFee),      lbl: "Booking Fee Collected",  tab:"revenue"});
         stats.push({icon:"🚚", num: inr(deliveryFeeTotal),lbl: "Delivery Fee Collected",  tab:"revenue"});
         stats.push({icon:"🧾", num: inr(gst),             lbl: "GST Collected (18%)",     tab:"revenue"});
-        stats.push({icon:"🔒", num: inr(depositCollected),lbl: "Deposit Collected",        tab:"revenue"});
-        stats.push({icon:"↩️", num: inr(depositRefunded), lbl: "Deposit Refunded",         tab:"revenue"});
+        stats.push({icon:"🔒", num: inr(depositCollected),lbl: "Deposit Collected",        fn:"openDepositBreakdownModal('collected')"});
+        stats.push({icon:"↩️", num: inr(depositRefunded), lbl: "Deposit Refunded",         fn:"openDepositBreakdownModal('refunded')"});
         stats.push({icon:"📈", num: inr(rev+depositCollected-depositRefunded), lbl: "Total Revenue", tab:"revenue"});
       }
     } catch(e){ isLocal = true; }
@@ -965,15 +975,16 @@ async function renderDashboard(isLocal, c){
       stats.push({icon:"💰",num:inr(demoFee),    lbl:"Booking Fee Collected", tab:"revenue"});
       stats.push({icon:"🚚",num:inr(demoDel),    lbl:"Delivery Fee Collected",tab:"revenue"});
       stats.push({icon:"🧾",num:inr(demoGst),    lbl:"GST Collected (18%)",   tab:"revenue"});
-      stats.push({icon:"🔒",num:inr(demoDepCol), lbl:"Deposit Collected",      tab:"revenue"});
-      stats.push({icon:"↩️",num:inr(demoDepRef), lbl:"Deposit Refunded",       tab:"revenue"});
+      stats.push({icon:"🔒",num:inr(demoDepCol), lbl:"Deposit Collected",      fn:"openDepositBreakdownModal('collected')"});
+      stats.push({icon:"↩️",num:inr(demoDepRef), lbl:"Deposit Refunded",       fn:"openDepositBreakdownModal('refunded')"});
       stats.push({icon:"📈",num:inr(demoRev+demoDepCol-demoDepRef),lbl:"Total Revenue",tab:"revenue"});
     }
   }
   var statHtml = stats.map(function(s){
-    var clickable = s.tab
-      ? ' onclick="navTo(\''+s.tab+'\',document.querySelector(\'[data-tab='+s.tab+']\'))" style="cursor:pointer;transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(200,160,0,.18)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'"'
-      : '';
+    var hoverStyle = ' style="cursor:pointer;transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 8px 24px rgba(200,160,0,.18)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'"';
+    var clickable = s.fn
+      ? ' onclick="'+s.fn+'"'+hoverStyle
+      : (s.tab ? ' onclick="navTo(\''+s.tab+'\',document.querySelector(\'[data-tab='+s.tab+']\'))"'+hoverStyle : '');
     return '<div class="stat-card"'+clickable+'><div class="stat-icon">'+s.icon+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
   }).join("");
 
@@ -2354,6 +2365,63 @@ function openBkDetailsModal(id){
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+function openDepositBreakdownModal(mode){
+  // mode: "collected" | "refunded"
+  var isRefunded = mode === "refunded";
+  document.getElementById("dbm-title").textContent = isRefunded ? "↩️ Deposits Refunded" : "🔒 Deposits Collected";
+
+  var rows, total = 0;
+  if(isRefunded){
+    rows = allBookings.filter(function(b){
+      return b.depositRefundStatus === "refunded_manually" || b.depositRefundStatus === "refunded";
+    }).map(function(b){
+      var amt = Number(b.depositRefundAmount) || Number(b.depositAmount) || 0;
+      total += amt;
+      var method = b.depositRefundStatus === "refunded" ? "Online (Razorpay)" : "Manual";
+      return '<tr>' +
+        '<td style="font-family:monospace;font-weight:700;color:var(--yd);cursor:pointer;text-decoration:underline" onclick="document.getElementById(\'deposit-breakdown-modal\').classList.remove(\'open\');openBkDetailsModal(\''+(b._id||b.bookingId)+'\')">'+esc(b.bookingId||b._id||"—")+'</td>'+
+        '<td>'+esc(b.carName||(b.car&&b.car.name)||"—")+'</td>'+
+        '<td>'+esc(b.customer||(b.user&&b.user.name)||"—")+'</td>'+
+        '<td>'+esc(b.phone||(b.user&&b.user.phone)||"—")+'</td>'+
+        '<td style="font-weight:700;color:#15803d">'+inr(amt)+'</td>'+
+        '<td><span style="font-size:.75rem;background:#f0fdf4;color:#15803d;border-radius:12px;padding:2px 8px">'+esc(method)+'</span></td>'+
+      '</tr>';
+    });
+  } else {
+    rows = allBookings.filter(function(b){ return b.depositPaid; }).map(function(b){
+      var amt = Number(b.depositAmount) || 0;
+      total += amt;
+      var method = b.depositMethod === "cash" ? "Cash" : b.depositMethod === "gpay" ? "GPay" : b.depositMethod === "online" ? "Online" : b.depositChoice === "now" ? "Paid at Booking" : "Manual";
+      var refundStatus = b.depositRefundStatus === "refunded" || b.depositRefundStatus === "refunded_manually"
+        ? '<span style="font-size:.75rem;background:#f0fdf4;color:#15803d;border-radius:12px;padding:2px 8px">✅ Refunded</span>'
+        : (b.status === "completed"
+          ? '<span style="font-size:.75rem;background:#fffbeb;color:#92400e;border-radius:12px;padding:2px 8px">⏳ Pending</span>'
+          : '<span style="font-size:.75rem;background:#f1f5f9;color:#64748b;border-radius:12px;padding:2px 8px">Active</span>');
+      return '<tr>' +
+        '<td style="font-family:monospace;font-weight:700;color:var(--yd);cursor:pointer;text-decoration:underline" onclick="document.getElementById(\'deposit-breakdown-modal\').classList.remove(\'open\');openBkDetailsModal(\''+(b._id||b.bookingId)+'\')">'+esc(b.bookingId||b._id||"—")+'</td>'+
+        '<td>'+esc(b.carName||(b.car&&b.car.name)||"—")+'</td>'+
+        '<td>'+esc(b.customer||(b.user&&b.user.name)||"—")+'</td>'+
+        '<td>'+esc(b.phone||(b.user&&b.user.phone)||"—")+'</td>'+
+        '<td style="font-weight:700;color:var(--yd)">'+inr(amt)+'</td>'+
+        '<td><span style="font-size:.75rem;background:#eef2ff;color:#3730a3;border-radius:12px;padding:2px 8px">'+esc(method)+'</span></td>'+
+        '<td>'+refundStatus+'</td>'+
+      '</tr>';
+    });
+  }
+
+  var thead = isRefunded
+    ? '<tr><th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Amount Refunded</th><th>Method</th></tr>'
+    : '<tr><th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Deposit</th><th>Collected Via</th><th>Refund Status</th></tr>';
+
+  var html = rows.length
+    ? '<div style="font-size:.82rem;color:var(--ts);margin-bottom:12px">'+rows.length+' booking'+(rows.length!==1?'s':'')+' · Total: <strong style="color:var(--yd)">'+inr(total)+'</strong></div>' +
+      '<div class="table-wrap"><table class="adm-table"><thead>'+thead+'</thead><tbody>'+rows.join("")+'</tbody></table></div>'
+    : '<div class="empty" style="padding:32px"><div class="empty-icon">'+(isRefunded?"↩️":"🔒")+'</div><div class="empty-msg">No '+(isRefunded?"refunded":"collected")+' deposits yet.</div></div>';
+
+  document.getElementById("dbm-body").innerHTML = html;
+  document.getElementById("deposit-breakdown-modal").classList.add("open");
+}
 
 function showCancelForm(id){
   var b = allBookings.find(function(x){ return x._id===id; });

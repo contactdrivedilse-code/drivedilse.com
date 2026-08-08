@@ -923,7 +923,7 @@ async function renderDashboard(isLocal, c){
       var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);
       var deliveryFeeTotal = paidBks.reduce(function(s,b){ return s+(Number(b.deliveryFee)||0); },0);
       var depositCollected = allBookings.reduce(function(s,b){ return s+(b.depositPaid?Number(b.depositAmount)||0:0); },0);
-      var depositRefunded  = allBookings.reduce(function(s,b){ return s+(b.refund&&b.refund.depositRefundDone?Number(b.depositAmount)||0:0); },0);
+      var depositRefunded  = allBookings.reduce(function(s,b){ return s+((b.depositRefundStatus==="refunded_manually"||b.depositRefundStatus==="refunded")?(Number(b.depositRefundAmount)||Number(b.depositAmount)||0):0); },0);
       var gst = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
       var bookingFee = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
       stats = [
@@ -951,7 +951,7 @@ async function renderDashboard(isLocal, c){
     var demoRev = demoPaidBks.reduce(function(s,b){ return s+b.total; },0);
     var demoDel  = demoPaidBks.reduce(function(s,b){ return s+(Number(b.deliveryFee)||0); },0);
     var demoDepCol = DEMO_BOOKINGS.reduce(function(s,b){ return s+(b.depositPaid?Number(b.depositAmount)||0:0); },0);
-    var demoDepRef = DEMO_BOOKINGS.reduce(function(s,b){ return s+(b.refund&&b.refund.depositRefundDone?Number(b.depositAmount)||0:0); },0);
+    var demoDepRef = DEMO_BOOKINGS.reduce(function(s,b){ return s+((b.depositRefundStatus==="refunded_manually"||b.depositRefundStatus==="refunded")?(Number(b.depositRefundAmount)||Number(b.depositAmount)||0):0); },0);
     var demoGst = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
     var demoFee = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
     stats = [

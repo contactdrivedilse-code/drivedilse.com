@@ -3504,34 +3504,76 @@ function goTo(id){
   if(el) el.scrollIntoView({behavior:"smooth"});
 }
 var _inPopState = false;
+// Hash ↔ page-id mapping — drives both refresh-restore and URL sharing
+var _PAGE_HASH = {
+  'pg-home':'', 'pg-results':'results', 'pg-detail':'detail',
+  'pg-profile':'profile', 'pg-trips':'trips', 'pg-lease':'lease'
+};
+function _pageToHash(id){ return _PAGE_HASH[id] !== undefined ? _PAGE_HASH[id] : id.replace('pg-',''); }
+function _hashToPage(h){ h = (h||'').replace('#','');
+  for(var k in _PAGE_HASH){ if(_PAGE_HASH[k]===h) return k; } return 'pg-home'; }
+
 function showPage(id){
   document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
   document.getElementById(id).classList.add("active");
-  // Instant, not smooth — html has a global scroll-behavior:smooth, so even
-  // a plain scrollTo(0,0) animates and can get interrupted by layout shifts
-  // as the new page's content/photos load in, leaving the viewport stuck
-  // partway down instead of at the top. behavior:"instant" bypasses that.
   window.scrollTo({top:0, left:0, behavior:"instant"});
   if(!_inPopState){
+    var hash = _pageToHash(id);
     history.pushState(
       {page:id, carId: selCar ? String(selCar.id) : null},
-      '', location.pathname + location.search
+      '', location.pathname + location.search + (hash ? '#'+hash : '#')
     );
   }
 }
-// Seed initial history entry so the very first Back press stays on-site
-history.replaceState({page:'pg-home', carId:null}, '', location.pathname + location.search);
 
+// On refresh: restore the page that was open from the URL hash
+(function(){
+  var initHash = location.hash.replace('#','');
+  var initPage = initHash ? _hashToPage(initHash) : 'pg-home';
+  if(initPage !== 'pg-home'){
+    var el = document.getElementById(initPage);
+    if(el){
+      document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });
+      el.classList.add("active");
+    }
+  }
+  // Seed history: guard entry below + real entry on top
+  // Guard prevents exiting site on first back press from home
+  history.replaceState({page:'pg-home', carId:null, _guard:true}, '', location.pathname + location.search + '#');
+  history.pushState(
+    {page:initPage, carId:null},
+    '', location.pathname + location.search + (initHash ? '#'+initHash : '#')
+  );
+})();
+
+var _backPressTime = 0;
 window.addEventListener('popstate', function(e){
-  var state  = e.state || {};
-  var pgId   = state.page || 'pg-home';
-  var curEl  = document.querySelector('.page.active');
-  // Release car hold when navigating away from the detail page via browser back
+  var state = e.state || {};
+  var pgId  = state.page || 'pg-home';
+  var curEl = document.querySelector('.page.active');
+
+  // Hit the guard entry — user is trying to exit from home
+  if(state._guard){
+    var now = Date.now();
+    if(now - _backPressTime < 2200){
+      // Second back within 2.2 s — allow exit
+      return;
+    }
+    _backPressTime = now;
+    // Push home back so they stay on site; show "press again" toast
+    history.pushState({page:'pg-home', carId:null}, '', location.pathname + location.search + '#');
+    if(typeof showToastMsg === 'function') showToastMsg('Press back again to exit');
+    else { var t=document.createElement('div');
+      t.textContent='Press back again to exit';
+      t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);color:#fff;padding:10px 20px;border-radius:24px;font-size:.85rem;z-index:9999;pointer-events:none';
+      document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 2200); }
+    return;
+  }
+
   if(curEl && curEl.id === 'pg-detail' && pgId !== 'pg-detail') releaseHold();
   _inPopState = true;
-  // If restoring detail for a different car, re-initialise it
   if(pgId === 'pg-detail' && state.carId && (!selCar || String(selCar.id) !== String(state.carId))){
-    openCar(state.carId); // openCar ends with showPage("pg-detail") — guarded by _inPopState
+    openCar(state.carId);
   } else {
     var el = document.getElementById(pgId) || document.getElementById('pg-home');
     document.querySelectorAll(".page").forEach(function(p){ p.classList.remove("active"); });

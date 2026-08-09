@@ -951,6 +951,27 @@ function closePanelSidebar(){
 }
 
 // ── API HELPER ──
+// Silently refresh admin token every 20 days so sessions never expire mid-use
+(function scheduleTokenRefresh(){
+  if(!adminToken || adminToken === "local") return;
+  // Refresh after 20 days (token valid 30 days), then every 20 days
+  var REFRESH_MS = 20 * 24 * 60 * 60 * 1000;
+  setTimeout(async function doRefresh(){
+    if(!adminToken || adminToken === "local") return;
+    try {
+      var r = await fetch(API + "/auth/refresh", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + ANON_KEY, "x-admin-token": adminToken }
+      });
+      if(r.ok){
+        var data = await r.json();
+        if(data.token){ adminToken = data.token; localStorage.setItem("dds_admin_token", adminToken); }
+      }
+    } catch(e){}
+    setTimeout(doRefresh, REFRESH_MS);
+  }, REFRESH_MS);
+})();
+
 async function adminFetch(path, opts){
   opts = opts || {};
   opts.headers = opts.headers || {};

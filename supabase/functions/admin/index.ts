@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
           return json({ error: "Invalid password" }, 401, req);
         }
         loginFailures.delete(failKey);
-        const token = await signJwt({ role: "fleet" }, Deno.env.get("ADMIN_JWT_SECRET")!, 12 * 60 * 60);
+        const token = await signJwt({ role: "fleet" }, Deno.env.get("ADMIN_JWT_SECRET")!, 30 * 24 * 60 * 60);
         return json({ token, role: "fleet" }, 200, req);
       }
       if (password !== Deno.env.get("ADMIN_PASSWORD")) {
@@ -183,8 +183,17 @@ Deno.serve(async (req) => {
         return json({ error: "Invalid password" }, 401, req);
       }
       loginFailures.delete(failKey);
-      const token = await signJwt({ role: "admin" }, Deno.env.get("ADMIN_JWT_SECRET")!, 24 * 60 * 60);
+      const token = await signJwt({ role: "admin" }, Deno.env.get("ADMIN_JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ token, role: "admin" }, 200, req);
+    }
+
+    // POST /auth/refresh — silently re-issue a fresh 30-day token for the same role
+    if (req.method === "POST" && path === "/auth/refresh") {
+      const existing = await getAdmin(req);
+      if (!existing) return json({ error: "Unauthorized" }, 401);
+      const role = (existing as Record<string, unknown>).role as string;
+      const token = await signJwt({ role }, Deno.env.get("ADMIN_JWT_SECRET")!, 30 * 24 * 60 * 60);
+      return json({ token, role });
     }
 
     // All routes below require admin or fleet auth

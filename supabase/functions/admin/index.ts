@@ -192,6 +192,91 @@ Deno.serve(async (req) => {
     if (!admin) return json({ error: "Admin access required" }, 401);
     const isAdmin = (admin as Record<string, unknown>).role === "admin";
 
+    // POST /bookings/manual — admin creates a booking manually by phone + email
+    if (req.method === "POST" && path === "/bookings/manual" && isAdmin) {
+      const body = await req.json() as Record<string, unknown>;
+      const { phone, email, name, carId, pickupDate, dropDate, pickupLocation, dropLocation,
+              deliveryFee: rawDelivery, depositChoice: rawDep, depositPaid, paymentMode, notes } = body;
+      if (!phone || !carId || !pickupDate || !dropDate)
+        return json({ error: "phone, carId, pickupDate, dropDate are required" }, 400);
+
+      // Look up or create profile
+      let { data: profile } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
+      if (!profile) {
+        const { data: newP, error: pErr } = await sb.from("profiles")
+          .insert({ phone, email: email || null, name: name || null, kyc_status: "none" })
+          .select("*").single();
+        if (pErr) throw pErr;
+        profile = newP;
+      } else {
+        // Update email/name if provided
+        const upd: Record<string, unknown> = {};
+        if (email && !profile.email) upd.email = email;
+        if (name  && !profile.name)  upd.name  = name;
+        if (Object.keys(upd).length) {
+          await sb.from("profiles").update(upd).eq("id", profile.id);
+          profile = { ...profile, ...upd };
+        }
+      }
+
+      // Load car
+      const { data: car } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
+      if (!car) return json({ error: "Car not found" }, 404);
+
+      // Calculate pricing (same logic as payment function)
+      const pickup = new Date(pickupDate as string);
+      const drop   = new Date(dropDate as string);
+      const hours  = (drop.getTime() - pickup.getTime()) / 3600000;
+      if (hours <= 0) return json({ error: "Drop must be after pickup" }, 400);
+      const pricePerDay = car.price_per_day as number;
+      const days  = Math.max(1, Math.ceil(hours / 24));
+      // Simple base calc: hourly tiers handled client-side; admin sets total manually if needed
+      const baseFare     = Number(body.baseFare) || Math.round(pricePerDay * days);
+      const delFee       = Number(rawDelivery) || 0;
+      const gst          = Math.round((baseFare + delFee) * 0.18);
+      const DEPOSIT      = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
+      const depChoice    = rawDep === "now" ? "now" : "later";
+      const depPaidNow   = depChoice === "now" || depositPaid === true;
+      const total        = baseFare + delFee + gst + (depPaidNow ? DEPOSIT : 0);
+
+      function makeId() { return "DS" + Date.now().toString(36).toUpperCase(); }
+      const bookingId = makeId();
+      const isConfirmed = profile.kyc_status === "verified";
+      function genOtp() { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+      const { data: booking, error: bErr } = await sb.from("bookings").insert({
+        id: crypto.randomUUID(), booking_id: bookingId,
+        car_id: car.id, car_name: car.name,
+        user_id: profile.id, customer: profile.name ?? (name || ""), phone,
+        pickup_date: pickup.toISOString(), pickup_location: (pickupLocation as string) || "Pune",
+        drop_date: drop.toISOString(), drop_location: (dropLocation as string) || "Pune",
+        days, price_per_day: pricePerDay, total,
+        deposit: 0, discount: 0, delivery_fee: delFee,
+        deposit_amount: DEPOSIT, deposit_choice: depChoice,
+        deposit_paid: depPaidNow, deposit_paid_at: depPaidNow ? new Date().toISOString() : null,
+        deposit_razorpay_payment_id: depPaidNow ? (paymentMode as string || "cash") : null,
+        razorpay_order_id: null, razorpay_payment_id: `manual_${bookingId}`,
+        payment_status: "paid", paid_at: new Date().toISOString(),
+        status: isConfirmed ? "confirmed" : "pending_kyc",
+        checkin_otp: isConfirmed ? genOtp() : null,
+        notes: notes ? String(notes) : null,
+      }).select("*").maybeSingle();
+      if (bErr) throw bErr;
+
+      // Send confirmation email if we have one
+      if (profile.email || email) {
+        const toEmail = (profile.email || email) as string;
+        sendBookingConfirmationEmail({
+          to: toEmail, customerName: profile.name ?? (name as string) ?? "Customer", bookingId,
+          carName: car.name as string, pickupDate: pickup.toISOString(), dropDate: drop.toISOString(),
+          pickupLocation: (pickupLocation as string) ?? "Pune", total,
+          customerPhone: phone as string,
+        }).catch(() => {});
+      }
+
+      return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>) });
+    }
+
     // DELETE /clear-phone/:phone — temp endpoint to clear test data (admin only)
     const clearPhoneMatch = path.match(/^\/clear-phone\/([^/]+)$/);
     if (req.method === "DELETE" && clearPhoneMatch && isAdmin) {

@@ -589,6 +589,94 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<div class="modal-overlay" id="manual-booking-modal">
+  <div class="modal-box" style="max-width:600px;width:100%;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">➕ Add Manual Booking</div>
+    <div id="mbm-body">
+      <div style="font-size:.8rem;color:var(--ts);margin-bottom:16px">Creates a confirmed (paid) booking directly. Customer is looked up or created by phone number.</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div style="grid-column:1/-1">
+          <label class="lbl">📱 Customer Phone <span style="color:#c0392b">*</span></label>
+          <input class="inp" id="mb-phone" type="tel" placeholder="9876543210" oninput="mbLookupCustomer(this.value)">
+          <div id="mb-customer-hint" style="font-size:.75rem;color:var(--ts);margin-top:3px"></div>
+        </div>
+        <div>
+          <label class="lbl">👤 Customer Name</label>
+          <input class="inp" id="mb-name" type="text" placeholder="Full name">
+        </div>
+        <div>
+          <label class="lbl">📧 Email ID</label>
+          <input class="inp" id="mb-email" type="email" placeholder="customer@email.com">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div style="grid-column:1/-1">
+          <label class="lbl">🚗 Car <span style="color:#c0392b">*</span></label>
+          <select class="inp" id="mb-car" onchange="mbCalcPrice()">
+            <option value="">— Select car —</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">📅 Pickup Date &amp; Time <span style="color:#c0392b">*</span></label>
+          <input class="inp" id="mb-pickup" type="datetime-local" onchange="mbCalcPrice()">
+        </div>
+        <div>
+          <label class="lbl">📅 Drop Date &amp; Time <span style="color:#c0392b">*</span></label>
+          <input class="inp" id="mb-drop" type="datetime-local" onchange="mbCalcPrice()">
+        </div>
+        <div>
+          <label class="lbl">📍 Pickup Location</label>
+          <input class="inp" id="mb-pickup-loc" type="text" placeholder="e.g. Pune / Customer Address">
+        </div>
+        <div>
+          <label class="lbl">📍 Drop Location</label>
+          <input class="inp" id="mb-drop-loc" type="text" placeholder="e.g. Pune">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <label class="lbl">🚚 Delivery Fee (₹)</label>
+          <input class="inp" id="mb-delivery" type="number" min="0" placeholder="0" oninput="mbCalcPrice()">
+        </div>
+        <div>
+          <label class="lbl">🔒 Deposit</label>
+          <select class="inp" id="mb-deposit" onchange="mbCalcPrice()">
+            <option value="later">Collect separately</option>
+            <option value="now">Paid now (included)</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">💳 Payment Mode</label>
+          <select class="inp" id="mb-payment">
+            <option value="cash">Cash</option>
+            <option value="gpay">GPay / UPI</option>
+            <option value="online">Online</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="mb-price-preview" style="display:none;background:var(--s);border:1.5px solid var(--b);border-radius:10px;padding:14px;margin-bottom:14px;font-size:.83rem">
+        <div style="font-weight:700;margin-bottom:8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--ts)">💰 Price Preview</div>
+        <div style="display:flex;flex-direction:column;gap:5px" id="mb-price-lines"></div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label class="lbl">📝 Internal Notes (optional)</label>
+        <textarea class="inp" id="mb-notes" rows="2" placeholder="e.g. Walk-in customer, paid cash at office" style="resize:vertical"></textarea>
+      </div>
+
+      <div id="mb-error" style="display:none;color:#c0392b;font-size:.82rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;margin-bottom:10px"></div>
+    </div>
+    <div class="modal-footer" style="margin-top:8px">
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="document.getElementById('manual-booking-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-y btn-sm" style="flex:1;font-weight:700" id="mb-submit-btn" onclick="submitManualBooking()">✅ Create Booking</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="deposit-breakdown-modal">
   <div class="modal-box" style="max-width:720px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title" id="dbm-title">Deposit Breakdown</div>
@@ -1309,8 +1397,10 @@ async function renderBookings(statusFilter, isLocal, c){
   }
 
   c.innerHTML =
-    '<div class="page-title">'+title+'</div>' +
-    '<div class="page-sub">'+bks.length+' booking'+(bks.length!==1?'s':'')+'</div>' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">' +
+      '<div><div class="page-title">'+title+'</div><div class="page-sub">'+bks.length+' booking'+(bks.length!==1?'s':'')+'</div></div>' +
+      (currentRole==="admin" ? '<button class="btn btn-y btn-sm" style="margin-top:6px;font-weight:700" onclick="openManualBookingModal()">➕ Add Booking</button>' : '') +
+    '</div>' +
     '<div class="toolbar">' +
       '<input class="search-inp" id="bk-search" placeholder="Search by ID, car, name, phone..." oninput="filterBookingTable()">' +
       '<button class="filter-btn on" onclick="filterBookingStatus(null,this)">All</button>' +
@@ -2464,6 +2554,137 @@ function openBkDetailsModal(id){
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+// ── MANUAL BOOKING ──────────────────────────────────────────────────
+var _mbLookupTimer = null;
+var _mbFleetCars = [];
+
+async function openManualBookingModal(){
+  // Load cars if not already loaded
+  if(!_mbFleetCars.length && !adminToken.startsWith("local")){
+    try {
+      var fleet = await adminFetch("/admin/fleet");
+      _mbFleetCars = (fleet.cars || fleet || []).filter(function(c){ return c.active !== false; });
+    } catch(e){ _mbFleetCars = []; }
+  }
+  var sel = document.getElementById("mb-car");
+  sel.innerHTML = '<option value="">— Select car —</option>';
+  _mbFleetCars.forEach(function(c){
+    var opt = document.createElement("option");
+    opt.value = c.id || c._id;
+    opt.textContent = c.name + (c.pricePerDay ? " (₹"+c.pricePerDay+"/day)" : "");
+    opt.dataset.price = c.pricePerDay || c.price_per_day || 0;
+    sel.appendChild(opt);
+  });
+  // Reset form
+  ["mb-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
+  document.getElementById("mb-deposit").value = "later";
+  document.getElementById("mb-payment").value = "cash";
+  document.getElementById("mb-price-preview").style.display = "none";
+  document.getElementById("mb-error").style.display = "none";
+  document.getElementById("mb-customer-hint").textContent = "";
+  // Default pickup = tomorrow 10am, drop = day after 10am
+  var tmr = new Date(); tmr.setDate(tmr.getDate()+1); tmr.setHours(10,0,0,0);
+  var drp = new Date(tmr); drp.setDate(drp.getDate()+1);
+  document.getElementById("mb-pickup").value = tmr.toISOString().slice(0,16);
+  document.getElementById("mb-drop").value   = drp.toISOString().slice(0,16);
+  document.getElementById("manual-booking-modal").classList.add("open");
+}
+
+function mbLookupCustomer(phone){
+  document.getElementById("mb-customer-hint").textContent = "";
+  clearTimeout(_mbLookupTimer);
+  if(phone.length < 10) return;
+  _mbLookupTimer = setTimeout(async function(){
+    try {
+      var hint = document.getElementById("mb-customer-hint");
+      hint.textContent = "Looking up…";
+      var custs = await adminFetch("/admin/customers");
+      var found = (custs || []).find(function(c){ return c.phone === phone || c.phone === "+91"+phone; });
+      if(found){
+        hint.innerHTML = '<span style="color:#15803d">✅ Existing customer: <strong>'+esc(found.name||"(no name)")+'</strong> · '+esc(found.email||"no email")+'</span>';
+        if(found.name  && !document.getElementById("mb-name").value)  document.getElementById("mb-name").value  = found.name;
+        if(found.email && !document.getElementById("mb-email").value) document.getElementById("mb-email").value = found.email;
+      } else {
+        hint.innerHTML = '<span style="color:#2563eb">🆕 New customer — will be created</span>';
+      }
+    } catch(e){}
+  }, 600);
+}
+
+function mbCalcPrice(){
+  var sel = document.getElementById("mb-car");
+  var opt = sel.options[sel.selectedIndex];
+  var pricePerDay = parseFloat(opt && opt.dataset.price || 0);
+  var pickup = document.getElementById("mb-pickup").value;
+  var drop   = document.getElementById("mb-drop").value;
+  var del    = parseFloat(document.getElementById("mb-delivery").value) || 0;
+  var depChoice = document.getElementById("mb-deposit").value;
+  var preview = document.getElementById("mb-price-preview");
+  if(!pricePerDay || !pickup || !drop){ preview.style.display="none"; return; }
+  var p = new Date(pickup), d = new Date(drop);
+  var hrs = (d - p) / 3600000;
+  if(hrs <= 0){ preview.style.display="none"; return; }
+  var days = Math.max(1, Math.ceil(hrs/24));
+  var base = Math.round(pricePerDay * days);
+  var gst  = Math.round((base + del) * 0.18);
+  var dep  = depChoice === "now" ? 1000 : 0;
+  var total = base + del + gst + dep;
+  var lines = [
+    {l:"Base Fare ("+days+" day"+(days!==1?"s":"")+")", v:inr(base)},
+    del ? {l:"Delivery Fee", v:inr(del)} : null,
+    {l:"GST (18%)", v:inr(gst)},
+    dep ? {l:"Security Deposit (paid now)", v:inr(dep)} : null,
+    {l:"<strong>Total to Collect</strong>", v:"<strong>"+inr(total)+"</strong>"},
+  ].filter(Boolean);
+  document.getElementById("mb-price-lines").innerHTML = lines.map(function(x){
+    return '<div style="display:flex;justify-content:space-between"><span style="color:var(--ts)">'+x.l+'</span><span>'+x.v+'</span></div>';
+  }).join("");
+  preview.style.display = "block";
+}
+
+async function submitManualBooking(){
+  var btn = document.getElementById("mb-submit-btn");
+  var errEl = document.getElementById("mb-error");
+  errEl.style.display = "none";
+  var phone     = document.getElementById("mb-phone").value.trim();
+  var name      = document.getElementById("mb-name").value.trim();
+  var email     = document.getElementById("mb-email").value.trim();
+  var carId     = document.getElementById("mb-car").value;
+  var pickup    = document.getElementById("mb-pickup").value;
+  var drop      = document.getElementById("mb-drop").value;
+  var pickupLoc = document.getElementById("mb-pickup-loc").value.trim();
+  var dropLoc   = document.getElementById("mb-drop-loc").value.trim();
+  var delivery  = parseFloat(document.getElementById("mb-delivery").value) || 0;
+  var depChoice = document.getElementById("mb-deposit").value;
+  var payMode   = document.getElementById("mb-payment").value;
+  var notes     = document.getElementById("mb-notes").value.trim();
+  if(!phone){ errEl.textContent="Phone number is required."; errEl.style.display="block"; return; }
+  if(!carId) { errEl.textContent="Please select a car."; errEl.style.display="block"; return; }
+  if(!pickup || !drop){ errEl.textContent="Pickup and drop dates are required."; errEl.style.display="block"; return; }
+  if(new Date(drop) <= new Date(pickup)){ errEl.textContent="Drop must be after pickup."; errEl.style.display="block"; return; }
+  btn.disabled = true; btn.textContent = "Creating…";
+  try {
+    var result = await adminFetch("/bookings/manual", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ phone, name, email, carId, pickupDate: new Date(pickup).toISOString(), dropDate: new Date(drop).toISOString(),
+        pickupLocation: pickupLoc||"Pune", dropLocation: dropLoc||"Pune",
+        deliveryFee: delivery, depositChoice: depChoice, paymentMode: payMode, notes }),
+    });
+    document.getElementById("manual-booking-modal").classList.remove("open");
+    toast("✅ Booking "+result.bookingId+" created successfully!", "success");
+    // Refresh bookings list
+    allBookings = await adminFetch("/admin/bookings");
+    updateBadges();
+    navTo("bookings", document.querySelector('[data-tab="bookings"]'));
+  } catch(e){
+    errEl.textContent = e.message || "Failed to create booking.";
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false; btn.textContent = "✅ Create Booking";
+  }
+}
 
 function openDepositBreakdownModal(mode){
   // mode: "collected" | "refunded"

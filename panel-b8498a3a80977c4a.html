@@ -598,7 +598,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
         <div style="grid-column:1/-1">
           <label class="lbl">📱 Customer Phone <span style="color:#c0392b">*</span></label>
-          <input class="inp" id="mb-phone" type="tel" placeholder="9876543210" oninput="mbLookupCustomer(this.value)">
+          <input class="inp" id="mb-cust-phone" type="text" inputmode="numeric" placeholder="9876543210" oninput="mbLookupCustomer(this.value)">
           <div id="mb-customer-hint" style="font-size:.75rem;color:var(--ts);margin-top:3px"></div>
         </div>
         <div>
@@ -2581,7 +2581,7 @@ async function openManualBookingModal(){
     sel.appendChild(opt);
   });
   // Reset form
-  ["mb-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-custom-fare","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
+  ["mb-cust-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-custom-fare","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
   document.getElementById("mb-deposit").value = "later";
   document.getElementById("mb-payment").value = "cash";
   document.getElementById("mb-price-preview").style.display = "none";
@@ -2653,7 +2653,7 @@ async function submitManualBooking(){
   var btn = document.getElementById("mb-submit-btn");
   var errEl = document.getElementById("mb-error");
   errEl.style.display = "none";
-  var phone     = document.getElementById("mb-phone").value.trim();
+  var phone     = document.getElementById("mb-cust-phone").value.trim();
   var name      = document.getElementById("mb-name").value.trim();
   var email     = document.getElementById("mb-email").value.trim();
   var carId     = document.getElementById("mb-car").value;

@@ -636,10 +636,14 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
         <div>
           <label class="lbl">🚚 Delivery Fee (₹)</label>
           <input class="inp" id="mb-delivery" type="number" min="0" placeholder="0" oninput="mbCalcPrice()">
+        </div>
+        <div>
+          <label class="lbl">💵 Custom Base Fare (₹) <span style="font-size:.7rem;color:var(--ts)">overrides auto-price</span></label>
+          <input class="inp" id="mb-custom-fare" type="number" min="0" placeholder="Leave blank to auto-calculate" oninput="mbCalcPrice()">
         </div>
         <div>
           <label class="lbl">🔒 Deposit</label>
@@ -2577,7 +2581,7 @@ async function openManualBookingModal(){
     sel.appendChild(opt);
   });
   // Reset form
-  ["mb-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
+  ["mb-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-custom-fare","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
   document.getElementById("mb-deposit").value = "later";
   document.getElementById("mb-payment").value = "cash";
   document.getElementById("mb-price-preview").style.display = "none";
@@ -2619,19 +2623,21 @@ function mbCalcPrice(){
   var pickup = document.getElementById("mb-pickup").value;
   var drop   = document.getElementById("mb-drop").value;
   var del    = parseFloat(document.getElementById("mb-delivery").value) || 0;
-  var depChoice = document.getElementById("mb-deposit").value;
-  var preview = document.getElementById("mb-price-preview");
-  if(!pricePerDay || !pickup || !drop){ preview.style.display="none"; return; }
+  var customFare = parseFloat(document.getElementById("mb-custom-fare").value);
+  var depChoice  = document.getElementById("mb-deposit").value;
+  var preview    = document.getElementById("mb-price-preview");
+  if(!pickup || !drop || (!pricePerDay && !customFare)){ preview.style.display="none"; return; }
   var p = new Date(pickup), d = new Date(drop);
   var hrs = (d - p) / 3600000;
   if(hrs <= 0){ preview.style.display="none"; return; }
   var days = Math.max(1, Math.ceil(hrs/24));
-  var base = Math.round(pricePerDay * days);
+  var base = customFare >= 0 && !isNaN(customFare) ? Math.round(customFare) : Math.round(pricePerDay * days);
+  var isCustom = customFare >= 0 && !isNaN(customFare);
   var gst  = Math.round((base + del) * 0.18);
   var dep  = depChoice === "now" ? 1000 : 0;
   var total = base + del + gst + dep;
   var lines = [
-    {l:"Base Fare ("+days+" day"+(days!==1?"s":"")+")", v:inr(base)},
+    {l:(isCustom ? "Base Fare (custom)" : "Base Fare ("+days+" day"+(days!==1?"s":'')+" × ₹"+pricePerDay+")"), v:inr(base)+(isCustom?'<span style="font-size:.7rem;margin-left:4px;color:#2563eb">✏️ custom</span>':'')},
     del ? {l:"Delivery Fee", v:inr(del)} : null,
     {l:"GST (18%)", v:inr(gst)},
     dep ? {l:"Security Deposit (paid now)", v:inr(dep)} : null,
@@ -2655,22 +2661,25 @@ async function submitManualBooking(){
   var drop      = document.getElementById("mb-drop").value;
   var pickupLoc = document.getElementById("mb-pickup-loc").value.trim();
   var dropLoc   = document.getElementById("mb-drop-loc").value.trim();
-  var delivery  = parseFloat(document.getElementById("mb-delivery").value) || 0;
-  var depChoice = document.getElementById("mb-deposit").value;
-  var payMode   = document.getElementById("mb-payment").value;
-  var notes     = document.getElementById("mb-notes").value.trim();
+  var delivery   = parseFloat(document.getElementById("mb-delivery").value) || 0;
+  var customFare = document.getElementById("mb-custom-fare").value.trim();
+  var depChoice  = document.getElementById("mb-deposit").value;
+  var payMode    = document.getElementById("mb-payment").value;
+  var notes      = document.getElementById("mb-notes").value.trim();
   if(!phone){ errEl.textContent="Phone number is required."; errEl.style.display="block"; return; }
   if(!carId) { errEl.textContent="Please select a car."; errEl.style.display="block"; return; }
   if(!pickup || !drop){ errEl.textContent="Pickup and drop dates are required."; errEl.style.display="block"; return; }
   if(new Date(drop) <= new Date(pickup)){ errEl.textContent="Drop must be after pickup."; errEl.style.display="block"; return; }
   btn.disabled = true; btn.textContent = "Creating…";
+  var payload = { phone, name, email, carId, pickupDate: new Date(pickup).toISOString(), dropDate: new Date(drop).toISOString(),
+    pickupLocation: pickupLoc||"Pune", dropLocation: dropLoc||"Pune",
+    deliveryFee: delivery, depositChoice: depChoice, paymentMode: payMode, notes };
+  if(customFare !== "" && !isNaN(parseFloat(customFare))) payload.baseFare = parseFloat(customFare);
   try {
     var result = await adminFetch("/bookings/manual", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ phone, name, email, carId, pickupDate: new Date(pickup).toISOString(), dropDate: new Date(drop).toISOString(),
-        pickupLocation: pickupLoc||"Pune", dropLocation: dropLoc||"Pune",
-        deliveryFee: delivery, depositChoice: depChoice, paymentMode: payMode, notes }),
+      body: JSON.stringify(payload),
     });
     document.getElementById("manual-booking-modal").classList.remove("open");
     toast("✅ Booking "+result.bookingId+" created successfully!", "success");

@@ -959,7 +959,7 @@ function closePanelSidebar(){
   setTimeout(async function doRefresh(){
     if(!adminToken || adminToken === "local") return;
     try {
-      var r = await fetch(API + "/auth/refresh", {
+      var r = await fetch(API + "/admin/auth/refresh", {
         method: "POST",
         headers: { "Authorization": "Bearer " + ANON_KEY, "x-admin-token": adminToken }
       });
@@ -1106,7 +1106,7 @@ async function renderDashboard(isLocal, c){
   var dutyHtml = "";
   if(currentRole === "fleet" && !isLocal){
     try {
-      var duty = await adminFetch("/duty/status");
+      var duty = await adminFetch("/admin/duty/status");
       dutyHtml = renderDutyCard(duty);
     } catch(e){ dutyHtml = ""; }
   }
@@ -1195,7 +1195,7 @@ function startDutyTimer(){
 
 async function dutyPunchIn(){
   try {
-    await adminFetch("/duty/punch-in", {method:"POST"});
+    await adminFetch("/admin/duty/punch-in", {method:"POST"});
     toast("Duty started! Have a great shift. 🚗", "success");
     await renderTab("dashboard");
   } catch(e){ toast("Failed: "+e.message, "error"); }
@@ -1203,7 +1203,7 @@ async function dutyPunchIn(){
 
 async function dutyPunchOut(){
   try {
-    var res = await adminFetch("/duty/punch-out", {method:"POST"});
+    var res = await adminFetch("/admin/duty/punch-out", {method:"POST"});
     var hrs = res.durationSecs ? (res.durationSecs/3600).toFixed(2) : "—";
     toast("Duty ended. Session: "+hrs+" hrs.", "success");
     await renderTab("dashboard");
@@ -2697,7 +2697,7 @@ async function submitManualBooking(){
     deliveryFee: delivery, depositChoice: depChoice, paymentMode: payMode, notes };
   if(customFare !== "" && !isNaN(parseFloat(customFare))) payload.baseFare = parseFloat(customFare);
   try {
-    var result = await adminFetch("/bookings/manual", {
+    var result = await adminFetch("/admin/bookings/manual", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify(payload),

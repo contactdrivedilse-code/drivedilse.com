@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
-import { sendEmail, escapeHtml, sendBookingConfirmationEmail } from "../_shared/email.ts";
+import { sendEmail, escapeHtml, sendBookingConfirmationEmail, sendManualBookingAlert } from "../_shared/email.ts";
 import { putFile, deleteFile } from "../_shared/github.ts";
 import { slugify, buildBlogPostHtml, buildBlogIndexHtml, buildSitemapXml, type BlogPost } from "../_shared/blog.ts";
 // Zoho Books invoice generation removed
@@ -263,16 +263,18 @@ Deno.serve(async (req) => {
       }).select("*").maybeSingle();
       if (bErr) throw bErr;
 
-      // Send confirmation email if we have one
-      if (profile.email || email) {
-        const toEmail = (profile.email || email) as string;
-        sendBookingConfirmationEmail({
-          to: toEmail, customerName: profile.name ?? (name as string) ?? "Customer", bookingId,
-          carName: car.name as string, pickupDate: pickup.toISOString(), dropDate: drop.toISOString(),
-          pickupLocation: (pickupLocation as string) ?? "Pune", total,
-          customerPhone: phone as string,
-        }).catch(() => {});
-      }
+      // Send emails — customer confirmation + fleet manager/owner alert
+      sendManualBookingAlert({
+        customerEmail: (profile.email || email || undefined) as string | undefined,
+        customerName: profile.name ?? (name as string) ?? "Customer",
+        bookingId, carName: car.name as string,
+        pickupDate: pickup.toISOString(), dropDate: drop.toISOString(),
+        pickupLocation: (pickupLocation as string) ?? "Pune", total,
+        customerPhone: phone as string,
+        depositPaid: depPaidNow, depositAmount: DEPOSIT,
+        paymentMode: (paymentMode as string) || "cash",
+        notes: notes ? String(notes) : undefined,
+      }).catch(() => {});
 
       return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>) });
     }

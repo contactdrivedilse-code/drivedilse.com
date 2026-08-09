@@ -1,6 +1,11 @@
 // Owner addresses that receive a copy of every booking confirmation.
 const OWNER_EMAILS = ["pavanmarkad180@gmail.com", "contact.drivedilse@gmail.com"];
 
+// Fleet manager email (set via FLEET_EMAIL env var, fallback to owner)
+function getFleetEmail(): string {
+  return Deno.env.get("FLEET_EMAIL") || "pavanmarkad180@gmail.com";
+}
+
 // Thin wrapper around the Resend API, shared by every function that sends transactional email.
 export async function sendEmail(to: string | string[], subject: string, html: string): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
@@ -64,6 +69,65 @@ export async function sendBookingConfirmationEmail(opts: {
     <p style="color:#888;font-size:12px">This is an automated alert from drivedilse.com</p>
   </div>`;
   await sendEmail(OWNER_EMAILS, `[New Booking] ${opts.bookingId} — ${escapeHtml(opts.customerName || "Guest")} | DriveDilSe`, ownerHtml);
+}
+
+// Sent when admin creates a booking manually — goes to customer (if email known)
+// + fleet manager + both owner addresses.
+export async function sendManualBookingAlert(opts: {
+  customerEmail?: string; customerName: string; bookingId: string; carName: string;
+  pickupDate: string; dropDate: string; pickupLocation: string; total: number;
+  customerPhone?: string; depositPaid: boolean; depositAmount: number;
+  paymentMode: string; notes?: string;
+}): Promise<void> {
+  const fmt = (iso: string) => new Date(iso).toLocaleString("en-IN", {
+    dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata",
+  });
+  const now = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" });
+
+  // ── Customer email (if email available) ────────────────────────────────────
+  if (opts.customerEmail) {
+    const customerHtml = `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+      <h2 style="color:#161616">DriveDilSe</h2>
+      <p>Hi ${escapeHtml(opts.customerName || "there")}, your booking has been confirmed by our team! 🎉</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+        <tr><td style="color:#888;padding:4px 0">Booking ID</td><td style="text-align:right;font-weight:700">${escapeHtml(opts.bookingId)}</td></tr>
+        <tr><td style="color:#888;padding:4px 0">Car</td><td style="text-align:right;font-weight:700">${escapeHtml(opts.carName)}</td></tr>
+        <tr><td style="color:#888;padding:4px 0">Pickup</td><td style="text-align:right">${fmt(opts.pickupDate)}</td></tr>
+        <tr><td style="color:#888;padding:4px 0">Drop</td><td style="text-align:right">${fmt(opts.dropDate)}</td></tr>
+        <tr><td style="color:#888;padding:4px 0">Location</td><td style="text-align:right">${escapeHtml(opts.pickupLocation)}</td></tr>
+        <tr><td style="color:#888;padding:4px 0">Payment</td><td style="text-align:right">${escapeHtml(opts.paymentMode)}</td></tr>
+        <tr><td style="color:#888;padding:4px 0;border-top:1px solid #eee">Total Paid</td><td style="text-align:right;font-weight:800;border-top:1px solid #eee">₹${Number(opts.total).toLocaleString("en-IN")}</td></tr>
+        ${opts.depositPaid ? `<tr><td style="color:#888;padding:4px 0">Security Deposit</td><td style="text-align:right">₹${Number(opts.depositAmount).toLocaleString("en-IN")} (included above)</td></tr>` : `<tr><td style="color:#888;padding:4px 0">Security Deposit</td><td style="text-align:right;color:#c0392b">₹${Number(opts.depositAmount).toLocaleString("en-IN")} — to be collected separately</td></tr>`}
+      </table>
+      <p style="color:#666;font-size:13px">Check-in opens 30 minutes before pickup from the My Trips page on drivedilse.com. See you soon!</p>
+    </div>`;
+    await sendEmail(opts.customerEmail, `Booking Confirmed — ${opts.bookingId} | DriveDilSe`, customerHtml).catch(() => {});
+  }
+
+  // ── Fleet manager + owner notification ────────────────────────────────────
+  const tag = opts.notes ? `<tr style="background:#fffbeb"><td style="padding:8px 10px;color:#555">Internal Notes</td><td style="padding:8px 10px;font-style:italic">${escapeHtml(opts.notes)}</td></tr>` : "";
+  const alertHtml = `<div style="font-family:sans-serif;max-width:520px;margin:0 auto">
+    <h2 style="color:#161616;margin-bottom:4px">⚡ Manual Booking Added</h2>
+    <p style="color:#555;font-size:13px;margin-top:0">Added by admin at ${now}</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+      <tr style="background:#f5f5f5"><td style="padding:8px 10px;font-weight:700;color:#333">Booking ID</td><td style="padding:8px 10px;font-weight:800;color:#d4a000">${escapeHtml(opts.bookingId)}</td></tr>
+      <tr><td style="padding:8px 10px;color:#555">Customer</td><td style="padding:8px 10px;font-weight:600">${escapeHtml(opts.customerName || "—")}</td></tr>
+      ${opts.customerPhone ? `<tr style="background:#f5f5f5"><td style="padding:8px 10px;color:#555">Phone</td><td style="padding:8px 10px;font-weight:600">${escapeHtml(opts.customerPhone)}</td></tr>` : ""}
+      ${opts.customerEmail ? `<tr><td style="padding:8px 10px;color:#555">Email</td><td style="padding:8px 10px">${escapeHtml(opts.customerEmail)}</td></tr>` : ""}
+      <tr style="background:#f5f5f5"><td style="padding:8px 10px;color:#555">Car</td><td style="padding:8px 10px;font-weight:600">${escapeHtml(opts.carName)}</td></tr>
+      <tr><td style="padding:8px 10px;color:#555">Pickup</td><td style="padding:8px 10px">${fmt(opts.pickupDate)}</td></tr>
+      <tr style="background:#f5f5f5"><td style="padding:8px 10px;color:#555">Drop</td><td style="padding:8px 10px">${fmt(opts.dropDate)}</td></tr>
+      <tr><td style="padding:8px 10px;color:#555">Location</td><td style="padding:8px 10px">${escapeHtml(opts.pickupLocation)}</td></tr>
+      <tr style="background:#f5f5f5"><td style="padding:8px 10px;color:#555">Payment Mode</td><td style="padding:8px 10px">${escapeHtml(opts.paymentMode)}</td></tr>
+      <tr><td style="padding:8px 10px;color:#555">Deposit</td><td style="padding:8px 10px">${opts.depositPaid ? "✅ Paid (₹"+Number(opts.depositAmount).toLocaleString("en-IN")+")" : "⏳ To collect separately (₹"+Number(opts.depositAmount).toLocaleString("en-IN")+")"}</td></tr>
+      ${tag}
+      <tr style="border-top:2px solid #f5c518"><td style="padding:10px;font-weight:700">Total Collected</td><td style="padding:10px;font-weight:900;font-size:16px;color:#161616">₹${Number(opts.total).toLocaleString("en-IN")}</td></tr>
+    </table>
+    <p style="color:#888;font-size:12px">Manual booking created via DriveDilSe Admin Panel — drivedilse.com</p>
+  </div>`;
+
+  const recipients = [...new Set([getFleetEmail(), ...OWNER_EMAILS])];
+  await sendEmail(recipients, `[Manual Booking] ${opts.bookingId} — ${escapeHtml(opts.customerName || "Customer")} | DriveDilSe`, alertHtml).catch(() => {});
 }
 
 // Escape user-supplied text before interpolating into email HTML —

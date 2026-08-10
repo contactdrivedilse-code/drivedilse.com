@@ -92,6 +92,7 @@ function mapBooking(b: Record<string, unknown>) {
     } : (b.checked_out_at ? { lateHours: b.settlement_late_hours ?? 0 } : null),
     depositRefundAmount: b.deposit_refund_amount ?? null, depositRefundStatus: b.deposit_refund_status ?? null,
     couponCode: b.coupon_code ?? null, couponDiscount: b.coupon_discount ?? 0,
+    amountCollected: b.amount_collected != null ? Number(b.amount_collected) : null,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
       photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },
@@ -205,7 +206,8 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && path === "/bookings/manual" && isAdmin) {
       const body = await req.json() as Record<string, unknown>;
       const { phone, email, name, carId, pickupDate, dropDate, pickupLocation, dropLocation,
-              deliveryFee: rawDelivery, depositChoice: rawDep, depositPaid, paymentMode, notes } = body;
+              deliveryFee: rawDelivery, depositChoice: rawDep, depositPaid, paymentMode, notes,
+              amountCollected: rawAmountCollected } = body;
       if (!phone || !carId || !pickupDate || !dropDate)
         return json({ error: "phone, carId, pickupDate, dropDate are required" }, 400);
 
@@ -269,6 +271,7 @@ Deno.serve(async (req) => {
         status: isConfirmed ? "confirmed" : "pending_kyc",
         checkin_otp: isConfirmed ? genOtp() : null,
         notes: notes ? String(notes) : null,
+        amount_collected: rawAmountCollected != null ? Number(rawAmountCollected) : null,
       }).select("*").maybeSingle();
       if (bErr) throw bErr;
 
@@ -351,6 +354,30 @@ Deno.serve(async (req) => {
       const { data, error } = await sb.from("bookings").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return json(await Promise.all((data ?? []).map((b: Record<string, unknown>) => signBookingPhotos(mapBooking(b)))));
+    }
+
+    // PATCH /bookings/:id — admin edits booking fields
+    const bkEditMatch = path.match(/^\/bookings\/([^/]+)$/);
+    if (req.method === "PATCH" && bkEditMatch && isAdmin) {
+      const body = await req.json() as Record<string, unknown>;
+      const allowed: Record<string, string> = {
+        pickupDate: "pickup_date", dropDate: "drop_date",
+        pickupLocation: "pickup_location", dropLocation: "drop_location",
+        carName: "car_name", carId: "car_id",
+        total: "total", pricePerDay: "price_per_day", days: "days",
+        amountCollected: "amount_collected",
+        notes: "notes", status: "status",
+      };
+      const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      for (const [key, col] of Object.entries(allowed)) {
+        if (key in body) upd[col] = body[key] === "" ? null : body[key];
+      }
+      if (Object.keys(upd).length === 1) return json({ error: "No valid fields to update" }, 400);
+      const { data, error } = await sb.from("bookings")
+        .update(upd).eq("id", bkEditMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Booking not found" }, 404);
+      return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
     }
 
     // PUT /bookings/:id/status

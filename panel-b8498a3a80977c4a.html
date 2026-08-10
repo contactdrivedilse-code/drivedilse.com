@@ -695,6 +695,67 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<div class="modal-overlay" id="edit-booking-modal">
+  <div class="modal-box" style="max-width:600px;width:100%;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">✏️ Edit Booking — <span id="ebm-id" style="color:var(--yd);font-family:monospace"></span></div>
+    <div style="margin-bottom:14px">
+      <label class="lbl">🚗 Car Name</label>
+      <input class="inp" id="ebm-car-name" type="text" placeholder="Car name">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="lbl">📅 Pickup Date & Time</label>
+        <input class="inp" id="ebm-pickup" type="datetime-local">
+      </div>
+      <div>
+        <label class="lbl">📅 Drop Date & Time</label>
+        <input class="inp" id="ebm-drop" type="datetime-local">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="lbl">📍 Pickup Location</label>
+        <input class="inp" id="ebm-pickup-loc" type="text" placeholder="e.g. Hinjewadi">
+      </div>
+      <div>
+        <label class="lbl">📍 Drop Location</label>
+        <input class="inp" id="ebm-drop-loc" type="text" placeholder="e.g. Pune Airport">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="lbl">💰 Total Amount (₹)</label>
+        <input class="inp" id="ebm-total" type="number" min="0" placeholder="Total">
+      </div>
+      <div>
+        <label class="lbl">💵 Amount Collected (₹)</label>
+        <input class="inp" id="ebm-amount-collected" type="number" min="0" placeholder="Collected so far">
+      </div>
+      <div>
+        <label class="lbl">📋 Status</label>
+        <select class="inp" id="ebm-status">
+          <option value="confirmed">Confirmed</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="pending">Pending</option>
+          <option value="pending_kyc">Pending KYC</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="no_show">No Show</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="lbl">📝 Internal Notes</label>
+      <textarea class="inp" id="ebm-notes" rows="3" placeholder="Internal notes (optional)" style="resize:vertical"></textarea>
+    </div>
+    <div id="ebm-error" style="display:none;color:#c0392b;font-size:.82rem;margin-bottom:10px;padding:8px 12px;background:#fef2f2;border-radius:6px"></div>
+    <div class="modal-footer" style="margin-top:4px">
+      <button class="btn btn-sec btn-sm" onclick="document.getElementById('edit-booking-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-sm" id="ebm-submit-btn" onclick="submitEditBooking()" style="background:var(--yd);color:#000;font-weight:700">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="deposit-breakdown-modal">
   <div class="modal-box" style="max-width:720px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title" id="dbm-title">Deposit Breakdown</div>
@@ -2597,19 +2658,97 @@ function openBkDetailsModal(id){
 
   document.getElementById("bkdm-body").innerHTML = html;
 
-  // Action buttons — cancel (consolidates No Show + Car Unavailability)
-  var actHtml = "";
-  if(b.status === "confirmed" || b.status === "pending" || b.status === "active") {
-    actHtml =
-      '<div id="bkdm-cancel-trigger" style="display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--b)">' +
-        '<button class="btn btn-red btn-sm" style="padding:8px 20px" onclick="showCancelForm(\''+id+'\')">✕ Cancel Booking</button>' +
-      '</div>';
+  // Action buttons
+  var actHtml = '<div id="bkdm-cancel-trigger" style="display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--b);flex-wrap:wrap">';
+  if(currentRole === "admin") {
+    actHtml += '<button class="btn btn-sm" style="background:#2563eb;color:#fff" onclick="openEditBookingModal(\''+id+'\')">✏️ Edit Booking</button>';
   }
+  if(b.status === "confirmed" || b.status === "pending" || b.status === "active") {
+    actHtml += '<button class="btn btn-red btn-sm" style="padding:8px 20px" onclick="showCancelForm(\''+id+'\')">✕ Cancel Booking</button>';
+  }
+  actHtml += '</div>';
   document.getElementById("bkdm-actions").innerHTML = actHtml;
 
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+// ── EDIT BOOKING ─────────────────────────────────────────────────────
+var _editBkId = null;
+function openEditBookingModal(id){
+  var b = window._bkDetailsMap[id];
+  if(!b){ toast("Booking not found", "error"); return; }
+  _editBkId = id;
+  document.getElementById("ebm-id").textContent = b.bookingId || id;
+  document.getElementById("ebm-car-name").value = b.carName || "";
+  var pickup = (b.pickup && b.pickup.date) || b.pickup || "";
+  var drop   = (b.drop   && b.drop.date)   || b.drop   || "";
+  document.getElementById("ebm-pickup").value = pickup ? new Date(pickup).toISOString().slice(0,16) : "";
+  document.getElementById("ebm-drop").value   = drop   ? new Date(drop).toISOString().slice(0,16)   : "";
+  document.getElementById("ebm-pickup-loc").value = (b.pickup && b.pickup.location) || "";
+  document.getElementById("ebm-drop-loc").value   = (b.drop   && b.drop.location)   || "";
+  document.getElementById("ebm-total").value = b.total != null ? b.total : "";
+  document.getElementById("ebm-amount-collected").value = b.amountCollected != null ? b.amountCollected : "";
+  document.getElementById("ebm-status").value = b.status || "confirmed";
+  document.getElementById("ebm-notes").value  = b.notes || "";
+  document.getElementById("ebm-error").style.display = "none";
+  document.getElementById("ebm-submit-btn").disabled = false;
+  document.getElementById("ebm-submit-btn").textContent = "💾 Save Changes";
+  document.getElementById("edit-booking-modal").classList.add("open");
+}
+
+async function submitEditBooking(){
+  if(!_editBkId) return;
+  var btn   = document.getElementById("ebm-submit-btn");
+  var errEl = document.getElementById("ebm-error");
+  errEl.style.display = "none";
+
+  var pickup = document.getElementById("ebm-pickup").value;
+  var drop   = document.getElementById("ebm-drop").value;
+  if(pickup && drop && new Date(drop) <= new Date(pickup)){
+    errEl.textContent = "Drop must be after pickup."; errEl.style.display = "block"; return;
+  }
+
+  var totalRaw = document.getElementById("ebm-total").value.trim();
+  var amtColRaw = document.getElementById("ebm-amount-collected").value.trim();
+
+  var payload = {};
+  var carName = document.getElementById("ebm-car-name").value.trim();
+  if(carName) payload.carName = carName;
+  if(pickup)  payload.pickupDate = new Date(pickup).toISOString();
+  if(drop)    payload.dropDate   = new Date(drop).toISOString();
+  var pLoc = document.getElementById("ebm-pickup-loc").value.trim();
+  var dLoc = document.getElementById("ebm-drop-loc").value.trim();
+  if(pLoc) payload.pickupLocation = pLoc;
+  if(dLoc) payload.dropLocation   = dLoc;
+  if(totalRaw !== "") payload.total = parseFloat(totalRaw);
+  if(amtColRaw !== "") payload.amountCollected = parseFloat(amtColRaw);
+  else payload.amountCollected = null;
+  payload.status = document.getElementById("ebm-status").value;
+  payload.notes  = document.getElementById("ebm-notes").value.trim();
+
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    var updated = await adminFetch("/admin/bookings/"+_editBkId, {
+      method: "PATCH",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload),
+    });
+    // Update local cache
+    var idx = allBookings.findIndex(function(x){ return (x._id||x.id) === _editBkId; });
+    if(idx >= 0) allBookings[idx] = updated;
+    if(window._bkDetailsMap) window._bkDetailsMap[_editBkId] = updated;
+    document.getElementById("edit-booking-modal").classList.remove("open");
+    // Re-open details with fresh data
+    openBkDetailsModal(_editBkId);
+    toast("✅ Booking updated successfully!", "success");
+  } catch(e){
+    errEl.textContent = e.message || "Failed to update booking.";
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false; btn.textContent = "💾 Save Changes";
+  }
+}
 
 // ── MANUAL BOOKING ──────────────────────────────────────────────────
 var _mbLookupTimer = null;

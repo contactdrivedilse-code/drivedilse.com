@@ -1443,7 +1443,11 @@ Deno.serve(async (req) => {
       const id = crypto.randomUUID();
       const { count: empCount } = await sb.from("employees").select("*", { count: "exact", head: true });
       const empNum = String((empCount ?? 0) + 1).padStart(3, "0");
-      const employeeCode = "EMP-" + empNum;
+      // Format: DDS_{DEPT}_{NUM} e.g. DDS_OPS_001
+      const deptCode = (department || role)
+        .toUpperCase().replace(/[^A-Z0-9 ]/g, "")
+        .split(" ").map((w: string) => w.slice(0, 3)).join("").slice(0, 6) || "GEN";
+      const employeeCode = "DDS_" + deptCode + "_" + empNum;
       let photoUrl: string | null = null;
       if (photoB64) {
         const buf = Uint8Array.from(atob(photoB64), (c) => c.charCodeAt(0));

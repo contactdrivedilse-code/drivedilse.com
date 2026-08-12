@@ -1468,11 +1468,12 @@ Deno.serve(async (req) => {
       if (!isAdmin) return json({ error: "Admin access required" }, 403);
       const body = await req.json() as Record<string, unknown>;
       const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (body.name       !== undefined) upd.name       = body.name;
-      if (body.role       !== undefined) upd.role       = body.role;
-      if (body.department !== undefined) upd.department = body.department;
-      if (body.joinedDate !== undefined) upd.joined_date = body.joinedDate;
-      if (body.active     !== undefined) upd.active     = body.active;
+      if (body.name         !== undefined) upd.name          = body.name;
+      if (body.role         !== undefined) upd.role          = body.role;
+      if (body.department   !== undefined) upd.department    = body.department;
+      if (body.joinedDate   !== undefined) upd.joined_date   = body.joinedDate;
+      if (body.active       !== undefined) upd.active        = body.active;
+      if (body.employeeCode !== undefined) upd.employee_code = String(body.employeeCode).toUpperCase();
       if (body.photo) {
         const buf = Uint8Array.from(atob(body.photo as string), (c) => c.charCodeAt(0));
         const storagePath = `employees/${empEditMatch[1]}/photo.jpg`;

@@ -3254,9 +3254,42 @@ window.addEventListener('scroll',function(){
     <div style="font-family:Georgia,serif;font-size:1.25rem;font-weight:900;margin-bottom:4px">End Booking</div>
     <div style="font-size:.83rem;color:var(--ts);margin-bottom:20px" id="co-booking-lbl">Ask the DriveDilSe representative to share your Check-Out OTP to close the booking.</div>
 
+    <!-- Step 1: KM + Fuel readings -->
+    <div id="co-km-step">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">Step 1 — Odometer &amp; Fuel</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <!-- KM photo -->
+        <div>
+          <div style="font-size:.75rem;font-weight:700;margin-bottom:6px">📸 Odometer Photo</div>
+          <div class="ci-photo-box" id="co-km-box" onclick="document.getElementById('co-km-file').click()">
+            <input type="file" accept="image/*" id="co-km-file" class="file-input-hidden" onchange="coKmPhotoSet(this)">
+            <div class="ci-photo-icon" id="co-km-icon">📸</div>
+            <div class="ci-photo-lbl" style="font-size:.7rem">Tap to capture</div>
+            <div class="ci-photo-status" id="co-km-status"></div>
+          </div>
+        </div>
+        <!-- Fuel photo -->
+        <div>
+          <div style="font-size:.75rem;font-weight:700;margin-bottom:6px">⛽ Fuel Gauge Photo</div>
+          <div class="ci-photo-box" id="co-fuel-box" onclick="document.getElementById('co-fuel-file').click()">
+            <input type="file" accept="image/*" id="co-fuel-file" class="file-input-hidden" onchange="coFuelPhotoSet(this)">
+            <div class="ci-photo-icon" id="co-fuel-icon">📸</div>
+            <div class="ci-photo-lbl" style="font-size:.7rem">Tap to capture</div>
+            <div class="ci-photo-status" id="co-fuel-status"></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="lbl">Odometer Reading (km) <span style="color:#c0392b">*</span></label>
+        <input class="inp" type="number" id="co-km-input" placeholder="e.g. 45230" style="font-size:1.1rem">
+      </div>
+      <div id="co-km-err" style="color:#c0392b;font-size:.82rem;display:none;margin-bottom:12px"></div>
+      <button class="btn btn-y btn-lg" style="width:100%" onclick="coKmProceed()">Continue →</button>
+    </div>
+
     <!-- Damage step (before OTP) -->
-    <div id="co-damage-step">
-      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">Step 1 — Damage Report (Optional)</div>
+    <div id="co-damage-step" style="display:none">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">Step 2 — Damage Report (Optional)</div>
       <div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:.83rem;line-height:1.6">
         📸 Did anything happen to the vehicle during your trip? Upload damage photos now if any. Skip if no damage.
       </div>
@@ -6044,16 +6077,71 @@ async function submitCoDamageAndProceed(){
   skipCoDamage();
 }
 
+var coKmPhoto = null;
+var coFuelPhoto = null;
+
+function fileToB64cb(file, cb){
+  var reader = new FileReader();
+  reader.onload = function(){ cb(reader.result.split(",")[1]); };
+  reader.readAsDataURL(file);
+}
+
+function coKmPhotoSet(input){
+  if(!input.files||!input.files[0]) return;
+  compressPhoto(input.files[0], function(compressed){
+    fileToB64cb(compressed, function(b64){
+      coKmPhoto = b64;
+      document.getElementById("co-km-icon").textContent = "✅";
+      document.getElementById("co-km-status").textContent = "Captured";
+      document.getElementById("co-km-box").classList.add("ok");
+    });
+  });
+}
+
+function coFuelPhotoSet(input){
+  if(!input.files||!input.files[0]) return;
+  compressPhoto(input.files[0], function(compressed){
+    fileToB64cb(compressed, function(b64){
+      coFuelPhoto = b64;
+      document.getElementById("co-fuel-icon").textContent = "✅";
+      document.getElementById("co-fuel-status").textContent = "Captured";
+      document.getElementById("co-fuel-box").classList.add("ok");
+    });
+  });
+}
+
+function coKmProceed(){
+  var km = document.getElementById("co-km-input").value.trim();
+  var errEl = document.getElementById("co-km-err");
+  if(!coKmPhoto){ errEl.textContent = "Please take an odometer photo."; errEl.style.display = "block"; return; }
+  if(!km){ errEl.textContent = "Please enter the odometer reading."; errEl.style.display = "block"; return; }
+  if(!coFuelPhoto){ errEl.textContent = "Please take a fuel gauge photo."; errEl.style.display = "block"; return; }
+  errEl.style.display = "none";
+  document.getElementById("co-km-step").style.display     = "none";
+  document.getElementById("co-damage-step").style.display = "block";
+}
+
 function openCheckout(bookingId, carName) {
   coBookingId = bookingId;
   coDamagePhotos = [];
+  coKmPhoto = null;
+  coFuelPhoto = null;
   document.getElementById("co-damage-grid").innerHTML = "";
   document.getElementById("co-otp-input").value = "";
-  document.getElementById("co-otp-err").style.display      = "none";
-  document.getElementById("co-damage-step").style.display  = "block";
-  document.getElementById("co-otp-step").style.display     = "none";
-  document.getElementById("co-success-step").style.display = "none";
-  document.getElementById("co-booking-lbl").textContent = carName + " · Report any damage then enter OTP to close booking.";
+  document.getElementById("co-km-input").value = "";
+  document.getElementById("co-km-err").style.display        = "none";
+  document.getElementById("co-km-icon").textContent         = "📸";
+  document.getElementById("co-km-status").textContent       = "";
+  document.getElementById("co-km-box").classList.remove("ok");
+  document.getElementById("co-fuel-icon").textContent       = "📸";
+  document.getElementById("co-fuel-status").textContent     = "";
+  document.getElementById("co-fuel-box").classList.remove("ok");
+  document.getElementById("co-otp-err").style.display       = "none";
+  document.getElementById("co-km-step").style.display       = "block";
+  document.getElementById("co-damage-step").style.display   = "none";
+  document.getElementById("co-otp-step").style.display      = "none";
+  document.getElementById("co-success-step").style.display  = "none";
+  document.getElementById("co-booking-lbl").textContent = carName + " · Enter odometer & fuel, report damage, then OTP to close.";
   document.getElementById("co-demo-hint").style.display = (!authToken || (authToken && authToken.startsWith("demo_"))) ? "block" : "none";
   openModal("checkout-modal");
 }
@@ -6070,8 +6158,13 @@ async function coVerifyOtp() {
     var _coUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
     var _coH = { "Authorization": "Bearer " + ANON_KEY, "Content-Type": "application/json" };
     if(_coUt) _coH["x-user-token"] = _coUt;
+    var coPayload = { otp: otp };
+    var coKmVal = document.getElementById("co-km-input").value.trim();
+    if(coKmVal) coPayload.kmReading = coKmVal;
+    if(coKmPhoto) coPayload.kmPhotoB64 = coKmPhoto;
+    if(coFuelPhoto){ coPayload.fuelPhotoB64 = coFuelPhoto; coPayload.fuelPhotoMime = "image/jpeg"; }
     var resp = await fetch(API + "/bookings/" + coBookingId + "/checkout/verify", {
-      method: "POST", headers: _coH, body: JSON.stringify({ otp: otp })
+      method: "POST", headers: _coH, body: JSON.stringify(coPayload)
     });
     var data = await resp.json();
     if (!resp.ok) throw new Error(data.error || "Verification failed");

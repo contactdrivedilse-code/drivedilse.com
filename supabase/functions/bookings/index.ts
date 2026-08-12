@@ -109,7 +109,7 @@ function mapBooking(b: Record<string, unknown>, exts: Record<string, unknown>[] 
       photosUploadedAt: b.checkin_photos_at, otp: b.checkin_otp, otpVerified: b.checkin_otp_verified, checkedInAt: b.checked_in_at,
       kmReading: b.checkin_km ?? null, fuelPhotoUrl: b.checkin_fuel_photo ?? null,
     },
-    checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
+    checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at, kmReading: b.checkout_km ?? null, fuelPhotoUrl: b.checkout_fuel_photo ?? null },
     invoiceId: b.zoho_invoice_id ?? null,
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
     refund: b.cancelled_at ? {
@@ -735,7 +735,8 @@ Deno.serve(async (req) => {
     const checkoutVerifyMatch = path.match(/^\/([^/]+)\/checkout\/verify$/);
     if (req.method === "POST" && checkoutVerifyMatch) {
       const id = checkoutVerifyMatch[1];
-      const { otp } = await req.json();
+      const body = await req.json() as Record<string, unknown>;
+      const { otp, kmReading, fuelPhotoB64, fuelPhotoMime } = body as { otp: string; kmReading?: string; fuelPhotoB64?: string; fuelPhotoMime?: string };
       const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
@@ -744,24 +745,36 @@ Deno.serve(async (req) => {
       if (b.checkout_otp !== otp) return json({ error: "Incorrect OTP. Get it from the DriveDilSe representative." }, 400);
 
       const checkedOutAt = new Date().toISOString();
-      // Car unavailable for 4 hours after completion (cleaning/inspection buffer)
       const availableAt  = new Date(Date.now() + 4 * 3600000).toISOString();
 
-      // Compute the original base/GST split before we overwrite drop_date below
       const { base, gst, days } = calcPrice(b.price_per_day as number, new Date(b.pickup_date as string), new Date(b.drop_date as string), b.car_category as string || "Hatchback");
 
-      // drop_date gets overwritten below for car-availability purposes, so
-      // capture how late the return was (vs the originally scheduled drop)
-      // right now â€" this is the only moment that original value is available.
       const lateMs    = Date.now() - new Date(b.drop_date as string).getTime();
       const lateHours = lateMs > 0 ? Math.ceil(lateMs / 3600000) : 0;
 
-      await sb.from("bookings").update({
+      // Upload checkout fuel photo if provided
+      let checkoutFuelUrl: string | null = null;
+      if (fuelPhotoB64) {
+        try {
+          const buf = Uint8Array.from(atob(fuelPhotoB64), (c) => c.charCodeAt(0));
+          const mime = fuelPhotoMime || "image/jpeg";
+          const ext  = mime.includes("png") ? "png" : "jpg";
+          const storagePath = `checkins/${id}/checkout_fuel.${ext}`;
+          const { error: upErr } = await sb.storage.from("checkin-photos").upload(storagePath, buf, { contentType: mime, upsert: true });
+          if (!upErr) checkoutFuelUrl = sb.storage.from("checkin-photos").getPublicUrl(storagePath).data.publicUrl;
+        } catch { /* non-fatal */ }
+      }
+
+      const updateFields: Record<string, unknown> = {
         checkout_otp_verified: true, checked_out_at: checkedOutAt,
-        drop_date: availableAt, // overwrite original drop â€" car free after 4h
+        drop_date: availableAt,
         status: "completed", updated_at: checkedOutAt,
         settlement_late_hours: lateHours,
-      }).eq("id", id);
+      };
+      if (kmReading) updateFields.checkout_km = parseInt(String(kmReading), 10);
+      if (checkoutFuelUrl) updateFields.checkout_fuel_photo = checkoutFuelUrl;
+
+      await sb.from("bookings").update(updateFields).eq("id", id);
 
 
       return json({ success: true, message: "Booking closed. Thank you for driving with DriveDilSe!" });

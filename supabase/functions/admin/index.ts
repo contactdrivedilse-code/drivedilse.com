@@ -99,7 +99,7 @@ function mapBooking(b: Record<string, unknown>) {
       photosUploadedAt: b.checkin_photos_at, otp: b.checkin_otp, otpVerified: b.checkin_otp_verified, checkedInAt: b.checked_in_at,
       kmReading: b.checkin_km ?? null, fuelPhotoUrl: b.checkin_fuel_photo ?? null,
     },
-    checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
+    checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at, kmReading: b.checkout_km ?? null, fuelPhotoUrl: b.checkout_fuel_photo ?? null },
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,
     refund: b.cancelled_at ? {
       amount: b.refund_amount, pct: b.refund_pct, status: b.refund_status, razorpayRefundId: b.razorpay_refund_id, reason: b.refund_reason,

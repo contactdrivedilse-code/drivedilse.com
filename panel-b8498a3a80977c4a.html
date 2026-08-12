@@ -2747,6 +2747,11 @@ function openBkDetailsModal(id){
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
     '<div style="font-weight:700;font-size:.88rem;margin-bottom:4px">📸 Check-Out Photos</div>' +
     (co.checkedOutAt ? '<div style="font-size:.72rem;color:var(--ts)">Checked out '+new Date(co.checkedOutAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div>' : '') +
+    (co.kmReading != null ? '<div style="margin:8px 0;padding:8px 12px;background:var(--s);border:1px solid var(--b);border-radius:8px;font-size:.82rem;display:flex;gap:16px;flex-wrap:wrap">' +
+      '<span>🔢 <strong>KM at drop:</strong> '+Number(co.kmReading).toLocaleString("en-IN")+'&nbsp;km</span>' +
+      (ci.kmReading != null ? '<span style="color:#15803d">📏 Distance driven: '+(Number(co.kmReading)-Number(ci.kmReading)).toLocaleString("en-IN")+' km</span>' : '') +
+      (co.fuelPhotoUrl ? '<a href="'+co.fuelPhotoUrl+'" target="_blank" style="color:var(--yd);font-weight:700;text-decoration:none">⛽ View Fuel Photo →</a>' : '') +
+    '</div>' : '') +
     bkdmPhotoGrid(preExistingCo, "No check-out photos uploaded yet.") +
     (b.status === "completed" ? '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' + settlementSectionHtml(b) : '');
 

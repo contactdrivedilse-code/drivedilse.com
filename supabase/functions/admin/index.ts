@@ -1486,10 +1486,11 @@ Deno.serve(async (req) => {
       return json(mapEmployee(data as Record<string, unknown>));
     }
 
-    // DELETE /employees/:id — deactivate employee (admin only)
+    // DELETE /employees/:id — permanently delete employee (admin only)
     if (req.method === "DELETE" && empEditMatch) {
       if (!isAdmin) return json({ error: "Admin access required" }, 403);
-      await sb.from("employees").update({ active: false, updated_at: new Date().toISOString() }).eq("id", empEditMatch[1]);
+      const { error } = await sb.from("employees").delete().eq("id", empEditMatch[1]);
+      if (error) throw error;
       return json({ success: true });
     }
 

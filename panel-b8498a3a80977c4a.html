@@ -4102,6 +4102,7 @@ async function renderEmployees(isLocal, c){
             '<button class="btn btn-y btn-sm" style="font-size:.72rem" onclick="openEmpQr(\''+e.id+'\')">🪪 View ID / QR</button>' +
             '<button class="btn btn-g btn-sm" style="font-size:.72rem" onclick="openEmpModal(\''+e.id+'\')">✏️ Edit</button>' +
             '<button class="btn btn-sm" style="font-size:.72rem;background:#6366f1;color:#fff" onclick="openEmpReviews(\''+e.id+'\',\''+esc(e.name)+'\')">⭐ Reviews</button>' +
+            '<button class="btn btn-sm" style="font-size:.72rem;background:#c0392b;color:#fff" onclick="deleteEmployee(\''+e.id+'\',\''+esc(e.name)+'\')">🗑️ Delete</button>' +
           '</div>' +
         '</div>';
     });
@@ -4252,6 +4253,18 @@ async function openEmpReviews(id, name){
     body.innerHTML = html;
   } catch(e){
     body.innerHTML = '<div style="color:#c0392b;font-size:.85rem;padding:12px">Failed to load reviews.</div>';
+  }
+}
+
+async function deleteEmployee(id, name){
+  if(!confirm("Delete employee \"" + name + "\"?\n\nThis will permanently remove them from the system.")) return;
+  try {
+    await adminFetch("/admin/employees/" + id, { method: "DELETE" });
+    allEmployees = allEmployees.filter(function(e){ return e.id !== id; });
+    toast("🗑️ Employee deleted.", "success");
+    navTo("employees", document.querySelector('[data-tab="employees"]'));
+  } catch(e){
+    alert("Failed to delete: " + (e.message || "Unknown error"));
   }
 }
 

@@ -1441,8 +1441,8 @@ Deno.serve(async (req) => {
       }
       if (!name || !role) return json({ error: "Name and role are required" }, 400);
       const id = crypto.randomUUID();
-      const { data: countData } = await sb.from("employees").select("id", { count: "exact", head: true });
-      const empNum = String(((countData as unknown as { count: number })?.count ?? 0) + 1).padStart(3, "0");
+      const { count: empCount } = await sb.from("employees").select("*", { count: "exact", head: true });
+      const empNum = String((empCount ?? 0) + 1).padStart(3, "0");
       const employeeCode = "EMP-" + empNum;
       let photoUrl: string | null = null;
       if (photoB64) {

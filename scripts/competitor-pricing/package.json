@@ -1,0 +1,13 @@
+{
+  "name": "competitor-pricing-scraper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape": "node scrape.mjs",
+    "dry-run": "node scrape.mjs --dry-run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "playwright": "^1.47.0"
+  }
+}

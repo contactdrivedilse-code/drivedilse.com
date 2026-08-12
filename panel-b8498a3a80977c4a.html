@@ -831,6 +831,16 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<div class="modal-overlay" id="emp-reviews-modal">
+  <div class="modal-box" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="emp-reviews-title">⭐ Reviews</div>
+    <div id="emp-reviews-body" style="min-height:60px"></div>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn btn-sec btn-sm" onclick="document.getElementById('emp-reviews-modal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="deposit-breakdown-modal">
   <div class="modal-box" style="max-width:720px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title" id="dbm-title">Deposit Breakdown</div>
@@ -4085,6 +4095,7 @@ async function renderEmployees(isLocal, c){
           '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
             '<button class="btn btn-y btn-sm" style="font-size:.72rem" onclick="openEmpQr(\''+e.id+'\')">🪪 View ID / QR</button>' +
             '<button class="btn btn-g btn-sm" style="font-size:.72rem" onclick="openEmpModal(\''+e.id+'\')">✏️ Edit</button>' +
+            '<button class="btn btn-sm" style="font-size:.72rem;background:#6366f1;color:#fff" onclick="openEmpReviews(\''+e.id+'\',\''+esc(e.name)+'\')">⭐ Reviews</button>' +
           '</div>' +
         '</div>';
     });
@@ -4197,6 +4208,37 @@ function openEmpQr(id){
   qrWrap.appendChild(canvas);
   drawQrCanvas(canvas, verifyUrl, 150);
   document.getElementById("emp-qr-modal").classList.add("open");
+}
+
+async function openEmpReviews(id, name){
+  document.getElementById("emp-reviews-title").textContent = "⭐ Reviews — " + name;
+  var body = document.getElementById("emp-reviews-body");
+  body.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa">Loading…</div>';
+  document.getElementById("emp-reviews-modal").classList.add("open");
+  try {
+    var reviews = await adminFetch("/admin/employees/verify/" + id + "/reviews");
+    if(!reviews || !reviews.length){
+      body.innerHTML = '<div style="text-align:center;padding:24px;color:#aaa">No reviews yet.</div>';
+      return;
+    }
+    var stars = function(n){ return "★".repeat(n) + "☆".repeat(5-n); };
+    var html = "";
+    reviews.forEach(function(r){
+      var d = r.created_at ? new Date(r.created_at).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "";
+      html +=
+        '<div style="border:1px solid var(--b);border-radius:10px;padding:14px 16px;margin-bottom:12px">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
+            '<span style="color:#f59e0b;font-size:1rem;letter-spacing:1px">'+stars(r.rating)+'</span>' +
+            '<span style="font-weight:700;font-size:.82rem">'+esc(r.reviewer_name||"Anonymous")+'</span>' +
+            '<span style="margin-left:auto;font-size:.72rem;color:#aaa">'+d+'</span>' +
+          '</div>' +
+          '<div style="font-size:.85rem;color:var(--ts)">'+esc(r.comment)+'</div>' +
+        '</div>';
+    });
+    body.innerHTML = html;
+  } catch(e){
+    body.innerHTML = '<div style="color:#c0392b;font-size:.85rem;padding:12px">Failed to load reviews.</div>';
+  }
 }
 
 // Inline QR code generator (Reed-Solomon, no external deps)

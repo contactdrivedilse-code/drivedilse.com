@@ -198,6 +198,46 @@ Deno.serve(async (req) => {
       return json({ token, role });
     }
 
+    // PUBLIC employee verify + reviews (no auth required)
+    const empVerifyMatch  = path.match(/^\/employees\/verify\/([^/]+)$/);
+    const empReviewsMatch = path.match(/^\/employees\/verify\/([^/]+)\/reviews$/);
+
+    // GET /employees/verify/:id/reviews — list reviews for employee
+    if (req.method === "GET" && empReviewsMatch) {
+      const { data } = await sb.from("employee_reviews").select("*")
+        .eq("employee_id", empReviewsMatch[1]).order("created_at", { ascending: false }).limit(20);
+      return json(data ?? []);
+    }
+
+    // POST /employees/verify/:id/reviews — submit a review
+    if (req.method === "POST" && empReviewsMatch) {
+      const body = await req.json() as Record<string, unknown>;
+      const rating = Number(body.rating);
+      if (!rating || rating < 1 || rating > 5) return json({ error: "Rating must be 1–5" }, 400);
+      const comment = String(body.comment ?? "").trim();
+      if (!comment) return json({ error: "Comment required" }, 400);
+      const { data, error } = await sb.from("employee_reviews").insert({
+        employee_id: empReviewsMatch[1],
+        rating,
+        comment,
+        reviewer_name: String(body.reviewerName ?? "Anonymous").trim().slice(0, 50),
+      }).select("*").single();
+      if (error) throw error;
+      return json(data, 201);
+    }
+
+    // GET /employees/verify/:id — public employee verification
+    if (req.method === "GET" && empVerifyMatch) {
+      const { data, error } = await sb.from("employees").select("*").eq("id", empVerifyMatch[1]).eq("active", true).maybeSingle();
+      if (error || !data) return json({ error: "Employee not found or inactive" }, 404);
+      const e = data as Record<string, unknown>;
+      return json({
+        id: e.id, employeeCode: e.employee_code, name: e.name, role: e.role,
+        department: e.department, photoUrl: e.photo_url, joinedDate: e.joined_date,
+        active: e.active, company: "DriveDilSe",
+      });
+    }
+
     // All routes below require admin or fleet auth
     const admin = await getAdmin(req);
     if (!admin) return json({ error: "Admin access required" }, 401);

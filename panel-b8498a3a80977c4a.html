@@ -2648,6 +2648,7 @@ function openBkDetailsModal(id){
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
     '<div style="font-weight:700;font-size:.88rem;margin-bottom:4px">📸 Check-In Photos</div>' +
     (ci.checkedInAt ? '<div style="font-size:.72rem;color:var(--ts)">Checked in '+new Date(ci.checkedInAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div>' : '') +
+    (ci.kmReading != null ? '<div style="margin:8px 0;padding:8px 12px;background:var(--s);border:1px solid var(--b);border-radius:8px;font-size:.82rem;display:flex;gap:16px"><span>🔢 <strong>KM at pickup:</strong> '+Number(ci.kmReading).toLocaleString("en-IN")+'&nbsp;km</span>'+(ci.fuelPhotoUrl?'<a href="'+ci.fuelPhotoUrl+'" target="_blank" style="color:var(--yd);font-weight:700;text-decoration:none">⛽ View Fuel Photo →</a>':'')+'</div>' : '') +
     bkdmPhotoGrid(ciPhotos, "No check-in photos uploaded yet.") +
     (preExistingCi.length ? '<div style="font-size:.78rem;font-weight:700;margin-top:10px">Pre-existing damage (noted at check-in)</div>'+bkdmPhotoGrid(preExistingCi,"") : '') +
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +

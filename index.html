@@ -2981,7 +2981,7 @@ window.addEventListener('scroll',function(){
     <!-- Step 1: Photos -->
     <div id="ci-photo-step" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts)">Step 1 — Photograph the car</div>
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts)">Step 2 — Photograph the car</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div class="ci-photo-box" id="ci-front-box">
@@ -3025,13 +3025,42 @@ window.addEventListener('scroll',function(){
           </div>
         </div>
       </div>
+      <!-- KM Reading -->
+      <div style="background:var(--ow);border:1.5px solid var(--b);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:.88rem;margin-bottom:4px">🔢 KM Reading <span style="color:#c0392b">*</span></div>
+        <div style="font-size:.76rem;color:var(--ts);margin-bottom:10px">Photo of odometer + enter the reading.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div id="ci-km-photo-box" style="border:1.5px dashed var(--b);border-radius:10px;padding:10px;text-align:center;background:var(--w);cursor:pointer;position:relative" onclick="document.getElementById('ci-km-file').click()">
+            <input type="file" accept="image/*" id="ci-km-file" class="file-input-hidden" onchange="ciKmPhotoSet(this)">
+            <div id="ci-km-photo-icon" style="font-size:1.8rem">📷</div>
+            <div id="ci-km-photo-lbl" style="font-size:.7rem;color:var(--ts);margin-top:2px">Gallery</div>
+          </div>
+          <button class="btn btn-g btn-sm" style="font-size:.75rem" onclick="openCiCamera('km')">📷 Camera</button>
+        </div>
+        <input class="inp" type="number" id="ci-km-input" placeholder="Odometer reading (km)" min="0" style="text-align:center">
+      </div>
+
+      <!-- Fuel Meter -->
+      <div style="background:var(--ow);border:1.5px solid var(--b);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:.88rem;margin-bottom:4px">⛽ Fuel Meter <span style="color:#c0392b">*</span></div>
+        <div style="font-size:.76rem;color:var(--ts);margin-bottom:10px">Photograph the fuel gauge.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div id="ci-fuel-photo-box" style="border:1.5px dashed var(--b);border-radius:10px;padding:10px;text-align:center;background:var(--w);cursor:pointer" onclick="document.getElementById('ci-fuel-file').click()">
+            <input type="file" accept="image/*" id="ci-fuel-file" class="file-input-hidden" onchange="ciFuelPhotoSet(this)">
+            <div id="ci-fuel-photo-icon" style="font-size:1.8rem">📷</div>
+            <div id="ci-fuel-photo-lbl" style="font-size:.7rem;color:var(--ts);margin-top:2px">Gallery</div>
+          </div>
+          <button class="btn btn-g btn-sm" style="font-size:.75rem" onclick="openCiCamera('fuel')">📷 Camera</button>
+        </div>
+      </div>
+
       <div id="ci-photo-err" style="color:#c0392b;font-size:.82rem;display:none;margin-bottom:12px"></div>
-      <button class="btn btn-y btn-lg" id="ci-upload-btn" onclick="ciUploadPhotos()">Upload Photos & Get OTP →</button>
+      <button class="btn btn-y btn-lg" id="ci-upload-btn" onclick="ciUploadPhotos()">Upload Photos & Continue →</button>
     </div>
 
     <!-- Step 1.5: Damage Photos (optional) -->
     <div id="ci-damage-step" style="display:none">
-      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">Step 2 — Pre-Existing Damage (Optional)</div>
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:10px">Step 2b — Pre-Existing Damage (Optional)</div>
       <div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:.83rem;line-height:1.6">
         📸 If you notice any pre-existing damage on the vehicle, photograph it now to protect yourself. You can skip this step if there's no damage.
       </div>
@@ -3043,9 +3072,9 @@ window.addEventListener('scroll',function(){
       </div>
     </div>
 
-    <!-- Step 2: OTP -->
+    <!-- Step 3: OTP -->
     <div id="ci-otp-step" style="display:none">
-      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:14px">Step 2 — Enter Check-In OTP</div>
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ts);margin-bottom:14px">Step 4 — Enter Check-In OTP</div>
       <div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:16px;margin-bottom:16px;font-size:.85rem;line-height:1.6">
         ✅ Photos uploaded! Your check-in OTP has been generated.<br>
         <strong>Ask the DriveDilSe representative to share the OTP</strong> to activate your booking.
@@ -5390,7 +5419,7 @@ function confirmPause(){
 // ── CAMERA CAPTURE ──
 var ciCameraStream = null;
 var ciCameraSide   = null;
-var ciSideLabels   = { front:"Front of Car", rear:"Rear of Car", passengerSide:"Passenger Side", driverSide:"Driver Side" };
+var ciSideLabels   = { front:"Front of Car", rear:"Rear of Car", passengerSide:"Passenger Side", driverSide:"Driver Side", km:"Odometer Reading", fuel:"Fuel Gauge" };
 
 async function openCiCamera(side){
   ciCameraSide = side;
@@ -5419,10 +5448,20 @@ function ciCapturePhoto(){
   canvas.getContext("2d").drawImage(video, 0, 0);
   canvas.toBlob(function(blob){
     var file = new File([blob], "photo_"+ciCameraSide+".jpg", { type:"image/jpeg" });
-    ciPhotos[ciCameraSide] = file;
-    document.getElementById("ci-"+ciCameraSide+"-icon").textContent   = "✅";
-    document.getElementById("ci-"+ciCameraSide+"-status").textContent = "Photo captured ✓";
-    document.getElementById("ci-"+ciCameraSide+"-box").classList.add("ok");
+    if(ciCameraSide === "km"){
+      ciKmPhoto = file;
+      document.getElementById("ci-km-photo-icon").textContent = "✅";
+      document.getElementById("ci-km-photo-lbl").textContent  = "KM photo captured ✓";
+    } else if(ciCameraSide === "fuel"){
+      ciFuelPhoto = file;
+      document.getElementById("ci-fuel-photo-icon").textContent = "✅";
+      document.getElementById("ci-fuel-photo-lbl").textContent  = "Fuel photo captured ✓";
+    } else {
+      ciPhotos[ciCameraSide] = file;
+      document.getElementById("ci-"+ciCameraSide+"-icon").textContent   = "✅";
+      document.getElementById("ci-"+ciCameraSide+"-status").textContent = "Photo captured ✓";
+      document.getElementById("ci-"+ciCameraSide+"-box").classList.add("ok");
+    }
     ciCloseCamera();
   }, "image/jpeg", 0.88);
 }
@@ -5759,6 +5798,10 @@ function openCheckin(bookingId, carName, pickupStr) {
     document.getElementById("ci-" + side).value = "";
   });
   document.getElementById("ci-otp-input").value = "";
+  document.getElementById("ci-km-input").value  = "";
+  ciKmPhoto = null; ciFuelPhoto = null;
+  ["ci-km-photo-icon","ci-fuel-photo-icon"].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent="📷"; });
+  ["ci-km-photo-lbl","ci-fuel-photo-lbl"].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=id==="ci-km-photo-lbl"?"Gallery":"Gallery"; });
   document.getElementById("ci-photo-err").style.display = "none";
   document.getElementById("ci-otp-err").style.display   = "none";
   document.getElementById("ci-otp-hint").style.display  = "none";
@@ -5776,21 +5819,47 @@ function openCheckin(bookingId, carName, pickupStr) {
   openModal("checkin-modal");
 }
 
+var ciKmPhoto = null, ciFuelPhoto = null;
+
+function ciKmPhotoSet(input){
+  if(!input.files || !input.files[0]) return;
+  ciKmPhoto = input.files[0];
+  document.getElementById("ci-km-photo-icon").textContent = "✅";
+  document.getElementById("ci-km-photo-lbl").textContent  = "KM photo added";
+}
+function ciFuelPhotoSet(input){
+  if(!input.files || !input.files[0]) return;
+  ciFuelPhoto = input.files[0];
+  document.getElementById("ci-fuel-photo-icon").textContent = "✅";
+  document.getElementById("ci-fuel-photo-lbl").textContent  = "Fuel photo added";
+}
+
 async function ciUploadPhotos() {
+  var errEl = document.getElementById("ci-photo-err");
   var missing = ["front","rear","passengerSide","driverSide"].filter(function(s){ return !ciPhotos[s]; });
   if (missing.length) {
-    var errEl = document.getElementById("ci-photo-err");
-    errEl.textContent = "Please upload all 4 photos: " + missing.map(function(s){ return ({front:"Front",rear:"Rear",passengerSide:"Passenger Side",driverSide:"Driver Side"})[s]; }).join(", ");
-    errEl.style.display = "block";
-    return;
+    errEl.textContent = "Please upload all 4 car photos: " + missing.map(function(s){ return ({front:"Front",rear:"Rear",passengerSide:"Passenger Side",driverSide:"Driver Side"})[s]; }).join(", ");
+    errEl.style.display = "block"; return;
   }
-  document.getElementById("ci-photo-err").style.display = "none";
+  if (!ciKmPhoto) {
+    errEl.textContent = "Please take a photo of the odometer (KM reading).";
+    errEl.style.display = "block"; return;
+  }
+  var kmVal = document.getElementById("ci-km-input").value.trim();
+  if (!kmVal || isNaN(parseInt(kmVal))) {
+    errEl.textContent = "Please enter the odometer reading (km).";
+    errEl.style.display = "block"; return;
+  }
+  if (!ciFuelPhoto) {
+    errEl.textContent = "Please take a photo of the fuel gauge.";
+    errEl.style.display = "block"; return;
+  }
+  errEl.style.display = "none";
   var btn = document.getElementById("ci-upload-btn");
   btn.textContent = "Uploading photos…"; btn.disabled = true;
 
   var sides = ["front","rear","passengerSide","driverSide"];
 
-  // Convert file to base64
   function fileToB64(file){
     return new Promise(function(resolve, reject){
       var reader = new FileReader();
@@ -5801,13 +5870,17 @@ async function ciUploadPhotos() {
   }
 
   try {
-    // Convert photos to base64 and send as JSON to edge function
     btn.textContent = "Preparing photos…";
     var photos = {};
     for(var si = 0; si < sides.length; si++){
-      btn.textContent = "Preparing " + (si+1) + "/4…";
+      btn.textContent = "Preparing " + (si+1) + "/6…";
       photos[sides[si]] = await fileToB64(ciPhotos[sides[si]]);
     }
+    btn.textContent = "Preparing 5/6…";
+    photos.km = await fileToB64(ciKmPhoto);
+    btn.textContent = "Preparing 6/6…";
+    photos.fuel = await fileToB64(ciFuelPhoto);
+    photos.kmReading = kmVal;
 
     btn.textContent = "Uploading…";
     var _ciUt = (authToken && !authToken.startsWith("demo_")) ? authToken : "";
@@ -5815,7 +5888,7 @@ async function ciUploadPhotos() {
     if(_ciUt) _ciH["x-user-token"] = _ciUt;
     var _ciUrl = API + "/bookings/" + ciBookingId + "/checkin-b64";
     var _ciAbort = new AbortController();
-    var _ciTimer = setTimeout(function(){ _ciAbort.abort(); }, 90000);
+    var _ciTimer = setTimeout(function(){ _ciAbort.abort(); }, 120000);
     var resp = await fetch(_ciUrl, { method:"POST", headers:_ciH, body:JSON.stringify(photos), signal:_ciAbort.signal });
     clearTimeout(_ciTimer);
     var data = await resp.json().catch(function(){ return {}; });
@@ -5824,9 +5897,9 @@ async function ciUploadPhotos() {
       if(resp.status === 401) errMsg = "Session expired. Please log out and log in again.";
       else if(errMsg.includes("not in confirmed")) errMsg = "Booking not confirmed. Complete KYC first.";
       else if(errMsg.includes("Check-in opens")) errMsg = errMsg;
-      document.getElementById("ci-photo-err").textContent = "⚠️ " + errMsg;
-      document.getElementById("ci-photo-err").style.display = "block";
-      btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false;
+      errEl.textContent = "⚠️ " + errMsg;
+      errEl.style.display = "block";
+      btn.textContent = "Upload Photos & Continue →"; btn.disabled = false;
       return;
     }
 
@@ -5837,9 +5910,9 @@ async function ciUploadPhotos() {
     document.getElementById("ci-otp-hint").style.display    = "none";
   } catch(e) {
     var errTxt = e.name === "AbortError" ? "Upload timed out. Check your connection and try again." : (e.message || "Upload failed. Try again.");
-    document.getElementById("ci-photo-err").textContent = "⚠️ " + errTxt;
-    document.getElementById("ci-photo-err").style.display = "block";
-    btn.textContent = "Upload Photos & Get OTP →"; btn.disabled = false;
+    errEl.textContent = "⚠️ " + errTxt;
+    errEl.style.display = "block";
+    btn.textContent = "Upload Photos & Continue →"; btn.disabled = false;
   }
 }
 

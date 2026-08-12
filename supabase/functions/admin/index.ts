@@ -97,6 +97,7 @@ function mapBooking(b: Record<string, unknown>) {
     checkin: {
       photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },
       photosUploadedAt: b.checkin_photos_at, otp: b.checkin_otp, otpVerified: b.checkin_otp_verified, checkedInAt: b.checked_in_at,
+      kmReading: b.checkin_km ?? null, fuelPhotoUrl: b.checkin_fuel_photo ?? null,
     },
     checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified, checkedOutAt: b.checked_out_at },
     status: b.status, cancelledAt: b.cancelled_at, notes: b.notes,

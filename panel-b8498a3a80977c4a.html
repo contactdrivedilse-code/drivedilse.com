@@ -1279,6 +1279,97 @@ async function renderDashboard(isLocal, c){
     } catch(e){ dutyHtml = ""; }
   }
 
+  // ── Revenue breakdown ──────────────────────────────────────────────────────
+  var todayStr  = new Date().toISOString().slice(0,10);
+  var monthStr  = new Date().toISOString().slice(0,7);
+  var bksForRev = isLocal ? DEMO_BOOKINGS : allBookings;
+  var paidAll   = bksForRev.filter(function(b){ return b.payment&&b.payment.status==="paid"&&b.status!=="cancelled"; });
+
+  var todayEarnings = paidAll.filter(function(b){
+    var d = (b.payment&&b.payment.paidAt)||b.createdAt||"";
+    return d.slice(0,10) === todayStr;
+  }).reduce(function(s,b){ return s+Number(b.total||0); },0);
+
+  var monthEarnings = paidAll.filter(function(b){
+    var d = (b.payment&&b.payment.paidAt)||b.createdAt||"";
+    return d.slice(0,7) === monthStr;
+  }).reduce(function(s,b){ return s+Number(b.total||0); },0);
+
+  // Pending = bookings where amountCollected < total (manual partial payment)
+  var pendingBks = bksForRev.filter(function(b){
+    return b.status!=="cancelled" && b.amountCollected!=null && Number(b.total||0)>Number(b.amountCollected||0);
+  });
+  var pendingTotal = pendingBks.reduce(function(s,b){ return s+(Number(b.total||0)-Number(b.amountCollected||0)); },0);
+
+  // Cars currently out (active bookings)
+  var activeBks = bksForRev.filter(function(b){ return b.status==="active"; });
+
+  // Today's pickups (confirmed/pending with pickup date = today)
+  var todayPickups = bksForRev.filter(function(b){
+    return (b.status==="confirmed"||b.status==="pending_kyc"||b.status==="pending") &&
+           b.pickup && (b.pickup.date||"").slice(0,10)===todayStr;
+  });
+  // Today's returns (active with drop date = today)
+  var todayReturns = bksForRev.filter(function(b){
+    return b.status==="active" && b.drop && (b.drop.date||"").slice(0,10)===todayStr;
+  });
+
+  function revCard(icon, label, value, sub, color){
+    return '<div style="background:var(--w);border:1.5px solid var(--b);border-radius:14px;padding:16px 18px;flex:1;min-width:140px">' +
+      '<div style="font-size:1.3rem;margin-bottom:4px">'+icon+'</div>' +
+      '<div style="font-size:1.35rem;font-weight:900;color:'+(color||"var(--t)")+'">'+inr(value)+'</div>' +
+      '<div style="font-size:.75rem;font-weight:700;color:var(--ts);margin-top:2px">'+label+'</div>' +
+      (sub ? '<div style="font-size:.7rem;color:#aaa;margin-top:2px">'+sub+'</div>' : '') +
+    '</div>';
+  }
+
+  var revHtml =
+    '<div style="margin:20px 0 8px;font-weight:800;font-size:.95rem">💰 Revenue</div>' +
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">' +
+      revCard("📅","Today's Earnings", todayEarnings, new Date().toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"}), "#15803d") +
+      revCard("🗓️","This Month's Earnings", monthEarnings, new Date().toLocaleString("en-IN",{month:"long",year:"numeric"}), "#1d4ed8") +
+      (currentRole!=="fleet" ? revCard("⏳","Pending Collection", pendingTotal, pendingBks.length+" booking"+(pendingBks.length!==1?"s":"")+" unpaid", pendingTotal>0?"#c0392b":"#15803d") : "") +
+    '</div>';
+
+  // Cars out now
+  var carsOutHtml = "";
+  if(activeBks.length){
+    carsOutHtml =
+      '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">🚗 Cars Currently Out ('+activeBks.length+')</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:20px">' +
+      activeBks.map(function(b){
+        var dropDate = b.drop&&b.drop.date ? new Date(b.drop.date) : null;
+        var isOverdue = dropDate && dropDate < new Date();
+        var dropStr = dropDate ? dropDate.toLocaleDateString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:true}) : "—";
+        return '<div style="background:var(--w);border:1.5px solid '+(isOverdue?"#fca5a5":"var(--b)")+';border-radius:12px;padding:12px 14px;cursor:pointer" onclick="navTo(\'active\',document.querySelector(\'[data-tab=active]\'))">' +
+          '<div style="font-weight:800;font-size:.88rem">'+esc(b.carName||"Car")+'</div>' +
+          '<div style="font-size:.75rem;color:var(--ts);margin:2px 0">'+esc(b.customer||b.phone||"")+'</div>' +
+          '<div style="font-size:.75rem;'+(isOverdue?"color:#c0392b;font-weight:700":"color:#15803d")+'">⏰ Return: '+dropStr+(isOverdue?" — OVERDUE":"")+'</div>' +
+        '</div>';
+      }).join("") +
+      '</div>';
+  }
+
+  // Today's schedule
+  var scheduleHtml = "";
+  if(todayPickups.length || todayReturns.length){
+    scheduleHtml = '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">📆 Today\'s Schedule</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">';
+    if(todayPickups.length){
+      scheduleHtml += '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px">' +
+        '<div style="font-weight:800;font-size:.82rem;color:#15803d;margin-bottom:8px">🟢 Pickups ('+todayPickups.length+')</div>' +
+        todayPickups.map(function(b){ return '<div style="font-size:.78rem;padding:4px 0;border-bottom:1px solid #dcfce7">'+esc(b.carName||"Car")+' · '+esc(b.customer||b.phone||"")+'</div>'; }).join("") +
+      '</div>';
+    }
+    if(todayReturns.length){
+      scheduleHtml += '<div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:12px 14px">' +
+        '<div style="font-weight:800;font-size:.82rem;color:#a16207;margin-bottom:8px">🔴 Returns ('+todayReturns.length+')</div>' +
+        todayReturns.map(function(b){ return '<div style="font-size:.78rem;padding:4px 0;border-bottom:1px solid #fef9c3">'+esc(b.carName||"Car")+' · '+esc(b.customer||b.phone||"")+'</div>'; }).join("") +
+      '</div>';
+    }
+    scheduleHtml += '</div>';
+  }
+
   c.innerHTML =
     '<div class="page-title">Dashboard</div>' +
     '<div class="page-sub">Overview of DriveDilSe operations.</div>' +
@@ -1287,7 +1378,11 @@ async function renderDashboard(isLocal, c){
       : '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#15803d;display:flex;align-items:center;gap:8px">✅ <strong>Live Backend Connected</strong> — showing real data from database.</div>'
     ) +
     dutyHtml +
-    '<div class="stat-grid">' + statHtml + '</div>';
+    '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">📊 Overview</div>' +
+    '<div class="stat-grid">' + statHtml + '</div>' +
+    (currentRole !== "fleet" ? revHtml : "") +
+    carsOutHtml +
+    scheduleHtml;
 
   // Start live timer if on duty
   if(currentRole === "fleet" && !isLocal) startDutyTimer();

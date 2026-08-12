@@ -3,7 +3,7 @@ const ALLOWED_ORIGINS = new Set(["https://drivedilse.com", "https://www.drivedil
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "https://drivedilse.com",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-user-token, x-admin-token",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   "Vary": "Origin",
 };
 

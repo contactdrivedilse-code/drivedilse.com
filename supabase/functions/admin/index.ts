@@ -1373,8 +1373,105 @@ Deno.serve(async (req) => {
       return json(data ?? []);
     }
 
+    // ── EMPLOYEES ────────────────────────────────────────────────────────────
+
+    // GET /employees — list all employees (admin only)
+    if (req.method === "GET" && path === "/employees") {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { data, error } = await sb.from("employees").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return json((data ?? []).map((e: Record<string, unknown>) => mapEmployee(e)));
+    }
+
+    // GET /employees/verify/:id — public employee verification (no auth required)
+    const empVerifyMatch = path.match(/^\/employees\/verify\/([^/]+)$/);
+    if (req.method === "GET" && empVerifyMatch) {
+      const { data, error } = await sb.from("employees").select("*").eq("id", empVerifyMatch[1]).eq("active", true).maybeSingle();
+      if (error || !data) return json({ error: "Employee not found or inactive" }, 404);
+      const e = data as Record<string, unknown>;
+      return json({
+        id: e.id, employeeCode: e.employee_code, name: e.name, role: e.role,
+        department: e.department, photoUrl: e.photo_url, joinedDate: e.joined_date,
+        active: e.active, company: "DriveDilSe",
+      });
+    }
+
+    // POST /employees — add employee (admin only)
+    if (req.method === "POST" && path === "/employees") {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const ct = req.headers.get("content-type") ?? "";
+      let name = "", role = "", department = "", joinedDate = "", photoB64 = "", photoMime = "image/jpeg";
+      if (ct.includes("application/json")) {
+        const body = await req.json() as Record<string, string>;
+        name = body.name; role = body.role; department = body.department ?? "";
+        joinedDate = body.joinedDate ?? new Date().toISOString().slice(0, 10);
+        photoB64 = body.photo ?? ""; photoMime = body.photoMime ?? "image/jpeg";
+      } else {
+        const fd = await req.formData();
+        name = String(fd.get("name") ?? ""); role = String(fd.get("role") ?? "");
+        department = String(fd.get("department") ?? "");
+        joinedDate = String(fd.get("joinedDate") ?? new Date().toISOString().slice(0, 10));
+      }
+      if (!name || !role) return json({ error: "Name and role are required" }, 400);
+      const id = crypto.randomUUID();
+      const { data: countData } = await sb.from("employees").select("id", { count: "exact", head: true });
+      const empNum = String(((countData as unknown as { count: number })?.count ?? 0) + 1).padStart(3, "0");
+      const employeeCode = "EMP-" + empNum;
+      let photoUrl: string | null = null;
+      if (photoB64) {
+        const buf = Uint8Array.from(atob(photoB64), (c) => c.charCodeAt(0));
+        const storagePath = `employees/${id}/photo.jpg`;
+        const { error: upErr } = await sb.storage.from("employees").upload(storagePath, buf, { contentType: photoMime, upsert: true });
+        if (!upErr) photoUrl = sb.storage.from("employees").getPublicUrl(storagePath).data.publicUrl;
+      }
+      const { data, error } = await sb.from("employees")
+        .insert({ id, employee_code: employeeCode, name, role, department, photo_url: photoUrl, joined_date: joinedDate, active: true })
+        .select("*").maybeSingle();
+      if (error) throw error;
+      return json(mapEmployee(data as Record<string, unknown>), 201);
+    }
+
+    // PATCH /employees/:id — edit employee (admin only)
+    const empEditMatch = path.match(/^\/employees\/([^/]+)$/);
+    if (req.method === "PATCH" && empEditMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const body = await req.json() as Record<string, unknown>;
+      const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (body.name       !== undefined) upd.name       = body.name;
+      if (body.role       !== undefined) upd.role       = body.role;
+      if (body.department !== undefined) upd.department = body.department;
+      if (body.joinedDate !== undefined) upd.joined_date = body.joinedDate;
+      if (body.active     !== undefined) upd.active     = body.active;
+      if (body.photo) {
+        const buf = Uint8Array.from(atob(body.photo as string), (c) => c.charCodeAt(0));
+        const storagePath = `employees/${empEditMatch[1]}/photo.jpg`;
+        const { error: upErr } = await sb.storage.from("employees").upload(storagePath, buf, { contentType: "image/jpeg", upsert: true });
+        if (!upErr) upd.photo_url = sb.storage.from("employees").getPublicUrl(storagePath).data.publicUrl;
+      }
+      const { data, error } = await sb.from("employees").update(upd).eq("id", empEditMatch[1]).select("*").maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Employee not found" }, 404);
+      return json(mapEmployee(data as Record<string, unknown>));
+    }
+
+    // DELETE /employees/:id — deactivate employee (admin only)
+    if (req.method === "DELETE" && empEditMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      await sb.from("employees").update({ active: false, updated_at: new Date().toISOString() }).eq("id", empEditMatch[1]);
+      return json({ success: true });
+    }
+
     return json({ error: "Not found" }, 404);
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
 });
+
+function mapEmployee(e: Record<string, unknown>) {
+  return {
+    id: e.id, employeeCode: e.employee_code, name: e.name, role: e.role,
+    department: e.department ?? "", photoUrl: e.photo_url ?? null,
+    joinedDate: e.joined_date ?? null, active: e.active ?? true,
+    createdAt: e.created_at, updatedAt: e.updated_at,
+  };
+}

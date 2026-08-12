@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Employee Verification — DriveDilSe</title>
+  <meta name="robots" content="noindex">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f1e8;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+    .card{background:#fff;border-radius:20px;padding:32px 28px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.12);text-align:center}
+    .logo{font-family:Georgia,serif;font-size:1.1rem;font-weight:900;color:#d4a000;margin-bottom:20px;letter-spacing:.5px}
+    .photo{width:96px;height:96px;border-radius:50%;border:3px solid #d4a000;object-fit:cover;margin:0 auto 14px;display:block;background:#f0ebe0}
+    .photo-icon{width:96px;height:96px;border-radius:50%;border:3px solid #d4a000;display:flex;align-items:center;justify-content:center;font-size:3rem;margin:0 auto 14px;background:#f0ebe0}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:700;color:#15803d;margin-bottom:16px}
+    .name{font-size:1.4rem;font-weight:900;color:#161616;margin-bottom:4px}
+    .role{font-size:.9rem;color:#555;font-weight:600;margin-bottom:2px}
+    .dept{font-size:.8rem;color:#aaa;margin-bottom:16px}
+    .code{font-family:monospace;font-size:.8rem;color:#d4a000;font-weight:800;letter-spacing:2px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:16px}
+    .meta{font-size:.75rem;color:#999;margin-bottom:20px}
+    .company{font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#aaa;border-top:1px solid #f0ebe0;padding-top:14px;margin-top:4px}
+    .inactive{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:20px;padding:5px 14px;font-size:.78rem;font-weight:700;color:#c0392b;margin-bottom:16px;display:inline-block}
+    .loading{color:#aaa;font-size:.9rem;padding:40px 0}
+    .error{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:20px;color:#c0392b;font-size:.88rem}
+    .home-link{margin-top:20px;font-size:.78rem;color:#aaa;text-decoration:none}
+    .home-link:hover{color:#d4a000}
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="logo">🚗 DriveDilSe</div>
+    <div class="loading" id="loading">Verifying employee…</div>
+    <div id="content" style="display:none"></div>
+  </div>
+  <a href="https://drivedilse.com" class="home-link">← drivedilse.com</a>
+
+<script>
+var API = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
+var ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkxMjYwNjQsImV4cCI6MjA2NDcwMjA2NH0.cPfMrFWHMnIPcbiN4xWm6tT5wQHGMf9VN1RcBJ4Qa5I";
+
+(async function(){
+  var params = new URLSearchParams(location.search);
+  var id = params.get("id");
+  var loadEl = document.getElementById("loading");
+  var contentEl = document.getElementById("content");
+
+  if(!id){
+    loadEl.style.display = "none";
+    contentEl.innerHTML = '<div class="error">❌ No employee ID provided. Scan a valid DriveDilSe employee QR code.</div>';
+    contentEl.style.display = "block";
+    return;
+  }
+
+  try {
+    var resp = await fetch(API + "/admin/employees/verify/" + id, {
+      headers: { "Authorization": "Bearer " + ANON_KEY }
+    });
+    var data = await resp.json();
+    if(!resp.ok) throw new Error(data.error || "Employee not found");
+
+    var fmt = function(d){ return d ? new Date(d).toLocaleDateString("en-IN", {day:"numeric",month:"long",year:"numeric"}) : null; };
+
+    var html =
+      (data.photoUrl
+        ? '<img class="photo" src="'+data.photoUrl+'" alt="'+data.name+'">'
+        : '<div class="photo-icon">🧑</div>') +
+      '<div class="badge">✅ Verified Employee</div>' +
+      '<div class="name">'+esc(data.name)+'</div>' +
+      '<div class="role">'+esc(data.role)+'</div>' +
+      (data.department ? '<div class="dept">'+esc(data.department)+'</div>' : '<div style="margin-bottom:16px"></div>') +
+      '<div class="code">'+esc(data.employeeCode)+'</div>' +
+      (data.joinedDate ? '<div class="meta">Joined: '+fmt(data.joinedDate)+'</div>' : '') +
+      '<div class="company">'+esc(data.company || "DriveDilSe")+'</div>';
+
+    loadEl.style.display = "none";
+    contentEl.innerHTML = html;
+    contentEl.style.display = "block";
+  } catch(e){
+    loadEl.style.display = "none";
+    contentEl.innerHTML = '<div class="error">❌ '+(e.message||"Could not verify this employee. The ID may be invalid or inactive.")+'</div>';
+    contentEl.style.display = "block";
+  }
+})();
+
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+</script>
+</body>
+</html>

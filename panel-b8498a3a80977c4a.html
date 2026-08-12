@@ -306,6 +306,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div class="nav-item" data-tab="blog"      onclick="navTo('blog',this)">     <span class="nav-icon">📝</span>Blog</div>
       <div class="nav-item" data-tab="customers" onclick="navTo('customers',this)"><span class="nav-icon">👥</span>Customers <span class="nav-badge" id="nb-customers">0</span></div>
       <div class="nav-item" data-tab="tickets"   onclick="navTo('tickets',this)">   <span class="nav-icon">🎫</span>Support Tickets <span class="nav-badge" id="nb-tickets">0</span></div>
+      <div class="sidebar-section">Team</div>
+      <div class="nav-item" data-tab="employees" onclick="navTo('employees',this)"><span class="nav-icon">🪪</span>Employees</div>
     </div>
 
     <div class="sidebar-backdrop" id="panel-sidebar-backdrop" onclick="closePanelSidebar()"></div>
@@ -756,6 +758,79 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
   </div>
 </div>
 
+<div class="modal-overlay" id="emp-modal">
+  <div class="modal-box" style="max-width:520px;width:100%;max-height:92vh;overflow-y:auto">
+    <div class="modal-title" id="emp-modal-title">🪪 Add Employee</div>
+
+    <!-- Photo -->
+    <div style="text-align:center;margin-bottom:16px">
+      <div id="emp-photo-preview" style="width:90px;height:90px;border-radius:50%;background:var(--wg);border:3px solid var(--b);display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 10px;overflow:hidden;cursor:pointer" onclick="document.getElementById('emp-photo-input').click()">
+        <span id="emp-photo-icon">🧑</span>
+        <img id="emp-photo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover">
+      </div>
+      <input type="file" id="emp-photo-input" accept="image/*" class="file-input-hidden" onchange="empPhotoSelected(this)">
+      <label for="emp-photo-input" class="btn btn-g btn-sm" style="cursor:pointer;font-size:.75rem">📷 Upload Photo</label>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="lbl">Full Name <span style="color:#c0392b">*</span></label>
+        <input class="inp" id="emp-name" type="text" placeholder="e.g. Pavan Markad">
+      </div>
+      <div>
+        <label class="lbl">Role / Designation <span style="color:#c0392b">*</span></label>
+        <input class="inp" id="emp-role" type="text" placeholder="e.g. Fleet Manager">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="lbl">Department</label>
+        <input class="inp" id="emp-department" type="text" placeholder="e.g. Operations">
+      </div>
+      <div>
+        <label class="lbl">Joining Date</label>
+        <input class="inp" id="emp-joined" type="date">
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="lbl">Status</label>
+      <select class="inp" id="emp-active">
+        <option value="true">Active</option>
+        <option value="false">Inactive</option>
+      </select>
+    </div>
+
+    <div id="emp-modal-error" style="display:none;color:#c0392b;font-size:.82rem;margin-bottom:10px;padding:8px 12px;background:#fef2f2;border-radius:6px"></div>
+    <div class="modal-footer" style="margin-top:4px">
+      <button class="btn btn-sec btn-sm" onclick="document.getElementById('emp-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-sm" id="emp-submit-btn" onclick="submitEmployee()" style="background:var(--yd);color:#000;font-weight:700">✅ Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="emp-qr-modal">
+  <div class="modal-box" style="max-width:420px;width:100%;text-align:center">
+    <div class="modal-title" style="text-align:left">🪪 Employee ID Card</div>
+    <div id="emp-qr-card" style="background:#fff;border:2px solid #e5e0d0;border-radius:16px;padding:24px;margin:0 auto 16px;max-width:300px;display:inline-block;width:100%">
+      <div style="font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:10px">DRIVEDILSE — EMPLOYEE ID</div>
+      <div id="eqr-photo-wrap" style="width:72px;height:72px;border-radius:50%;background:#f0ebe0;border:2.5px solid #d4a000;margin:0 auto 10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:2rem">
+        <img id="eqr-photo" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none">
+        <span id="eqr-photo-icon">🧑</span>
+      </div>
+      <div id="eqr-name" style="font-weight:900;font-size:1rem;color:#161616;margin-bottom:2px"></div>
+      <div id="eqr-role" style="font-size:.78rem;color:#555;font-weight:600;margin-bottom:2px"></div>
+      <div id="eqr-dept" style="font-size:.72rem;color:#888;margin-bottom:12px"></div>
+      <div id="emp-qr-canvas" style="display:flex;justify-content:center;margin-bottom:10px"></div>
+      <div id="eqr-code" style="font-family:monospace;font-size:.75rem;color:#d4a000;font-weight:800;letter-spacing:2px;margin-bottom:6px"></div>
+      <div style="font-size:.6rem;color:#aaa">Scan to verify · drivedilse.com</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-y btn-sm" onclick="downloadEmpCard()">⬇️ Download ID Card</button>
+      <button class="btn btn-sec btn-sm" onclick="document.getElementById('emp-qr-modal').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="deposit-breakdown-modal">
   <div class="modal-box" style="max-width:720px;width:100%;max-height:90vh;overflow-y:auto">
     <div class="modal-title" id="dbm-title">Deposit Breakdown</div>
@@ -1108,6 +1183,8 @@ async function renderTab(tab){
     await renderCustomers(isLocal, c);
   } else if(tab === "tickets"){
     await renderTickets(isLocal, c);
+  } else if(tab === "employees"){
+    await renderEmployees(isLocal, c);
   }
 }
 
@@ -3968,6 +4045,208 @@ filterBookingTable = function(){
   var wrap = document.getElementById("bk-table-wrap");
   if(wrap) wrap.innerHTML = buildTable(filtered, true);
 };
+
+// ── EMPLOYEES ────────────────────────────────────────────────────────────────
+
+var allEmployees = [];
+var _empEditId = null;
+var _empPhotoB64 = null;
+
+async function renderEmployees(isLocal, c){
+  var emps = [];
+  if(!isLocal){
+    try { emps = await adminFetch("/admin/employees"); allEmployees = emps; }
+    catch(e){ isLocal = true; }
+  }
+  if(isLocal) emps = [];
+
+  var html =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">' +
+      '<div style="font-size:1.1rem;font-weight:800">🪪 Employees</div>' +
+      '<button class="btn btn-sm" style="background:var(--yd);color:#000;font-weight:700" onclick="openEmpModal()">+ Add Employee</button>' +
+    '</div>';
+
+  if(!emps.length){
+    html += '<div class="empty"><div class="empty-icon">🧑‍💼</div><div class="empty-msg">No employees added yet. Click "+ Add Employee" to get started.</div></div>';
+  } else {
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">';
+    emps.forEach(function(e){
+      var photo = e.photoUrl
+        ? '<img src="'+e.photoUrl+'" alt="" style="width:100%;height:100%;object-fit:cover">'
+        : '<span style="font-size:2rem">🧑</span>';
+      html +=
+        '<div style="background:var(--w);border:1.5px solid var(--b);border-radius:16px;padding:20px;text-align:center;position:relative">' +
+          (!e.active ? '<div style="position:absolute;top:10px;right:10px;background:#fef2f2;color:#c0392b;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid #fca5a5">INACTIVE</div>' : '') +
+          '<div style="width:72px;height:72px;border-radius:50%;background:var(--wg);border:2.5px solid var(--yd);margin:0 auto 10px;overflow:hidden;display:flex;align-items:center;justify-content:center">'+photo+'</div>' +
+          '<div style="font-weight:800;font-size:.95rem">'+esc(e.name)+'</div>' +
+          '<div style="font-size:.8rem;color:var(--ts);margin-bottom:2px">'+esc(e.role)+'</div>' +
+          (e.department ? '<div style="font-size:.72rem;color:#aaa;margin-bottom:10px">'+esc(e.department)+'</div>' : '<div style="margin-bottom:10px"></div>') +
+          '<div style="font-family:monospace;font-size:.72rem;color:var(--yd);font-weight:800;letter-spacing:1.5px;margin-bottom:12px">'+esc(e.employeeCode)+'</div>' +
+          '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+            '<button class="btn btn-y btn-sm" style="font-size:.72rem" onclick="openEmpQr(\''+e.id+'\')">🪪 View ID / QR</button>' +
+            '<button class="btn btn-g btn-sm" style="font-size:.72rem" onclick="openEmpModal(\''+e.id+'\')">✏️ Edit</button>' +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+  c.innerHTML = html;
+}
+
+function openEmpModal(id){
+  _empEditId = id || null;
+  _empPhotoB64 = null;
+  var e = id ? allEmployees.find(function(x){ return x.id === id; }) : null;
+  document.getElementById("emp-modal-title").textContent = e ? "✏️ Edit Employee" : "🪪 Add Employee";
+  document.getElementById("emp-name").value       = e ? (e.name || "") : "";
+  document.getElementById("emp-role").value       = e ? (e.role || "") : "";
+  document.getElementById("emp-department").value = e ? (e.department || "") : "";
+  document.getElementById("emp-joined").value     = e ? (e.joinedDate || "") : "";
+  document.getElementById("emp-active").value     = e ? String(e.active !== false) : "true";
+  document.getElementById("emp-modal-error").style.display = "none";
+  document.getElementById("emp-submit-btn").disabled = false;
+  document.getElementById("emp-submit-btn").textContent = "✅ Save Employee";
+  // Photo preview
+  var icon = document.getElementById("emp-photo-icon");
+  var img  = document.getElementById("emp-photo-img");
+  if(e && e.photoUrl){ img.src = e.photoUrl; img.style.display = "block"; icon.style.display = "none"; }
+  else { img.style.display = "none"; img.src = ""; icon.style.display = ""; }
+  document.getElementById("emp-modal").classList.add("open");
+}
+
+function empPhotoSelected(input){
+  if(!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  reader.onload = function(){
+    _empPhotoB64 = reader.result.split(",")[1];
+    var img  = document.getElementById("emp-photo-img");
+    var icon = document.getElementById("emp-photo-icon");
+    img.src = reader.result; img.style.display = "block"; icon.style.display = "none";
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitEmployee(){
+  var btn   = document.getElementById("emp-submit-btn");
+  var errEl = document.getElementById("emp-modal-error");
+  errEl.style.display = "none";
+  var name = document.getElementById("emp-name").value.trim();
+  var role = document.getElementById("emp-role").value.trim();
+  if(!name){ errEl.textContent = "Name is required."; errEl.style.display = "block"; return; }
+  if(!role){ errEl.textContent = "Role is required."; errEl.style.display = "block"; return; }
+  btn.disabled = true; btn.textContent = "Saving…";
+  var payload = {
+    name, role,
+    department: document.getElementById("emp-department").value.trim(),
+    joinedDate:  document.getElementById("emp-joined").value || null,
+    active: document.getElementById("emp-active").value === "true",
+  };
+  if(_empPhotoB64) payload.photo = _empPhotoB64;
+  try {
+    var result;
+    if(_empEditId){
+      result = await adminFetch("/admin/employees/"+_empEditId, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      var idx = allEmployees.findIndex(function(x){ return x.id === _empEditId; });
+      if(idx >= 0) allEmployees[idx] = result;
+    } else {
+      result = await adminFetch("/admin/employees", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      allEmployees.unshift(result);
+    }
+    document.getElementById("emp-modal").classList.remove("open");
+    toast("✅ Employee saved!", "success");
+    navTo("employees", document.querySelector('[data-tab="employees"]'));
+  } catch(e){
+    errEl.textContent = e.message || "Failed to save employee.";
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false; btn.textContent = "✅ Save Employee";
+  }
+}
+
+// ── QR CODE + ID CARD ────────────────────────────────────────────────────────
+
+function openEmpQr(id){
+  var e = allEmployees.find(function(x){ return x.id === id; });
+  if(!e) return;
+  document.getElementById("eqr-name").textContent = e.name || "";
+  document.getElementById("eqr-role").textContent = e.role || "";
+  document.getElementById("eqr-dept").textContent = e.department || "";
+  document.getElementById("eqr-code").textContent = e.employeeCode || "";
+  var photo = document.getElementById("eqr-photo");
+  var icon  = document.getElementById("eqr-photo-icon");
+  if(e.photoUrl){ photo.src = e.photoUrl; photo.style.display = "block"; icon.style.display = "none"; }
+  else { photo.style.display = "none"; icon.style.display = ""; }
+  // Generate QR code
+  var verifyUrl = "https://drivedilse.com/emp.html?id=" + e.id;
+  var qrWrap = document.getElementById("emp-qr-canvas");
+  qrWrap.innerHTML = "";
+  var canvas = document.createElement("canvas");
+  qrWrap.appendChild(canvas);
+  drawQrCanvas(canvas, verifyUrl, 150);
+  document.getElementById("emp-qr-modal").classList.add("open");
+}
+
+// Inline QR code generator (Reed-Solomon, no external deps)
+function drawQrCanvas(canvas, text, size){
+  // Use QR API approach with a data URL approach — build via fetch of a free QR image API
+  // Since admin is always online, use qrserver API and draw via Image
+  var img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = function(){
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,size,size);
+    ctx.drawImage(img, 0, 0, size, size);
+  };
+  img.src = "https://api.qrserver.com/v1/create-qr-code/?size="+size+"x"+size+"&data="+encodeURIComponent(text)+"&margin=4";
+  // Fallback: store URL as data attribute on canvas for download
+  canvas.dataset.url = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data="+encodeURIComponent(text)+"&margin=8";
+}
+
+async function downloadEmpCard(){
+  // Take the card div and render as PNG using canvas
+  var card = document.getElementById("emp-qr-card");
+  // Fallback: open print dialog for the card
+  var w = window.open("", "_blank");
+  var name = document.getElementById("eqr-name").textContent;
+  var role = document.getElementById("eqr-role").textContent;
+  var dept = document.getElementById("eqr-dept").textContent;
+  var code = document.getElementById("eqr-code").textContent;
+  var photoSrc = document.getElementById("eqr-photo").style.display !== "none" ? document.getElementById("eqr-photo").src : "";
+  var qrCanvas = document.querySelector("#emp-qr-canvas canvas");
+  var qrSrc = "";
+  if(qrCanvas){ try { qrSrc = qrCanvas.toDataURL("image/png"); } catch(e){} }
+  var qrFallback = qrCanvas && qrCanvas.dataset.url ? qrCanvas.dataset.url : "";
+  w.document.write('<html><head><title>'+name+' — Employee ID</title><style>'+
+    'body{margin:0;display:flex;justify-content:center;align-items:flex-start;padding:32px;font-family:sans-serif;background:#f4f1e8}'+
+    '.card{background:#fff;border:2px solid #e5e0d0;border-radius:16px;padding:28px 24px;width:280px;text-align:center;print-color-adjust:exact;-webkit-print-color-adjust:exact}'+
+    '.label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:12px}'+
+    '.photo{width:80px;height:80px;border-radius:50%;border:2.5px solid #d4a000;object-fit:cover;margin-bottom:10px}'+
+    '.photo-placeholder{width:80px;height:80px;border-radius:50%;border:2.5px solid #d4a000;background:#f0ebe0;display:inline-flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:10px}'+
+    '.name{font-weight:900;font-size:16px;color:#161616;margin-bottom:2px}'+
+    '.role{font-size:12px;color:#555;font-weight:600;margin-bottom:2px}'+
+    '.dept{font-size:11px;color:#aaa;margin-bottom:14px}'+
+    '.qr{margin-bottom:10px}'+
+    '.code{font-family:monospace;font-size:11px;color:#d4a000;font-weight:800;letter-spacing:2px;margin-bottom:6px}'+
+    '.scan{font-size:9px;color:#ccc}'+
+    '@media print{body{padding:0;background:#fff}}'+
+    '</style></head><body>'+
+    '<div class="card">'+
+      '<div class="label">DRIVEDILSE — EMPLOYEE ID</div>'+
+      (photoSrc ? '<img class="photo" src="'+photoSrc+'" crossorigin="anonymous">' : '<div class="photo-placeholder">🧑</div>')+
+      '<div class="name">'+esc(name)+'</div>'+
+      '<div class="role">'+esc(role)+'</div>'+
+      (dept ? '<div class="dept">'+esc(dept)+'</div>' : '<div class="dept"></div>')+
+      '<div class="qr">'+(qrSrc ? '<img src="'+qrSrc+'" width="150" height="150">' : (qrFallback ? '<img src="'+qrFallback+'" width="150" height="150">' : ''))+'</div>'+
+      '<div class="code">'+esc(code)+'</div>'+
+      '<div class="scan">Scan to verify · drivedilse.com</div>'+
+    '</div>'+
+    '<script>window.onload=function(){window.print()}<\/script>'+
+    '</body></html>');
+  w.document.close();
+}
+
 </script>
 </body>
 </html>

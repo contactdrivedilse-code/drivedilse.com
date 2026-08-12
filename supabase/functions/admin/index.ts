@@ -1423,19 +1423,6 @@ Deno.serve(async (req) => {
       return json((data ?? []).map((e: Record<string, unknown>) => mapEmployee(e)));
     }
 
-    // GET /employees/verify/:id — public employee verification (no auth required)
-    const empVerifyMatch = path.match(/^\/employees\/verify\/([^/]+)$/);
-    if (req.method === "GET" && empVerifyMatch) {
-      const { data, error } = await sb.from("employees").select("*").eq("id", empVerifyMatch[1]).eq("active", true).maybeSingle();
-      if (error || !data) return json({ error: "Employee not found or inactive" }, 404);
-      const e = data as Record<string, unknown>;
-      return json({
-        id: e.id, employeeCode: e.employee_code, name: e.name, role: e.role,
-        department: e.department, photoUrl: e.photo_url, joinedDate: e.joined_date,
-        active: e.active, company: "DriveDilSe",
-      });
-    }
-
     // POST /employees — add employee (admin only)
     if (req.method === "POST" && path === "/employees") {
       if (!isAdmin) return json({ error: "Admin access required" }, 403);

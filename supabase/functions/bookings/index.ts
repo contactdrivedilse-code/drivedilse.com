@@ -546,7 +546,7 @@ Deno.serve(async (req) => {
       // Conflict check â€" exclude current booking
       const { data: conflict } = await sb.from("bookings").select("id")
         .eq("car_id", b.car_id as string).neq("id", id)
-        .in("status", ["confirmed", "active", "completed"])
+        .in("status", ["pending", "pending_kyc", "confirmed", "active", "completed"])
         .lt("pickup_date", dISOR).gt("drop_date", pISOR).maybeSingle();
       if (conflict) return json({ error: "Car is not available for the selected dates" }, 400);
 

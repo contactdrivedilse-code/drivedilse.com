@@ -470,6 +470,8 @@ Deno.serve(async (req) => {
 
     // POST /direct — create booking without Razorpay (test / demo mode)
     if (req.method === "POST" && path === "/direct") {
+      if (Deno.env.get("ALLOW_DIRECT_BOOKING") !== "true")
+        return json({ error: "Not available" }, 403);
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
@@ -531,6 +533,8 @@ Deno.serve(async (req) => {
 
     // POST /guest-direct — create booking for demo/offline users (no JWT, just phone)
     if (req.method === "POST" && path === "/guest-direct") {
+      if (Deno.env.get("ALLOW_DIRECT_BOOKING") !== "true")
+        return json({ error: "Not available" }, 403);
       const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gddc, couponCode, depositChoice, sessionId: gdSessionId } = await req.json();
       if (!phone) return json({ error: "Phone required" }, 400);
 

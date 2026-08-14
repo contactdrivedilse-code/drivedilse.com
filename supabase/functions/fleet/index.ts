@@ -187,7 +187,8 @@ Deno.serve(async (req) => {
 
     return json({ error: "Not found" }, 404);
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    console.error("[500]", (e as Error).message);
+    return json({ error: "Internal server error" }, 500);
   }
 });
 

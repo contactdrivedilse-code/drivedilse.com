@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+﻿import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { sendBookingConfirmationEmail } from "../_shared/email.ts";
@@ -614,6 +614,7 @@ Deno.serve(async (req) => {
 
     return json({ error: "Not found" }, 404);
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    console.error("[500]", (e as Error).message);
+    return json({ error: "Internal server error" }, 500);
   }
 });

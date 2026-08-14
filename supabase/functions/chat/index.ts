@@ -46,7 +46,8 @@ Deno.serve(async (req) => {
     if (!res.ok) throw new Error(data.error?.message || "AI error");
     return json({ reply: data.content[0].text });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    console.error("[500]", (e as Error).message);
+    return json({ error: "Internal server error" }, 500);
   }
 });
 

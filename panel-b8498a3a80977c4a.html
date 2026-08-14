@@ -4116,6 +4116,14 @@ function lookupByPhone(){
     return;
   }
 
+  // Check blacklist status
+  var isBlacklisted = false, blReason = "";
+  try {
+    var blList = await adminFetch("/admin/blacklist");
+    var blEntry = blList.find(function(e){ return (e.phone||"").replace(/\D/g,"") === phone; });
+    if(blEntry){ isBlacklisted = true; blReason = blEntry.reason || ""; }
+  } catch(e){}
+
   // Compute stats
   var totalSpent = 0;
   var hasDamage = false;
@@ -4177,7 +4185,39 @@ function lookupByPhone(){
         '<div style="text-align:center"><div style="font-size:1.4rem;font-weight:900;color:'+(hasDamage?'#c0392b':'#15803d')+'">'+damageCount+'</div><div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px">Damage Reports</div></div>'+
       '</div>'+
       bkTable+
+      '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);display:flex;gap:10px;flex-wrap:wrap;align-items:center" id="bl-action-'+phone+'">'+(
+        isBlacklisted
+          ? '<span style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:20px;padding:4px 14px;font-size:.78rem;font-weight:700;color:#b91c1c">🚫 Blacklisted'+(blReason?' — '+esc(blReason):'')+' </span>'+
+            '<button class="btn btn-sm" style="font-size:.75rem;padding:5px 14px" onclick="removeBlacklist(\''+phone+'\',\''+esc(name)+'\')">Unblacklist</button>'
+          : '<button class="btn btn-sm" style="background:#fef2f2;color:#b91c1c;border:1.5px solid #fca5a5;padding:8px 18px;font-size:.8rem" onclick="blacklistPrompt(\''+phone+'\',\''+esc(name)+'\')">🚫 Blacklist Customer</button>'+
+            '<span style="font-size:.75rem;color:var(--ts)">Blacklisted customers cannot make new bookings</span>'
+      )+
+      '</div>'+
     '</div>';
+}
+
+async function blacklistPrompt(phone, name){
+  var reason = prompt("Reason for blacklisting "+name+" (+91 "+phone+")?\n(Leave blank for no reason)");
+  if(reason === null) return; // cancelled
+  try {
+    await adminFetch("/admin/blacklist", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ phone, reason: reason.trim() || null })
+    });
+    toast("🚫 "+name+" blacklisted — they cannot book again", "success");
+    var el = document.getElementById("bl-action-"+phone);
+    if(el) el.innerHTML = '<span style="font-size:.8rem;color:#b91c1c;font-weight:700">🚫 Blacklisted</span> <button class="btn btn-sm" style="font-size:.75rem;padding:5px 12px" onclick="removeBlacklist(\''+phone+'\',\''+esc(name)+'\')">Unblacklist</button>';
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function removeBlacklist(phone, name){
+  if(!confirm("Remove "+name+" from blacklist? They will be able to book again.")) return;
+  try {
+    await adminFetch("/admin/blacklist/"+phone, { method: "DELETE" });
+    toast("✅ "+name+" removed from blacklist", "success");
+    lookupByPhone();
+  } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
 var allTickets = [];

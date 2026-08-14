@@ -794,6 +794,34 @@ Deno.serve(async (req) => {
       });
     }
 
+    // GET /blacklist
+    if (req.method === "GET" && path === "/blacklist") {
+      const { data, error } = await sb.from("blacklist").select("*").order("blacklisted_at", { ascending: false });
+      if (error) throw error;
+      return json(data ?? []);
+    }
+
+    // POST /blacklist — add a phone to blacklist
+    if (req.method === "POST" && path === "/blacklist") {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const { phone, reason } = await req.json() as { phone: string; reason?: string };
+      if (!phone) return json({ error: "phone required" }, 400);
+      const clean = phone.replace(/\D/g, "");
+      const { data, error } = await sb.from("blacklist").upsert({ phone: clean, reason: reason || null, blacklisted_at: new Date().toISOString() }, { onConflict: "phone" }).select("*").maybeSingle();
+      if (error) throw error;
+      return json(data);
+    }
+
+    // DELETE /blacklist/:phone — remove from blacklist
+    const blMatch = path.match(/^\/blacklist\/([^/]+)$/);
+    if (req.method === "DELETE" && blMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const phone = decodeURIComponent(blMatch[1]).replace(/\D/g, "");
+      const { error } = await sb.from("blacklist").delete().eq("phone", phone);
+      if (error) throw error;
+      return json({ success: true });
+    }
+
     // PUT /customers/:id/kyc
     const kycMatch = path.match(/^\/customers\/([^/]+)\/kyc$/);
     if (req.method === "PUT" && kycMatch) {

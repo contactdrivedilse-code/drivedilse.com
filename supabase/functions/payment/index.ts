@@ -420,6 +420,8 @@ Deno.serve(async (req) => {
       // preview step, did, and even that missed pauses). A booking made or
       // a pause added between /order and /verify could slip through.
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), vSessionId)) return json({ error: CONFLICT_MSG }, 400);
+      const { data: blEntry } = await sb.from("blacklist").select("phone, reason").eq("phone", (p.phone as string || "").replace(/\D/g, "")).maybeSingle();
+      if (blEntry) return json({ error: "Booking unavailable. Please contact support." }, 403);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
@@ -486,7 +488,8 @@ Deno.serve(async (req) => {
       const dDurErr = durationError(pISO, dISO);
       if (dDurErr) return dDurErr;
       if (await hasDateConflict(carId, pISO, dISO, dSessionId)) return json({ error: CONFLICT_MSG }, 400);
-
+      const { data: blEntry2 } = await sb.from("blacklist").select("phone").eq("phone", (p.phone as string || "").replace(/\D/g, "")).maybeSingle();
+      if (blEntry2) return json({ error: "Booking unavailable. Please contact support." }, 403);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
@@ -551,6 +554,8 @@ Deno.serve(async (req) => {
       }
       const p = prof as Record<string, unknown>;
 
+      const { data: blEntry3 } = await sb.from("blacklist").select("phone").eq("phone", (p.phone as string || "").replace(/\D/g, "")).maybeSingle();
+      if (blEntry3) return json({ error: "Booking unavailable. Please contact support." }, 403);
       const pickup = new Date(pISO2), drop = new Date(dISO2);
       const { base: baseFare2, total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee2 = typeof gddc === "number" && gddc > 0 ? gddc : 0;

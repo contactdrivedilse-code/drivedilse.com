@@ -794,8 +794,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // GET /blacklist
+    // GET /blacklist — admin only
     if (req.method === "GET" && path === "/blacklist") {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
       const { data, error } = await sb.from("blacklist").select("*").order("blacklisted_at", { ascending: false });
       if (error) throw error;
       return json(data ?? []);

@@ -2973,11 +2973,94 @@ function openBkDetailsModal(id){
     actHtml += '<button class="btn btn-red btn-sm" style="padding:8px 20px" onclick="showCancelForm(\''+id+'\')">✕ Cancel Booking</button>';
   }
   actHtml += '</div>';
+
+  // Extend booking panel — active or confirmed only
+  if(currentRole === "admin" && (b.status === "active" || b.status === "confirmed")){
+    var curDrop = (b.drop && b.drop.date) || b.drop || "";
+    var curDropLocal = curDrop ? new Date(curDrop).toISOString().slice(0,16) : "";
+    var curDays = b.days || 1;
+    var pricePerDay = b.pricePerDay || Math.round((b.total||0) / curDays);
+    actHtml +=
+      '<div style="margin-top:14px;border:1.5px solid #bfdbfe;border-radius:12px;padding:14px 16px;background:#eff6ff">' +
+        '<div style="font-weight:800;font-size:.88rem;color:#1d4ed8;margin-bottom:10px">📅 Extend Booking</div>' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">' +
+          '<div>' +
+            '<div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">New Return Date & Time</div>' +
+            '<input id="ext-drop-inp" type="datetime-local" class="inp" value="'+curDropLocal+'" style="font-size:.84rem;padding:7px 10px">' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Extra charge (₹)</div>' +
+            '<input id="ext-charge-inp" type="number" class="inp" placeholder="0" style="width:110px;font-size:.84rem;padding:7px 10px" oninput="calcExtension(\''+id+'\','+pricePerDay+')">' +
+          '</div>' +
+          '<button class="btn btn-sm" style="background:#1d4ed8;color:#fff;padding:8px 20px;white-space:nowrap" onclick="submitExtension(\''+id+'\')">Extend ↗</button>' +
+        '</div>' +
+        '<div id="ext-calc" style="font-size:.78rem;color:#1d4ed8;margin-top:8px"></div>' +
+      '</div>';
+  }
+
   document.getElementById("bkdm-actions").innerHTML = actHtml;
+
+  // Auto-calc extension charge when date changes
+  var extInp = document.getElementById("ext-drop-inp");
+  if(extInp){
+    var curDrop2 = (b.drop && b.drop.date) || b.drop || "";
+    var pricePerDay2 = b.pricePerDay || Math.round((b.total||0)/(b.days||1));
+    extInp.addEventListener("change", function(){ calcExtension(id, pricePerDay2); });
+    calcExtension(id, pricePerDay2);
+  }
 
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+function calcExtension(id, pricePerDay){
+  var b = window._bkDetailsMap[id];
+  if(!b) return;
+  var extInp = document.getElementById("ext-drop-inp");
+  var chargeInp = document.getElementById("ext-charge-inp");
+  var calcEl = document.getElementById("ext-calc");
+  if(!extInp || !calcEl) return;
+  var newDrop = extInp.value ? new Date(extInp.value) : null;
+  var curDrop = new Date((b.drop && b.drop.date) || b.drop || "");
+  if(!newDrop || isNaN(newDrop) || isNaN(curDrop)){ calcEl.textContent = ""; return; }
+  var extraMs = newDrop - curDrop;
+  if(extraMs <= 0){ calcEl.innerHTML = '<span style="color:#c0392b">New date must be after current return date ('+curDrop.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})+')</span>'; return; }
+  var extraDays = Math.ceil(extraMs / (1000*60*60*24));
+  var suggestedCharge = extraDays * pricePerDay;
+  if(chargeInp && chargeInp.value === "") chargeInp.value = suggestedCharge;
+  var charge = chargeInp ? (parseFloat(chargeInp.value)||0) : suggestedCharge;
+  calcEl.innerHTML = '+'+extraDays+' day'+(extraDays!==1?'s':'')+' · Suggested charge: <strong>'+inr(suggestedCharge)+'</strong>'+(charge!==suggestedCharge?' · Custom: '+inr(charge):'');
+}
+
+async function submitExtension(id){
+  var b = window._bkDetailsMap[id];
+  if(!b){ toast("Booking not found","error"); return; }
+  var extInp = document.getElementById("ext-drop-inp");
+  var chargeInp = document.getElementById("ext-charge-inp");
+  var calcEl = document.getElementById("ext-calc");
+  if(!extInp || !extInp.value){ toast("Pick a new return date","error"); return; }
+  var newDrop = new Date(extInp.value);
+  var curDrop = new Date((b.drop && b.drop.date) || b.drop || "");
+  if(newDrop <= curDrop){ toast("New date must be after current return date","error"); return; }
+  var extraDays = Math.ceil((newDrop - curDrop)/(1000*60*60*24));
+  var charge = chargeInp ? (parseFloat(chargeInp.value)||0) : 0;
+  var newTotal = (Number(b.total)||0) + charge;
+  var newDays  = (Number(b.days)||1) + extraDays;
+  if(!confirm("Extend booking by "+extraDays+" day"+(extraDays!==1?"s":"")+(charge?", add "+inr(charge)+" to total (new total: "+inr(newTotal)+")?":"? (no extra charge)"))) return;
+  try {
+    var updated = await adminFetch("/admin/bookings/"+id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dropDate: newDrop.toISOString(), days: newDays, total: newTotal })
+    });
+    // Update local cache
+    var idx = allBookings.findIndex(function(bk){ return bk._id===id; });
+    if(idx>=0){ allBookings[idx].drop = { date: newDrop.toISOString(), location: b.drop&&b.drop.location }; allBookings[idx].days = newDays; allBookings[idx].total = newTotal; }
+    if(window._bkDetailsMap[id]){ window._bkDetailsMap[id].drop = { date: newDrop.toISOString(), location: b.drop&&b.drop.location }; window._bkDetailsMap[id].days = newDays; window._bkDetailsMap[id].total = newTotal; }
+    toast("Booking extended by "+extraDays+" day"+(extraDays!==1?"s":"")+".", "success");
+    openBkDetails(id);
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
 
 async function markPayment(id, partial){
   var amtInput = document.getElementById("pay-amt-inp");

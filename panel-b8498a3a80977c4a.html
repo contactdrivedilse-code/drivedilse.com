@@ -2881,19 +2881,54 @@ function openBkDetailsModal(id){
     : '';
 
   var pendingBanner = "";
-  if(b.amountCollected != null){
-    var pendingAmt = Number(bkd.total) - Number(b.amountCollected);
+  var total = Number(bkd.total) || 0;
+  var collected = b.amountCollected != null ? Number(b.amountCollected) : null;
+  var payStatus = b.payment && b.payment.status;
+
+  if(collected != null){
+    var pendingAmt = total - collected;
     if(pendingAmt > 0){
-      pendingBanner = '<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">' +
-        '<div>' +
-          '<div style="font-weight:700;color:#b91c1c;font-size:.88rem">⚠️ Pending Payment</div>' +
-          '<div style="font-size:.78rem;color:#7f1d1d;margin-top:2px">Collected: '+inr(Number(b.amountCollected))+' · Check-in blocked until fully paid</div>' +
-        '</div>' +
-        '<div style="font-weight:900;font-size:1.1rem;color:#b91c1c">'+inr(pendingAmt)+'</div>' +
-      '</div>';
+      pendingBanner =
+        '<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:14px 16px;margin-bottom:14px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+            '<div>' +
+              '<div style="font-weight:700;color:#b91c1c;font-size:.88rem">⚠️ Pending Payment</div>' +
+              '<div style="font-size:.78rem;color:#7f1d1d;margin-top:2px">Collected: '+inr(collected)+' · Remaining: '+inr(pendingAmt)+'</div>' +
+            '</div>' +
+            '<div style="font-weight:900;font-size:1.1rem;color:#b91c1c">'+inr(pendingAmt)+'</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+            '<input id="pay-amt-inp" type="number" class="inp" placeholder="Amount collected" value="'+pendingAmt+'" style="width:150px;font-size:.84rem;padding:7px 10px">' +
+            '<select id="pay-mode-sel" class="inp" style="width:130px;font-size:.84rem;padding:7px 10px">' +
+              '<option value="cash">💵 Cash</option>' +
+              '<option value="gpay">📲 GPay / UPI</option>' +
+              '<option value="razorpay">💳 Razorpay</option>' +
+            '</select>' +
+            '<button class="btn btn-y btn-sm" style="padding:8px 18px" onclick="markPayment(\''+id+'\',false)">✅ Mark Paid</button>' +
+            '<button class="btn btn-sm" style="padding:8px 14px;background:#f0fdf4;color:#15803d;border:1px solid #86efac" onclick="markPayment(\''+id+'\',true)">✔ Partial</button>' +
+          '</div>' +
+        '</div>';
     } else {
-      pendingBanner = '<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#15803d;font-weight:600">✅ Fully Paid ('+inr(Number(b.amountCollected))+')</div>';
+      pendingBanner = '<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#15803d;font-weight:600">✅ Fully Paid — '+inr(collected)+'</div>';
     }
+  } else if(payStatus !== "paid"){
+    // No amountCollected set yet — show quick pay action
+    pendingBanner =
+      '<div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:12px;padding:14px 16px;margin-bottom:14px">' +
+        '<div style="font-weight:700;color:#a16207;font-size:.88rem;margin-bottom:10px">💰 Record Payment</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+          '<input id="pay-amt-inp" type="number" class="inp" placeholder="Amount collected" value="'+total+'" style="width:150px;font-size:.84rem;padding:7px 10px">' +
+          '<select id="pay-mode-sel" class="inp" style="width:130px;font-size:.84rem;padding:7px 10px">' +
+            '<option value="cash">💵 Cash</option>' +
+            '<option value="gpay">📲 GPay / UPI</option>' +
+            '<option value="razorpay">💳 Razorpay</option>' +
+          '</select>' +
+          '<button class="btn btn-y btn-sm" style="padding:8px 18px" onclick="markPayment(\''+id+'\',false)">✅ Mark Paid</button>' +
+          '<button class="btn btn-sm" style="padding:8px 14px;background:#fff;color:#a16207;border:1px solid var(--yd)" onclick="markPayment(\''+id+'\',true)">✔ Partial</button>' +
+        '</div>' +
+      '</div>';
+  } else {
+    pendingBanner = '<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#15803d;font-weight:600">✅ Paid via Razorpay</div>';
   }
 
   var html =
@@ -2943,6 +2978,35 @@ function openBkDetailsModal(id){
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+async function markPayment(id, partial){
+  var amtInput = document.getElementById("pay-amt-inp");
+  var modeInput = document.getElementById("pay-mode-sel");
+  var amt = amtInput ? parseFloat(amtInput.value) : null;
+  var mode = modeInput ? modeInput.value : "cash";
+  if(!amt || isNaN(amt) || amt <= 0){ toast("Enter a valid amount", "error"); return; }
+
+  var b = window._bkDetailsMap[id];
+  var total = b ? (Number(b.total)||0) : amt;
+  var prevCollected = b && b.amountCollected != null ? Number(b.amountCollected) : 0;
+  var newCollected = partial ? prevCollected + amt : amt;
+
+  try {
+    var updated = await adminFetch("/admin/bookings/"+id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amountCollected: newCollected, paymentMode: mode })
+    });
+    // Update local cache
+    var idx = allBookings.findIndex(function(bk){ return bk._id===id; });
+    if(idx>=0){ allBookings[idx].amountCollected = newCollected; allBookings[idx].paymentMode = mode; }
+    if(window._bkDetailsMap[id]){ window._bkDetailsMap[id].amountCollected = newCollected; window._bkDetailsMap[id].paymentMode = mode; }
+    var fullyPaid = newCollected >= total;
+    toast(fullyPaid ? "✅ Payment recorded — fully paid" : "✔ Partial payment recorded ("+inr(newCollected)+" of "+inr(total)+")", "success");
+    // Refresh the detail view
+    openBkDetails(id);
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
 
 // ── EDIT BOOKING ─────────────────────────────────────────────────────
 var _editBkId = null;

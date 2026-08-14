@@ -98,6 +98,7 @@ function mapBooking(b: Record<string, unknown>) {
     depositRefundAmount: b.deposit_refund_amount ?? null, depositRefundStatus: b.deposit_refund_status ?? null,
     couponCode: b.coupon_code ?? null, couponDiscount: b.coupon_discount ?? 0,
     amountCollected: b.amount_collected != null ? Number(b.amount_collected) : null,
+    paymentMode: b.payment_mode ?? null,
     payment: { razorpayOrderId: b.razorpay_order_id, razorpayPaymentId: b.razorpay_payment_id, status: b.payment_status, paidAt: b.paid_at },
     checkin: {
       photos: { front: b.checkin_front, rear: b.checkin_rear, passengerSide: b.checkin_passenger_side, driverSide: b.checkin_driver_side },
@@ -412,6 +413,7 @@ Deno.serve(async (req) => {
         carName: "car_name", carId: "car_id",
         total: "total", pricePerDay: "price_per_day", days: "days",
         amountCollected: "amount_collected",
+        paymentMode: "payment_mode",
         notes: "notes", status: "status",
       };
       const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };

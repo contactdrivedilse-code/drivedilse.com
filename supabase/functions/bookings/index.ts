@@ -64,6 +64,14 @@ function calcPrice(pricePerDay: number, pickup: Date, drop: Date, category = "Ha
   return { base, gst, total: base + gst, discount: 0, days };
 }
 
+const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+const MAX_IMG_BYTES = 5 * 1024 * 1024;
+function validateImage(file: File): string | null {
+  if (!ALLOWED_IMG_TYPES.has(file.type)) return "Only JPEG, PNG, or WEBP images are accepted";
+  if (file.size > MAX_IMG_BYTES) return "Image must be smaller than 5 MB";
+  return null;
+}
+
 async function getUser(req: Request) {
   const token = getUserToken(req);
   if (!token) return null;
@@ -445,7 +453,7 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && extOrderMatch) {
       const id = extOrderMatch[1];
       const { hours } = await req.json();
-      if (!hours || hours <= 0) return json({ error: "Invalid hours" }, 400);
+      if (!hours || hours <= 0 || hours > 336) return json({ error: "Extension must be between 1 and 336 hours (14 days)" }, 400);
 
       const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
       const b = booking as Record<string, unknown> | null;
@@ -613,7 +621,7 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && extDirectMatch) {
       const id = extDirectMatch[1];
       const { hours } = await req.json();
-      if (!hours || hours <= 0) return json({ error: "Invalid hours" }, 400);
+      if (!hours || hours <= 0 || hours > 336) return json({ error: "Extension must be between 1 and 336 hours (14 days)" }, 400);
 
       const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
       const b = booking as Record<string, unknown> | null;

@@ -319,6 +319,31 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 </div>
 
 <!-- ── MODALS ── -->
+<!-- Car Docs Upload Modal -->
+<div class="modal-overlay" id="car-docs-modal">
+  <div class="modal-box" style="max-width:520px;width:100%">
+    <div class="modal-title">📄 Documents — <span id="cdm-car-name"></span></div>
+    <div id="cdm-body" style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px"></div>
+    <button class="btn btn-y btn-sm" style="width:100%" onclick="closeCarDocsModal()">Close</button>
+  </div>
+</div>
+
+<!-- Car Share / QR Modal -->
+<div class="modal-overlay" id="car-share-modal">
+  <div class="modal-box" style="max-width:420px;width:100%;text-align:center">
+    <div class="modal-title">🔗 Share Documents — <span id="csm-car-name"></span></div>
+    <p style="font-size:.85rem;color:var(--ts);margin-bottom:16px">Anyone with this link can view the car's documents (no login required)</p>
+    <div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:12px;word-break:break-all;font-size:.8rem;font-weight:700;margin-bottom:16px" id="csm-link"></div>
+    <div style="margin-bottom:16px">
+      <img id="csm-qr" src="" alt="QR Code" style="width:180px;height:180px;border-radius:10px;border:1px solid var(--b)">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-y btn-sm" onclick="copyDocsLink()">📋 Copy Link</button>
+      <button class="btn btn-y btn-sm" onclick="closeCarShareModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="pause-modal">
   <div class="modal-box" style="max-width:620px;width:100%">
     <div class="modal-title">Pause Car — <span id="pm-car-name"></span></div>
@@ -2268,7 +2293,11 @@ async function renderFleet(isLocal, c){
           '<button class="btn btn-g btn-sm" style="flex:1" onclick="openPauseModal(\''+car._id+'\',\''+car.name+'\')">⏸ Pause</button>' +
         '</div>' +
         (isFleetRole ? '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick="openManualBookingModal(\''+car._id+'\',\''+car.name+'\')">📋 Book Elsewhere (Zoomcar etc.)</button>' : '') +
-        '<button class="btn btn-y btn-sm" style="width:100%" onclick=\'openEditCarModal('+JSON.stringify(car)+')\'>✏️ Edit / Photos</button>' +
+        '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick=\'openEditCarModal('+JSON.stringify(car)+')\'>✏️ Edit / Photos</button>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button class="btn btn-y btn-sm" style="flex:1" onclick="openCarDocsModal(\''+car._id+'\',\''+car.name+'\')">📄 Docs</button>' +
+          '<button class="btn btn-y btn-sm" style="flex:1" onclick="openCarShareModal(\''+car._id+'\',\''+car.name+'\')">🔗 Share / QR</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }).join("");
@@ -2315,6 +2344,95 @@ function openPauseModal(carId, carName){
   document.getElementById("pause-modal").classList.add("open");
 }
 function closePauseModal(){ document.getElementById("pause-modal").classList.remove("open"); }
+
+// ── Car Docs Upload ────────────────────────────────────────────────────────────
+var carDocsCarId = "";
+var DOC_TYPES = [
+  { type:"rc",        label:"Registration Certificate (RC)" },
+  { type:"insurance", label:"Insurance Certificate" },
+  { type:"puc",       label:"PUC Certificate" },
+  { type:"fitness",   label:"Fitness Certificate" },
+];
+
+async function openCarDocsModal(carId, carName) {
+  carDocsCarId = carId;
+  document.getElementById("cdm-car-name").textContent = carName;
+  document.getElementById("cdm-body").innerHTML = "<div style='color:var(--ts);font-size:.85rem'>Loading…</div>";
+  document.getElementById("car-docs-modal").classList.add("open");
+
+  // Refresh fleet list to get latest doc URLs
+  var car = null;
+  try {
+    invalidateCache("/admin/fleet");
+    var cars = await adminFetch("/admin/fleet");
+    allCars = cars;
+    car = (cars || []).find(function(c){ return c._id === carId || c.id === carId; }) || null;
+  } catch(e) {
+    car = (allCars || []).find(function(c){ return c._id === carId || c.id === carId; }) || null;
+  }
+
+  var body = document.getElementById("cdm-body");
+  body.innerHTML = DOC_TYPES.map(function(d) {
+    var fieldMap = { rc:"rcDocUrl", insurance:"insuranceDocUrl", puc:"pucDocUrl", fitness:"fitnessDocUrl" };
+    var hasDoc = car && car[fieldMap[d.type]];
+    return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:14px">' +
+      '<div style="font-weight:700;font-size:.88rem;margin-bottom:8px">' + d.label + (hasDoc ? ' <span style="color:#16a34a;font-size:.75rem">✓ Uploaded</span>' : '') + '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center">' +
+        '<input type="file" id="doc-file-' + d.type + '" accept=".pdf,.jpg,.jpeg,.png,.webp" style="flex:1;font-size:.8rem">' +
+        '<button class="btn btn-y btn-sm" onclick="uploadCarDoc(\'' + carId + '\',\'' + d.type + '\')">Upload</button>' +
+        (hasDoc ? '<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteCarDoc(\'' + carId + '\',\'' + d.type + '\',\'' + carName + '\')">Remove</button>' : '') +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+function closeCarDocsModal() { document.getElementById("car-docs-modal").classList.remove("open"); }
+
+async function uploadCarDoc(carId, docType) {
+  var input = document.getElementById("doc-file-" + docType);
+  if (!input || !input.files || !input.files[0]) { toast("Select a file first.", "error"); return; }
+  var file = input.files[0];
+  var form = new FormData();
+  form.append("file", file);
+  form.append("docType", docType);
+  try {
+    await adminFetch("/admin/fleet/" + carId + "/upload-doc", { method:"POST", body:form });
+    toast("Document uploaded.", "success");
+    invalidateCache("/admin/fleet");
+    // Re-open to refresh state
+    var carName = document.getElementById("cdm-car-name").textContent;
+    await openCarDocsModal(carId, carName);
+  } catch(e) { toast("Upload failed: " + e.message, "error"); }
+}
+
+async function deleteCarDoc(carId, docType, carName) {
+  if (!confirm("Remove this document?")) return;
+  try {
+    await adminFetch("/admin/fleet/" + carId + "/delete-doc", { method:"DELETE", body:JSON.stringify({ docType:docType }), headers:{"Content-Type":"application/json"} });
+    toast("Document removed.", "success");
+    invalidateCache("/admin/fleet");
+    await openCarDocsModal(carId, carName);
+  } catch(e) { toast("Failed: " + e.message, "error"); }
+}
+
+// ── Car Share / QR ─────────────────────────────────────────────────────────────
+var currentDocsLink = "";
+
+function openCarShareModal(carId, carName) {
+  var link = "https://drivedilse.com/car-docs.html?id=" + carId;
+  currentDocsLink = link;
+  document.getElementById("csm-car-name").textContent = carName;
+  document.getElementById("csm-link").textContent = link;
+  var qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(link);
+  document.getElementById("csm-qr").src = qrUrl;
+  document.getElementById("car-share-modal").classList.add("open");
+}
+
+function closeCarShareModal() { document.getElementById("car-share-modal").classList.remove("open"); }
+
+function copyDocsLink() {
+  navigator.clipboard.writeText(currentDocsLink).then(function(){ toast("Link copied!", "success"); }).catch(function(){ toast("Copy failed.", "error"); });
+}
 
 function pdrReset(){ pdrStart=null; pdrEnd=null; pdrRender(); }
 function pdrNavMonth(delta){

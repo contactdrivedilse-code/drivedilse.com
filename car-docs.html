@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Car Documents — DriveDilSe</title>
+<style>
+  :root { --green:#16a34a; --red:#dc2626; --yellow:#d97706; --gray:#6b7280; --bg:#f9fafb; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:#111827; min-height:100vh; }
+  header { background:#1e293b; color:#fff; padding:14px 20px; display:flex; align-items:center; gap:12px; }
+  header img { height:36px; border-radius:6px; }
+  header h1 { font-size:1.1rem; font-weight:700; }
+  header p { font-size:.8rem; color:#94a3b8; }
+  .container { max-width:640px; margin:0 auto; padding:24px 16px 48px; }
+  .car-name { font-size:1.4rem; font-weight:700; margin-bottom:4px; }
+  .meta { font-size:.82rem; color:var(--gray); margin-bottom:24px; }
+  .docs-grid { display:flex; flex-direction:column; gap:14px; }
+  .doc-card { background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:18px 20px; display:flex; align-items:center; gap:16px; }
+  .doc-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; }
+  .doc-icon.green { background:#dcfce7; }
+  .doc-icon.red   { background:#fee2e2; }
+  .doc-icon.yellow{ background:#fef9c3; }
+  .doc-icon.gray  { background:#f3f4f6; }
+  .doc-info { flex:1; min-width:0; }
+  .doc-label { font-weight:600; font-size:.95rem; }
+  .doc-expiry { font-size:.8rem; margin-top:3px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:.72rem; font-weight:600; margin-top:4px; }
+  .badge.valid   { background:#dcfce7; color:#166534; }
+  .badge.expiring{ background:#fef9c3; color:#92400e; }
+  .badge.expired { background:#fee2e2; color:#991b1b; }
+  .badge.missing { background:#f3f4f6; color:#6b7280; }
+  .view-btn { text-decoration:none; background:#1e293b; color:#fff; padding:8px 16px; border-radius:8px; font-size:.82rem; font-weight:600; white-space:nowrap; flex-shrink:0; }
+  .view-btn:hover { background:#334155; }
+  .no-doc { font-size:.8rem; color:var(--gray); font-style:italic; }
+  .loading { text-align:center; padding:60px 20px; color:var(--gray); }
+  .error-box { background:#fee2e2; color:#991b1b; border-radius:10px; padding:20px; text-align:center; margin-top:20px; }
+  .generated { font-size:.72rem; color:var(--gray); margin-top:20px; text-align:center; }
+  .footer { text-align:center; font-size:.78rem; color:var(--gray); margin-top:32px; }
+  .footer a { color:#1e293b; text-decoration:none; font-weight:600; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>DriveDilSe</h1>
+    <p>Car Documents</p>
+  </div>
+</header>
+
+<div class="container">
+  <div id="loading" class="loading">Loading documents…</div>
+  <div id="error" class="error-box" style="display:none;"></div>
+  <div id="content" style="display:none;">
+    <div class="car-name" id="carName"></div>
+    <div class="meta" id="carMeta"></div>
+    <div class="docs-grid" id="docsGrid"></div>
+    <div class="generated" id="generated"></div>
+  </div>
+  <div class="footer" style="margin-top:40px;">
+    <a href="https://drivedilse.com">← Back to DriveDilSe</a>
+  </div>
+</div>
+
+<script>
+const API = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
+
+const DOC_ICONS = { rc:"📋", insurance:"🛡️", puc:"🌿", fitness:"⚙️" };
+const DOC_COLORS = { rc:"green", insurance:"green", puc:"green", fitness:"green" };
+
+function expiryBadge(expiry) {
+  if (!expiry) return '<span class="badge missing">Not uploaded</span>';
+  const d = new Date(expiry);
+  const now = new Date();
+  const days = Math.ceil((d - now) / 86400000);
+  if (days < 0) return '<span class="badge expired">Expired</span>';
+  if (days <= 30) return '<span class="badge expiring">Expires in ' + days + ' day' + (days===1?'':'s') + '</span>';
+  return '<span class="badge valid">Valid until ' + d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) + '</span>';
+}
+
+function iconColor(expiry) {
+  if (!expiry) return "gray";
+  const days = Math.ceil((new Date(expiry) - new Date()) / 86400000);
+  if (days < 0) return "red";
+  if (days <= 30) return "yellow";
+  return "green";
+}
+
+async function load() {
+  const params = new URLSearchParams(location.search);
+  const carId = params.get("id");
+  if (!carId) { showError("No car ID specified."); return; }
+
+  try {
+    const res = await fetch(API + "/fleet/car-docs/" + carId);
+    const data = await res.json();
+    if (!res.ok || data.error) { showError(data.error || "Failed to load documents."); return; }
+
+    document.title = data.carName + " — Documents | DriveDilSe";
+    document.getElementById("carName").textContent = data.carName;
+    document.getElementById("carMeta").textContent = "Vehicle documents verified by DriveDilSe";
+    document.getElementById("generated").textContent =
+      "Generated: " + new Date(data.generatedAt).toLocaleString("en-IN", {dateStyle:"medium",timeStyle:"short"});
+
+    const grid = document.getElementById("docsGrid");
+    grid.innerHTML = data.docs.map(function(doc) {
+      const color = doc.url ? iconColor(doc.expiry) : "gray";
+      const expiryFmt = doc.expiry
+        ? new Date(doc.expiry).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})
+        : "";
+      return '<div class="doc-card">' +
+        '<div class="doc-icon ' + color + '">' + (DOC_ICONS[doc.type] || "📄") + '</div>' +
+        '<div class="doc-info">' +
+          '<div class="doc-label">' + doc.label + '</div>' +
+          '<div class="doc-expiry">' + (expiryFmt ? "Expiry: " + expiryFmt : "") + '</div>' +
+          expiryBadge(doc.expiry) +
+        '</div>' +
+        (doc.url
+          ? '<a class="view-btn" href="' + doc.url + '" target="_blank" rel="noopener">View</a>'
+          : '<span class="no-doc">Not uploaded</span>') +
+      '</div>';
+    }).join("");
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("content").style.display = "block";
+  } catch(e) {
+    showError("Network error. Please try again.");
+  }
+}
+
+function showError(msg) {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("error").style.display = "block";
+  document.getElementById("error").textContent = msg;
+}
+
+load();
+</script>
+</body>
+</html>

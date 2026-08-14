@@ -176,6 +176,45 @@ Deno.serve(async (req) => {
       });
     }
 
+    // GET /car-docs/:carId — public endpoint, returns signed doc URLs + expiry dates
+    // Used by the public car-docs.html page (no auth required).
+    const carDocsMatch = path.match(/^\/car-docs\/([^/]+)$/);
+    if (req.method === "GET" && carDocsMatch) {
+      const carId = carDocsMatch[1];
+      const { data, error } = await sb.from("cars")
+        .select("id, name, rc_expiry, insurance_expiry, puc_expiry, fitness_expiry, rc_doc_url, insurance_doc_url, puc_doc_url, fitness_doc_url")
+        .eq("id", carId).maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Car not found" }, 404);
+      const c = data as Record<string, unknown>;
+
+      // Sign each doc URL (1-hour expiry) so docs are viewable without making
+      // the car-docs bucket public. Non-uploaded docs return "".
+      async function signDoc(url: unknown): Promise<string> {
+        if (!url || typeof url !== "string") return "";
+        const m = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+        if (!m) return url;
+        const { data: sd } = await sb.storage.from(m[1]).createSignedUrl(decodeURIComponent(m[2].split("?")[0]), 3600);
+        return sd?.signedUrl ?? "";
+      }
+
+      const [rcUrl, insUrl, pucUrl, fitUrl] = await Promise.all([
+        signDoc(c.rc_doc_url), signDoc(c.insurance_doc_url),
+        signDoc(c.puc_doc_url), signDoc(c.fitness_doc_url),
+      ]);
+
+      return json({
+        carId: c.id, carName: c.name,
+        docs: [
+          { type: "rc",        label: "Registration Certificate (RC)", expiry: c.rc_expiry,        url: rcUrl  },
+          { type: "insurance", label: "Insurance",                      expiry: c.insurance_expiry, url: insUrl },
+          { type: "puc",       label: "PUC Certificate",                expiry: c.puc_expiry,       url: pucUrl },
+          { type: "fitness",   label: "Fitness Certificate",            expiry: c.fitness_expiry,   url: fitUrl },
+        ],
+        generatedAt: new Date().toISOString(),
+      });
+    }
+
     // GET /:id
     const idMatch = path.match(/^\/([^/]+)$/);
     if (req.method === "GET" && idMatch) {

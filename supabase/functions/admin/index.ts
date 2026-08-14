@@ -65,6 +65,10 @@ function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = 
     insuranceExpiry: c.insurance_expiry ?? null,
     pucExpiry:       c.puc_expiry       ?? null,
     fitnessExpiry:   c.fitness_expiry   ?? null,
+    rcDocUrl:        c.rc_doc_url        ?? null,
+    insuranceDocUrl: c.insurance_doc_url ?? null,
+    pucDocUrl:       c.puc_doc_url       ?? null,
+    fitnessDocUrl:   c.fitness_doc_url   ?? null,
   };
 }
 
@@ -1015,6 +1019,50 @@ Deno.serve(async (req) => {
       await sb.from("cars").update(updates).eq("id", carId);
       const { data: updated } = await sb.from("cars").select("*").eq("id", carId).maybeSingle();
       return json(mapCar(updated as Record<string, unknown>));
+    }
+
+    // POST /fleet/:id/upload-doc — upload a compliance document for a car
+    // Accepts multipart form: { docType: 'rc'|'insurance'|'puc'|'fitness', file: File }
+    const uploadDocMatch = path.match(/^\/fleet\/([^/]+)\/upload-doc$/);
+    if (req.method === "POST" && uploadDocMatch) {
+      const carId = uploadDocMatch[1];
+      const fd = await req.formData();
+      const file = fd.get("file") as File | null;
+      const docType = (fd.get("docType") as string || "").toLowerCase();
+      const VALID_DOC_TYPES: Record<string, string> = {
+        rc: "rc_doc_url", insurance: "insurance_doc_url",
+        puc: "puc_doc_url", fitness: "fitness_doc_url",
+      };
+      if (!file) return json({ error: "file required" }, 400);
+      if (!VALID_DOC_TYPES[docType]) return json({ error: "docType must be rc, insurance, puc, or fitness" }, 400);
+
+      const ALLOWED = new Set(["application/pdf","image/jpeg","image/jpg","image/png","image/webp"]);
+      if (!ALLOWED.has(file.type)) return json({ error: "Only PDF, JPEG, PNG, or WEBP accepted" }, 400);
+      if (file.size > 10 * 1024 * 1024) return json({ error: "File must be smaller than 10 MB" }, 400);
+
+      const ext = file.type.includes("pdf") ? "pdf" : file.type.includes("png") ? "png" : "jpg";
+      const storagePath = `${carId}/${docType}.${ext}`;
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const { error: upErr } = await sb.storage.from("car-docs").upload(storagePath, buf, { contentType: file.type, upsert: true });
+      if (upErr) throw upErr;
+      const publicUrl = sb.storage.from("car-docs").getPublicUrl(storagePath).data.publicUrl;
+
+      await sb.from("cars").update({ [VALID_DOC_TYPES[docType]]: publicUrl }).eq("id", carId);
+      return json({ success: true, url: publicUrl, docType });
+    }
+
+    // DELETE /fleet/:id/delete-doc — remove a compliance document
+    const deleteDocMatch = path.match(/^\/fleet\/([^/]+)\/delete-doc$/);
+    if (req.method === "DELETE" && deleteDocMatch) {
+      const carId = deleteDocMatch[1];
+      const { docType } = await req.json() as { docType: string };
+      const VALID_DOC_COLS: Record<string, string> = {
+        rc: "rc_doc_url", insurance: "insurance_doc_url",
+        puc: "puc_doc_url", fitness: "fitness_doc_url",
+      };
+      if (!VALID_DOC_COLS[docType]) return json({ error: "Invalid docType" }, 400);
+      await sb.from("cars").update({ [VALID_DOC_COLS[docType]]: null }).eq("id", carId);
+      return json({ success: true });
     }
 
     // PUT /fleet/:id/toggle

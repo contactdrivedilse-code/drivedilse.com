@@ -3885,6 +3885,17 @@ async function renderCustomers(isLocal, c){
   c.innerHTML =
     '<div class="page-title">Customers</div>'+
     '<div class="page-sub">'+allCustomers.length+' total · <span style="color:#1a7a3c;font-weight:700">'+verifiedCount+' KYC verified</span>'+(pendingCount?' · <span style="color:#d97706;font-weight:700">'+pendingCount+' awaiting review</span>':'')+' </div>'+
+
+    // ── Phone lookup ──────────────────────────────────────────────────────────
+    '<div class="card" style="margin-bottom:18px;padding:18px 20px">'+
+      '<div style="font-weight:800;font-size:.92rem;margin-bottom:12px">🔍 Customer Lookup</div>'+
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+        '<input class="inp" id="phone-lookup-inp" type="text" inputmode="numeric" maxlength="10" placeholder="Enter phone number..." style="flex:1;min-width:200px;font-size:.9rem" onkeydown="if(event.key===\'Enter\')lookupByPhone()">'+
+        '<button class="btn btn-y" onclick="lookupByPhone()" style="white-space:nowrap;padding:10px 20px">Search</button>'+
+      '</div>'+
+      '<div id="phone-lookup-result" style="margin-top:14px"></div>'+
+    '</div>'+
+
     '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">'+
       '<input class="search-inp" id="cust-search" placeholder="🔍 Search name / phone / email..." oninput="filterCustomers()" style="flex:1;min-width:200px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--b);font-size:.84rem;font-family:inherit">'+
     '</div>'+
@@ -3922,6 +3933,95 @@ function filterCustomers(){
   });
   var tbody = document.getElementById("cust-tbody");
   if(tbody) tbody.innerHTML = filtered.map(custRow).join("");
+}
+
+function lookupByPhone(){
+  var phone = (document.getElementById("phone-lookup-inp")||{}).value||"";
+  phone = phone.replace(/\D/g,"").trim();
+  var res = document.getElementById("phone-lookup-result");
+  if(!res) return;
+  if(phone.length < 10){ res.innerHTML = '<div style="font-size:.82rem;color:#c0392b">Enter a 10-digit phone number.</div>'; return; }
+
+  // Match customer
+  var cust = allCustomers.find(function(u){ return (u.phone||"").replace(/\D/g,"") === phone; });
+
+  // Match bookings
+  var bks = allBookings.filter(function(b){ return (b.phone||b.customer||"").replace(/\D/g,"") === phone || (b.phone||"").replace(/\D/g,"") === phone; });
+  // Also match by customer name if phone stored on booking differently
+  if(!bks.length && cust){
+    bks = allBookings.filter(function(b){
+      var bp = (b.phone||"").replace(/\D/g,"");
+      return bp === phone;
+    });
+  }
+
+  if(!cust && !bks.length){
+    res.innerHTML = '<div style="font-size:.85rem;color:var(--ts);padding:10px 0">No customer found with this phone number.</div>';
+    return;
+  }
+
+  // Compute stats
+  var totalSpent = 0;
+  var hasDamage = false;
+  var damageCount = 0;
+  var bksCompleted = bks.filter(function(b){ return b.status==="completed"; });
+  bksCompleted.forEach(function(b){
+    var amt = (b.payment&&b.payment.amount) || b.totalAmount || 0;
+    totalSpent += Number(amt)||0;
+    var dmg = b.checkout&&b.checkout.damagePhotos;
+    if(dmg && dmg.length){ hasDamage = true; damageCount++; }
+  });
+
+  var kycStatus = cust&&cust.kyc&&cust.kyc.status || "none";
+  var kycBadge = {verified:'<span class="sbadge sb-act" style="font-size:.75rem">✅ KYC Verified</span>', uploaded:'<span class="sbadge sb-up" style="font-size:.75rem">⏳ Awaiting Review</span>', rejected:'<span class="sbadge sb-done" style="font-size:.75rem">Rejected</span>'}[kycStatus] || '<span class="sbadge sb-pend" style="font-size:.75rem">No KYC</span>';
+
+  var damageBadge = hasDamage
+    ? '<span style="background:#fef2f2;color:#c0392b;border:1.5px solid #fca5a5;border-radius:20px;padding:3px 12px;font-size:.75rem;font-weight:700">🚨 '+damageCount+' damage report'+(damageCount!==1?'s':'')+'</span>'
+    : '<span style="background:#f0fdf4;color:#15803d;border:1.5px solid #86efac;border-radius:20px;padding:3px 12px;font-size:.75rem;font-weight:700">✅ No damage history</span>';
+
+  var name = (cust&&cust.name) || (bks[0]&&bks[0].customer) || "—";
+  var email = (cust&&cust.email) || "—";
+  var joined = cust&&cust.createdAt ? new Date(cust.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+
+  // Booking rows
+  var bkRows = bks.slice().sort(function(a,b){ return new Date(b.createdAt)-new Date(a.createdAt); }).map(function(b){
+    var statusColors = {completed:"#1a7a3c",active:"#2563eb",confirmed:"#d97706",cancelled:"#9ca3af",pending:"#d97706",pending_kyc:"#d97706"};
+    var sc = statusColors[b.status]||"#555";
+    var from = b.startDate ? new Date(b.startDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short"}) : "—";
+    var to   = b.endDate   ? new Date(b.endDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+    var amt  = (b.payment&&b.payment.amount)||b.totalAmount||0;
+    var dmg  = b.checkout&&b.checkout.damagePhotos&&b.checkout.damagePhotos.length ? ' <span style="font-size:.72rem;color:#c0392b;font-weight:700">🚨 damage</span>' : '';
+    var kmDist = (b.checkout&&b.checkout.kmReading&&b.checkin&&b.checkin.kmReading)
+      ? ' · '+(Number(b.checkout.kmReading)-Number(b.checkin.kmReading))+'km driven' : '';
+    return '<tr>'+
+      '<td style="font-weight:700;font-size:.82rem">'+esc(b.carName||"—")+'</td>'+
+      '<td style="font-size:.78rem;color:var(--ts)">'+from+' → '+to+'</td>'+
+      '<td><span style="font-size:.75rem;font-weight:700;color:'+sc+'">'+b.status+'</span>'+dmg+'</td>'+
+      '<td style="font-weight:700">₹'+Number(amt).toLocaleString("en-IN")+'<span style="font-weight:400;color:var(--ts);font-size:.73rem">'+kmDist+'</span></td>'+
+    '</tr>';
+  }).join("");
+
+  var bkTable = bks.length
+    ? '<div class="table-wrap" style="margin-top:12px"><table class="adm-table"><thead><tr><th>Car</th><th>Dates</th><th>Status</th><th>Amount</th></tr></thead><tbody>'+bkRows+'</tbody></table></div>'
+    : '<div style="font-size:.82rem;color:var(--ts);margin-top:10px">No bookings found.</div>';
+
+  res.innerHTML =
+    '<div style="border:1.5px solid '+(hasDamage?'#fca5a5':'#d1fae5')+';border-radius:14px;padding:16px 18px;background:'+(hasDamage?'#fff8f8':'#f9fffe')+'">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">'+
+        '<div>'+
+          '<div style="font-weight:800;font-size:1.05rem">'+esc(name)+'</div>'+
+          '<div style="font-size:.78rem;color:var(--ts);margin-top:2px">📱 +91 '+phone+(email!=="—"?' &nbsp;·&nbsp; ✉️ '+esc(email):'')+'</div>'+
+          (cust ? '<div style="font-size:.75rem;color:var(--ts);margin-top:2px">Joined '+joined+'</div>' : '')+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+kycBadge+' '+damageBadge+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:4px">'+
+        '<div style="text-align:center"><div style="font-size:1.4rem;font-weight:900;color:var(--t)">'+bks.length+'</div><div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px">Total Trips</div></div>'+
+        '<div style="text-align:center"><div style="font-size:1.4rem;font-weight:900;color:#15803d">₹'+totalSpent.toLocaleString("en-IN")+'</div><div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px">Total Spent</div></div>'+
+        '<div style="text-align:center"><div style="font-size:1.4rem;font-weight:900;color:'+(hasDamage?'#c0392b':'#15803d')+'">'+damageCount+'</div><div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px">Damage Reports</div></div>'+
+      '</div>'+
+      bkTable+
+    '</div>';
 }
 
 var allTickets = [];

@@ -617,6 +617,10 @@ Deno.serve(async (req) => {
       if (!b) return json({ error: "Booking not found" }, 404);
       if (!["confirmed", "active"].includes(b.status as string))
         return json({ error: "Can only extend confirmed or active bookings" }, 400);
+      // Direct (no-payment) extension is only valid for demo bookings.
+      // Real paid bookings must go through /extend/order + /extend/verify.
+      if (b.payment_status !== "demo")
+        return json({ error: "Use the extension payment flow for this booking" }, 403);
 
       const isLateD  = Date.now() > new Date(b.drop_date as string).getTime();
       const pph      = Math.round((b.price_per_day as number) / 24);

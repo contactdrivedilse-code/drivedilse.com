@@ -121,9 +121,16 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (lookupErr) throw lookupErr;
       if (!existing && phone) {
-        const byPhone = await sb.from("profiles").select("id, otp_expiry").eq("phone", phone).maybeSingle();
+        // Only merge a phone-found profile if it has no email set — a profile
+        // with a different email means the phone number was recycled (given to
+        // a new person) and we must not let them authenticate as the old owner.
+        const byPhone = await sb.from("profiles").select("id, otp_expiry, email").eq("phone", phone).maybeSingle();
         if (byPhone.error) throw byPhone.error;
-        existing = byPhone.data;
+        if (byPhone.data) {
+          const phoneProfile = byPhone.data as Record<string, unknown>;
+          if (!phoneProfile.email) existing = byPhone.data;
+          // If the phone profile has an email that differs, create a new profile below.
+        }
       }
 
       // Enforce 60-second resend cooldown. otp_expiry is set 10 min from when

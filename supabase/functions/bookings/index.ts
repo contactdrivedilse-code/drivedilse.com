@@ -599,7 +599,10 @@ Deno.serve(async (req) => {
       const { data: bk } = await sb.from("bookings").select("notes").eq("id", id).maybeSingle();
       const existing = (bk as Record<string, unknown>)?.notes as string || "";
       const noteKey  = typeVal === "checkout" ? "damage_checkout" : "damage_checkin";
-      const newNote  = existing + "\n" + noteKey + ":" + photos.join(",");
+      // Strip newlines from URLs before embedding in the notes string to
+      // prevent injection of fake damage_checkin/damage_checkout entries.
+      const safePhotos = photos.map((u) => u.replace(/[\r\n]/g, ""));
+      const newNote  = existing + "\n" + noteKey + ":" + safePhotos.join(",");
       await sb.from("bookings").update({ notes: newNote.trim(), updated_at: new Date().toISOString() }).eq("id", id);
 
       return json({ success: true, uploaded: photos.length });

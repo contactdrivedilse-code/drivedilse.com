@@ -18,6 +18,15 @@ function generateOtp(): string { return String(Math.floor(100000 + Math.random()
 const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 function resolveDepositChoice(raw: unknown): "now" | "later" { return raw === "now" ? "now" : "later"; }
 
+// Delivery fee is client-supplied but capped server-side to prevent
+// manipulation (e.g. claiming 0 for a home delivery, or inflating to
+// a huge number). Set MAX_DELIVERY_FEE_INR in Supabase secrets.
+const MAX_DELIVERY_FEE = Number(Deno.env.get("MAX_DELIVERY_FEE_INR")) || 500;
+function resolveDeliveryFee(raw: unknown): number {
+  if (typeof raw !== "number" || raw <= 0) return 0;
+  return Math.min(Math.round(raw), MAX_DELIVERY_FEE);
+}
+
 // Checks both real bookings AND fleet-manager pause periods for the
 // requested window. A car paused for maintenance/Zoomcar etc. must be
 // just as unbookable as one with an overlapping confirmed booking —
@@ -316,7 +325,7 @@ Deno.serve(async (req) => {
       if (gDurErr) return gDurErr;
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
-      const deliveryFee = typeof gdc === "number" && gdc > 0 ? gdc : 0;
+      const deliveryFee = resolveDeliveryFee(gdc);
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
@@ -382,7 +391,7 @@ Deno.serve(async (req) => {
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
-      const deliveryFee = typeof odc === "number" && odc > 0 ? odc : 0;
+      const deliveryFee = resolveDeliveryFee(odc);
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
@@ -423,7 +432,7 @@ Deno.serve(async (req) => {
       const { data: blEntry } = await sb.from("blacklist").select("phone, reason").eq("phone", (p.phone as string || "").replace(/\D/g, "")).maybeSingle();
       if (blEntry) return json({ error: "Booking unavailable. Please contact support." }, 403);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
-      const deliveryFee = typeof vdc === "number" && vdc > 0 ? vdc : 0;
+      const deliveryFee = resolveDeliveryFee(vdc);
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositPaidNow = chosenDeposit === "now";
@@ -493,7 +502,7 @@ Deno.serve(async (req) => {
       const { data: blEntry2 } = await sb.from("blacklist").select("phone").eq("phone", (p.phone as string || "").replace(/\D/g, "")).maybeSingle();
       if (blEntry2) return json({ error: "Booking unavailable. Please contact support." }, 403);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
-      const deliveryFee = typeof dc === "number" && dc > 0 ? dc : 0;
+      const deliveryFee = resolveDeliveryFee(dc);
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const gst = Math.round((baseFare + deliveryFee) * 0.18);
       const total = baseFare + deliveryFee + gst - couponDiscount;
@@ -562,7 +571,7 @@ Deno.serve(async (req) => {
       if (blEntry3) return json({ error: "Booking unavailable. Please contact support." }, 403);
       const pickup = new Date(pISO2), drop = new Date(dISO2);
       const { base: baseFare2, total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
-      const deliveryFee2 = typeof gddc === "number" && gddc > 0 ? gddc : 0;
+      const deliveryFee2 = resolveDeliveryFee(gddc);
       const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal2, couponCode);
       const gst2 = Math.round((baseFare2 + deliveryFee2) * 0.18);
       const total = baseFare2 + deliveryFee2 + gst2 - couponDiscount;

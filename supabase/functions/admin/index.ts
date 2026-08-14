@@ -153,9 +153,23 @@ async function getAdmin(req: Request, requireAdmin = false) {
   } catch { return null; }
 }
 
-// Per-role login failure tracker: locksout after 10 consecutive failures for 15 min.
-// In-memory: effective per function instance; resets on cold start, which is acceptable.
-const loginFailures = new Map<string, { count: number; lockedUntil: number }>();
+// Login attempt helpers — persisted in DB so lockout survives cold starts.
+async function getLoginAttempt(key: string): Promise<{ count: number; lockedUntil: number }> {
+  const { data } = await sb.from("admin_login_attempts").select("count, locked_until").eq("key", key).maybeSingle();
+  if (!data) return { count: 0, lockedUntil: 0 };
+  const d = data as Record<string, unknown>;
+  return {
+    count: (d.count as number) || 0,
+    lockedUntil: d.locked_until ? new Date(d.locked_until as string).getTime() : 0,
+  };
+}
+async function setLoginAttempt(key: string, count: number, lockedUntil: number) {
+  const locked_until = lockedUntil ? new Date(lockedUntil).toISOString() : null;
+  await sb.from("admin_login_attempts").upsert({ key, count, locked_until }, { onConflict: "key" });
+}
+async function clearLoginAttempt(key: string) {
+  await sb.from("admin_login_attempts").delete().eq("key", key);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return preflight(req);
@@ -169,28 +183,30 @@ Deno.serve(async (req) => {
     if (req.method === "POST" && path === "/login") {
       const { password, role } = await req.json();
       const failKey = (role === "fleet") ? "fleet" : "admin";
-      const fail = loginFailures.get(failKey) ?? { count: 0, lockedUntil: 0 };
+      const fail = await getLoginAttempt(failKey);
       if (fail.lockedUntil > Date.now())
         return json({ error: "Too many failed attempts. Try again in 15 minutes." }, 429, req);
 
       if (role === "fleet") {
         if (password !== Deno.env.get("FLEET_PASSWORD")) {
-          fail.count++; if (fail.count >= 10) fail.lockedUntil = Date.now() + 15 * 60 * 1000;
-          loginFailures.set(failKey, fail);
+          const newCount = fail.count + 1;
+          const lockedUntil = newCount >= 10 ? Date.now() + 15 * 60 * 1000 : 0;
+          await setLoginAttempt(failKey, newCount, lockedUntil);
           await new Promise((r) => setTimeout(r, 800));
           return json({ error: "Invalid password" }, 401, req);
         }
-        loginFailures.delete(failKey);
+        await clearLoginAttempt(failKey);
         const token = await signJwt({ role: "fleet" }, Deno.env.get("ADMIN_JWT_SECRET")!, 30 * 24 * 60 * 60);
         return json({ token, role: "fleet" }, 200, req);
       }
       if (password !== Deno.env.get("ADMIN_PASSWORD")) {
-        fail.count++; if (fail.count >= 10) fail.lockedUntil = Date.now() + 15 * 60 * 1000;
-        loginFailures.set(failKey, fail);
+        const newCount = fail.count + 1;
+        const lockedUntil = newCount >= 10 ? Date.now() + 15 * 60 * 1000 : 0;
+        await setLoginAttempt(failKey, newCount, lockedUntil);
         await new Promise((r) => setTimeout(r, 800));
         return json({ error: "Invalid password" }, 401, req);
       }
-      loginFailures.delete(failKey);
+      await clearLoginAttempt(failKey);
       const token = await signJwt({ role: "admin" }, Deno.env.get("ADMIN_JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ token, role: "admin" }, 200, req);
     }

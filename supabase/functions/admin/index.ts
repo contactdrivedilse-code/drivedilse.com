@@ -225,8 +225,15 @@ Deno.serve(async (req) => {
       if (comment.length > 500) return json({ error: "Comment too long (max 500 characters)" }, 400);
       const reviewerName = String(body.reviewerName ?? "Anonymous").trim().slice(0, 50);
 
-      // Rate limit: 1 review per IP per employee per 24 hours
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+      // Rate limit: 1 review per IP per employee per 24 hours.
+      // cf-connecting-ip is set by Cloudflare and cannot be spoofed by a client
+      // (even if the client sends that header, Cloudflare overwrites it). Fall
+      // back to x-real-ip, then the first entry of x-forwarded-for as a last
+      // resort (forgeable, but better than nothing if Cloudflare isn't in front).
+      const ip = req.headers.get("cf-connecting-ip")
+        || req.headers.get("x-real-ip")
+        || req.headers.get("x-forwarded-for")?.split(",")[0].trim()
+        || "unknown";
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count: recentCount } = await sb.from("employee_reviews")
         .select("*", { count: "exact", head: true })

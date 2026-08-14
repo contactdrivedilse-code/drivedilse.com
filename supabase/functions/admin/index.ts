@@ -423,10 +423,18 @@ Deno.serve(async (req) => {
     }
 
     // GET /bookings
+    // Returns the 400 most recent bookings by default. Pass ?all=true for full
+    // history (used by the revenue tab which needs all-time totals).
+    // Photo signing is skipped for list view — the detail view calls /bookings/:id
+    // which does the signing. Skipping it here eliminates ~5 HTTP requests per
+    // booking that were happening on every panel load.
     if (req.method === "GET" && path === "/bookings") {
-      const { data, error } = await sb.from("bookings").select("*").order("created_at", { ascending: false });
+      const wantAll = url.searchParams.get("all") === "true";
+      let q = sb.from("bookings").select("*").order("created_at", { ascending: false });
+      if (!wantAll) q = q.limit(400);
+      const { data, error } = await q;
       if (error) throw error;
-      return json(await Promise.all((data ?? []).map((b: Record<string, unknown>) => signBookingPhotos(mapBooking(b)))));
+      return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
     }
 
     // PATCH /bookings/:id — admin edits booking fields

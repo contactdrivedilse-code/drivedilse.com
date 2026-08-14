@@ -1174,9 +1174,6 @@ async function adminFetch(path, opts){
   if(opts.body instanceof FormData) delete opts.headers["Content-Type"];
   var r = await fetch(API + path, opts);
   if(r.status === 401 && adminToken && adminToken !== "local"){
-    // Session expired/invalid — force a fresh login instead of silently
-    // falling back to "Demo mode" everywhere, which was misleading
-    // (looked like the backend was down when it was just an old token).
     localStorage.removeItem("dds_admin_token");
     localStorage.removeItem("dds_role");
     adminToken = "";
@@ -1186,6 +1183,25 @@ async function adminFetch(path, opts){
   }
   if(!r.ok){ var e = await r.json().catch(function(){ return {error:r.status}; }); throw new Error(e.error || r.status); }
   return r.json();
+}
+
+// ── In-memory data cache (TTL = 90 seconds) ───────────────────────────────
+// Avoids re-fetching the same endpoint on every tab switch.
+// Cache is invalidated by any write action via invalidateCache().
+var _cache = {};
+var CACHE_TTL = 90 * 1000;
+async function cachedFetch(path, opts) {
+  // Only cache GET requests with no body
+  if (opts && (opts.method || opts.body)) return adminFetch(path, opts);
+  var now = Date.now();
+  if (_cache[path] && (now - _cache[path].ts) < CACHE_TTL) return _cache[path].data;
+  var data = await adminFetch(path, opts);
+  _cache[path] = { ts: now, data: data };
+  return data;
+}
+function invalidateCache(pattern) {
+  if (!pattern) { _cache = {}; return; }
+  Object.keys(_cache).forEach(function(k){ if(k.indexOf(pattern) >= 0) delete _cache[k]; });
 }
 
 // ── TABS ──
@@ -1235,8 +1251,12 @@ async function renderDashboard(isLocal, c){
   var stats = [];
   if(!isLocal){
     try {
-      var dash = await adminFetch("/admin/dashboard");
-      allBookings = await adminFetch("/admin/bookings");
+      var _results = await Promise.all([
+        cachedFetch("/admin/dashboard"),
+        cachedFetch("/admin/bookings"),
+      ]);
+      var dash = _results[0];
+      allBookings = _results[1];
       updateBadges();
       var paidBks = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
       var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);
@@ -1604,11 +1624,9 @@ async function renderSchedule(isLocal, c){
   var cars = [];
   if(!isLocal){
     try {
-      bookings = await adminFetch("/admin/bookings");
-      allBookings = bookings;
-      cars = await adminFetch("/admin/fleet");
-      allCars = cars;
-      window._allCarsCache = cars;
+      var _sr = await Promise.all([cachedFetch("/admin/bookings"), cachedFetch("/admin/fleet")]);
+      bookings = _sr[0]; allBookings = bookings;
+      cars = _sr[1]; allCars = cars; window._allCarsCache = cars;
     } catch(e){ isLocal = true; }
   }
   if(isLocal){
@@ -1735,7 +1753,7 @@ async function renderBookings(statusFilter, isLocal, c){
   var bks = [];
   if(!isLocal){
     try {
-      if(!allBookings.length) allBookings = await adminFetch("/admin/bookings");
+      if(!allBookings.length) allBookings = await cachedFetch("/admin/bookings");
       updateBadges();
       bks = statusFilter === null ? allBookings :
         Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
@@ -1942,7 +1960,7 @@ async function updateStatus(id, status){
     });
     var b = allBookings.find(function(b){ return b._id===id; });
     if(b) b.status = status;
-    toast("Status updated to " + status, "success");
+    invalidateCache("/admin/bookings"); invalidateCache("/admin/dashboard"); toast("Status updated to " + status, "success");
     updateBadges();
   } catch(e){ toast("Failed: " + e.message, "error"); }
 }
@@ -1951,7 +1969,7 @@ async function renderKycApprovals(isLocal, c){
   var custs = [];
   if(!isLocal){
     try {
-      custs = await adminFetch("/admin/customers");
+      custs = await cachedFetch("/admin/customers");
       allCustomers = custs;
     } catch(e){ isLocal = true; }
   }
@@ -2200,7 +2218,7 @@ function _revRender(c){
 async function renderRevenue(isLocal, c){
   if(!isLocal){
     try {
-      if(!allBookings.length) allBookings = await adminFetch("/admin/bookings");
+      if(!allBookings.length) allBookings = await cachedFetch("/admin/bookings");
       _revBookings = allBookings;
     } catch(e){ isLocal = true; }
   }
@@ -2212,7 +2230,7 @@ async function renderFleet(isLocal, c){
   var cars = [];
   if(!isLocal){
     try {
-      cars = await adminFetch("/admin/fleet");
+      cars = await cachedFetch("/admin/fleet");
       allCars = cars;
     } catch(e){ isLocal = true; }
   }
@@ -3322,8 +3340,10 @@ async function submitManualBooking(){
     });
     document.getElementById("manual-booking-modal").classList.remove("open");
     toast("✅ Booking "+result.bookingId+" created successfully!", "success");
-    // Refresh bookings list
-    allBookings = await adminFetch("/admin/bookings");
+    // Refresh bookings list (invalidate cache first so we get fresh data)
+    invalidateCache("/admin/bookings");
+    invalidateCache("/admin/dashboard");
+    allBookings = await cachedFetch("/admin/bookings");
     updateBadges();
     navTo("bookings", document.querySelector('[data-tab="bookings"]'));
   } catch(e){
@@ -3447,6 +3467,8 @@ async function submitCancelBooking(id){
     });
     var b = allBookings.find(function(x){ return x._id===id; });
     if(b) b.status = "cancelled";
+    invalidateCache("/admin/bookings");
+    invalidateCache("/admin/dashboard");
     closeBkDetailsModal();
     var msg = cancellationType==="car_unavailability"
       ? "Booking cancelled — full refund initiated. Customer notified via email with alternative cars."

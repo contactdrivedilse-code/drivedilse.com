@@ -449,6 +449,33 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       </div>
     </div>
 
+    <!-- Document expiry section -->
+    <div style="margin-top:16px;margin-bottom:4px">
+      <label class="lbl" style="font-weight:800;font-size:.82rem;letter-spacing:.5px">📄 Documents &amp; Expiry Dates</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+        <div style="grid-column:1/-1">
+          <label class="lbl">Vehicle Registration Number</label>
+          <input class="inp" type="text" id="cm-car-number" placeholder="e.g. MH12AB1234" style="text-transform:uppercase">
+        </div>
+        <div>
+          <label class="lbl">RC Expiry</label>
+          <input class="inp" type="date" id="cm-rc-expiry">
+        </div>
+        <div>
+          <label class="lbl">Insurance Expiry</label>
+          <input class="inp" type="date" id="cm-insurance-expiry">
+        </div>
+        <div>
+          <label class="lbl">PUC Expiry</label>
+          <input class="inp" type="date" id="cm-puc-expiry">
+        </div>
+        <div>
+          <label class="lbl">Fitness Certificate Expiry</label>
+          <input class="inp" type="date" id="cm-fitness-expiry">
+        </div>
+      </div>
+    </div>
+
     <!-- Features section -->
     <div style="margin-top:14px;margin-bottom:4px">
       <label class="lbl">Features (shown on car detail page)</label>
@@ -1279,6 +1306,44 @@ async function renderDashboard(isLocal, c){
     } catch(e){ dutyHtml = ""; }
   }
 
+  // ── Document expiry warnings ───────────────────────────────────────────────
+  var allCars = isLocal ? DEMO_FLEET : (window._allCarsCache || []);
+  var expiryWarnings = [];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var warn30 = new Date(today); warn30.setDate(warn30.getDate()+30);
+  var docLabels = { rcExpiry:"RC", insuranceExpiry:"Insurance", pucExpiry:"PUC", fitnessExpiry:"Fitness Cert" };
+  allCars.forEach(function(car){
+    Object.keys(docLabels).forEach(function(key){
+      var val = car[key];
+      if(!val) return;
+      var exp = new Date(val); exp.setHours(0,0,0,0);
+      var diff = Math.round((exp-today)/(1000*60*60*24));
+      if(diff <= 30){
+        expiryWarnings.push({ car: car.name, doc: docLabels[key], diff: diff, exp: exp.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) });
+      }
+    });
+  });
+  expiryWarnings.sort(function(a,b){ return a.diff-b.diff; });
+  var expiryHtml = "";
+  if(expiryWarnings.length){
+    expiryHtml = '<div style="margin-bottom:16px">' +
+      expiryWarnings.map(function(w){
+        var expired = w.diff < 0;
+        var bg = expired ? "#fef2f2" : "#fff8d0";
+        var border = expired ? "#fca5a5" : "#f5c518";
+        var color  = expired ? "#c0392b" : "#a16207";
+        var icon   = expired ? "🚨" : (w.diff<=7?"⚠️":"📋");
+        var msg    = expired ? "EXPIRED "+Math.abs(w.diff)+" day"+(Math.abs(w.diff)!==1?"s":"")+" ago"
+                             : (w.diff===0?"Expires TODAY":"Expires in "+w.diff+" day"+(w.diff!==1?"s":""));
+        return '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:.83rem">' +
+          '<span style="font-size:1.2rem">'+icon+'</span>' +
+          '<div style="flex:1"><strong style="color:'+color+'">'+w.car+' — '+w.doc+'</strong> <span style="color:'+color+'">'+msg+'</span></div>' +
+          '<div style="font-size:.75rem;color:var(--ts)">'+w.exp+'</div>' +
+        '</div>';
+      }).join("") +
+    '</div>';
+  }
+
   // ── Revenue breakdown ──────────────────────────────────────────────────────
   var todayStr  = new Date().toISOString().slice(0,10);
   var monthStr  = new Date().toISOString().slice(0,7);
@@ -1380,6 +1445,7 @@ async function renderDashboard(isLocal, c){
     dutyHtml +
     '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">📊 Overview</div>' +
     '<div class="stat-grid">' + statHtml + '</div>' +
+    expiryHtml +
     (currentRole !== "fleet" ? revHtml : "") +
     carsOutHtml +
     scheduleHtml;
@@ -1542,6 +1608,7 @@ async function renderSchedule(isLocal, c){
       allBookings = bookings;
       cars = await adminFetch("/admin/fleet");
       allCars = cars;
+      window._allCarsCache = cars;
     } catch(e){ isLocal = true; }
   }
   if(isLocal){
@@ -2423,6 +2490,11 @@ function openAddCarModal(){
   document.getElementById("cm-seats").value    = "5";
   document.getElementById("cm-price").value    = "";
   document.getElementById("cm-pricing-preview").style.display = "none";
+  document.getElementById("cm-car-number").value      = "";
+  document.getElementById("cm-rc-expiry").value       = "";
+  document.getElementById("cm-insurance-expiry").value= "";
+  document.getElementById("cm-puc-expiry").value      = "";
+  document.getElementById("cm-fitness-expiry").value  = "";
   resetCarPhotoSections();
   _carFeaturesSelected = FEATURES_BY_CAT["Hatchback"].slice();
   renderFeatureChips();
@@ -2466,6 +2538,11 @@ function openEditCarModal(car){
   document.getElementById("cm-fuel").value     = car.fuel || "Petrol";
   document.getElementById("cm-seats").value    = car.seats || 5;
   document.getElementById("cm-price").value    = car.pricePerDay || "";
+  document.getElementById("cm-car-number").value       = car.carNumber || "";
+  document.getElementById("cm-rc-expiry").value        = car.rcExpiry || "";
+  document.getElementById("cm-insurance-expiry").value = car.insuranceExpiry || "";
+  document.getElementById("cm-puc-expiry").value       = car.pucExpiry || "";
+  document.getElementById("cm-fitness-expiry").value   = car.fitnessExpiry || "";
   resetCarPhotoSections();
   _carFeaturesSelected = (car.features && car.features.length) ? car.features.slice() : (FEATURES_BY_CAT[car.category] || FEATURES_COMMON).slice();
   renderFeatureChips();
@@ -3677,12 +3754,24 @@ async function submitCarForm(){
     if(id){
       carData = await adminFetch("/admin/fleet/"+id, {
         method:"PUT", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price, features:_carFeaturesSelected })
+        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price, features:_carFeaturesSelected,
+          carNumber: document.getElementById("cm-car-number").value.trim().toUpperCase() || null,
+          rcExpiry:        document.getElementById("cm-rc-expiry").value || null,
+          insuranceExpiry: document.getElementById("cm-insurance-expiry").value || null,
+          pucExpiry:       document.getElementById("cm-puc-expiry").value || null,
+          fitnessExpiry:   document.getElementById("cm-fitness-expiry").value || null,
+        })
       });
     } else {
       carData = await adminFetch("/admin/fleet", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price, features:_carFeaturesSelected })
+        body: JSON.stringify({ name, category:cat, transmission:tm, fuel, seats, pricePerDay:price, features:_carFeaturesSelected,
+          carNumber: document.getElementById("cm-car-number").value.trim().toUpperCase() || null,
+          rcExpiry:        document.getElementById("cm-rc-expiry").value || null,
+          insuranceExpiry: document.getElementById("cm-insurance-expiry").value || null,
+          pucExpiry:       document.getElementById("cm-puc-expiry").value || null,
+          fitnessExpiry:   document.getElementById("cm-fitness-expiry").value || null,
+        })
       });
     }
     var carId = carData._id || carData.id;

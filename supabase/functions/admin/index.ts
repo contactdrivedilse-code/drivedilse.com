@@ -60,6 +60,11 @@ function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = 
     exteriorPhotos: (c.exterior_photos as string[] | null) || [],
     interiorPhotos: (c.interior_photos as string[] | null) || [],
     pauses: pauses.map((p) => ({ _id: p.id, from: p.from_date, to: p.to_date, note: p.note })),
+    carNumber:       c.car_number       ?? null,
+    rcExpiry:        c.rc_expiry        ?? null,
+    insuranceExpiry: c.insurance_expiry ?? null,
+    pucExpiry:       c.puc_expiry       ?? null,
+    fitnessExpiry:   c.fitness_expiry   ?? null,
   };
 }
 
@@ -850,13 +855,18 @@ Deno.serve(async (req) => {
 
     // POST /fleet — create new car
     if (req.method === "POST" && path === "/fleet") {
-      const { name, category, transmission, fuel, seats, pricePerDay, features } = await req.json();
+      const body = await req.json();
+      const { name, category, transmission, fuel, seats, pricePerDay, features,
+              carNumber, rcExpiry, insuranceExpiry, pucExpiry, fitnessExpiry } = body;
       if (!name || !pricePerDay) return json({ error: "name and pricePerDay required" }, 400);
       const { data, error } = await sb.from("cars").insert({
         id: crypto.randomUUID(), name, category: category || "Hatchback",
         transmission: transmission || "Manual", fuel: fuel || "Petrol",
         seats: seats || 5, price_per_day: pricePerDay, features: features ?? [],
         deposit: 0, active: true, image_url: "", images: [],
+        car_number: carNumber || null, rc_expiry: rcExpiry || null,
+        insurance_expiry: insuranceExpiry || null, puc_expiry: pucExpiry || null,
+        fitness_expiry: fitnessExpiry || null,
       }).select("*").maybeSingle();
       if (error) throw error;
       return json(mapCar(data as Record<string, unknown>), 201);
@@ -953,13 +963,18 @@ Deno.serve(async (req) => {
     if (req.method === "PUT" && carEditMatch) {
       const body = await req.json();
       const updates: Record<string, unknown> = {};
-      if (body.name         !== undefined) updates.name          = body.name;
-      if (body.category     !== undefined) updates.category      = body.category;
-      if (body.transmission !== undefined) updates.transmission  = body.transmission;
-      if (body.fuel         !== undefined) updates.fuel          = body.fuel;
-      if (body.seats        !== undefined) updates.seats         = body.seats;
-      if (body.pricePerDay  !== undefined) updates.price_per_day = body.pricePerDay;
-      if (body.features     !== undefined) updates.features      = body.features;
+      if (body.name            !== undefined) updates.name            = body.name;
+      if (body.category        !== undefined) updates.category        = body.category;
+      if (body.transmission    !== undefined) updates.transmission    = body.transmission;
+      if (body.fuel            !== undefined) updates.fuel            = body.fuel;
+      if (body.seats           !== undefined) updates.seats           = body.seats;
+      if (body.pricePerDay     !== undefined) updates.price_per_day   = body.pricePerDay;
+      if (body.features        !== undefined) updates.features        = body.features;
+      if (body.carNumber       !== undefined) updates.car_number       = body.carNumber || null;
+      if (body.rcExpiry        !== undefined) updates.rc_expiry        = body.rcExpiry || null;
+      if (body.insuranceExpiry !== undefined) updates.insurance_expiry = body.insuranceExpiry || null;
+      if (body.pucExpiry       !== undefined) updates.puc_expiry       = body.pucExpiry || null;
+      if (body.fitnessExpiry   !== undefined) updates.fitness_expiry   = body.fitnessExpiry || null;
       const { data, error } = await sb.from("cars").update(updates).eq("id", carEditMatch[1]).select("*").maybeSingle();
       if (error) throw error;
       if (!data) return json({ error: "Car not found" }, 404);

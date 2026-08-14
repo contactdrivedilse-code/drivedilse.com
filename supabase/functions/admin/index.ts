@@ -423,6 +423,10 @@ Deno.serve(async (req) => {
       for (const [key, col] of Object.entries(allowed)) {
         if (key in body) upd[col] = body[key] === "" ? null : body[key];
       }
+      if ("status" in upd) {
+        const ALLOWED_STATUSES = new Set(["pending", "pending_kyc", "confirmed", "active", "completed", "cancelled", "no_show"]);
+        if (!ALLOWED_STATUSES.has(upd.status as string)) return json({ error: "Invalid status value" }, 400);
+      }
       if (Object.keys(upd).length === 1) return json({ error: "No valid fields to update" }, 400);
       const { data, error } = await sb.from("bookings")
         .update(upd).eq("id", bkEditMatch[1]).select("*").maybeSingle();
@@ -435,6 +439,8 @@ Deno.serve(async (req) => {
     const bkStatusMatch = path.match(/^\/bookings\/([^/]+)\/status$/);
     if (req.method === "PUT" && bkStatusMatch) {
       const { status } = await req.json();
+      const ALLOWED_STATUSES = new Set(["pending", "pending_kyc", "confirmed", "active", "completed", "cancelled", "no_show"]);
+      if (!ALLOWED_STATUSES.has(status)) return json({ error: "Invalid status value" }, 400);
       const updates: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
       if (status === "confirmed") {
         const { data: cur } = await sb.from("bookings").select("checkin_otp").eq("id", bkStatusMatch[1]).maybeSingle();

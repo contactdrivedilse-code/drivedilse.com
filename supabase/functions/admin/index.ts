@@ -352,17 +352,6 @@ Deno.serve(async (req) => {
       return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>) });
     }
 
-    // DELETE /clear-phone/:phone — temp endpoint to clear test data (admin only)
-    const clearPhoneMatch = path.match(/^\/clear-phone\/([^/]+)$/);
-    if (req.method === "DELETE" && clearPhoneMatch && isAdmin) {
-      const phone = clearPhoneMatch[1];
-      const { data: prof } = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
-      if (prof) {
-        await sb.from("bookings").delete().eq("phone", phone);
-        await sb.from("profiles").delete().eq("phone", phone);
-      }
-      return json({ success: true, message: `Cleared data for ${phone}` });
-    }
 
     // GET /pending-selfies — list bookings awaiting selfie verification
     if (req.method === "GET" && path === "/pending-selfies") {

@@ -222,11 +222,25 @@ Deno.serve(async (req) => {
       if (!rating || rating < 1 || rating > 5) return json({ error: "Rating must be 1–5" }, 400);
       const comment = String(body.comment ?? "").trim();
       if (!comment) return json({ error: "Comment required" }, 400);
+      if (comment.length > 500) return json({ error: "Comment too long (max 500 characters)" }, 400);
+      const reviewerName = String(body.reviewerName ?? "Anonymous").trim().slice(0, 50);
+
+      // Rate limit: 1 review per IP per employee per 24 hours
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count: recentCount } = await sb.from("employee_reviews")
+        .select("*", { count: "exact", head: true })
+        .eq("employee_id", empReviewsMatch[1])
+        .eq("reviewer_ip", ip)
+        .gte("created_at", since);
+      if ((recentCount ?? 0) >= 1) return json({ error: "You have already submitted a review for this employee today." }, 429);
+
       const { data, error } = await sb.from("employee_reviews").insert({
         employee_id: empReviewsMatch[1],
         rating,
         comment,
-        reviewer_name: String(body.reviewerName ?? "Anonymous").trim().slice(0, 50),
+        reviewer_name: reviewerName,
+        reviewer_ip: ip,
       }).select("*").single();
       if (error) throw error;
       return json(data, 201);

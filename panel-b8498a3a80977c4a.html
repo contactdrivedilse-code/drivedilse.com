@@ -1310,7 +1310,6 @@ async function renderDashboard(isLocal, c){
   var allCars = isLocal ? DEMO_FLEET : (window._allCarsCache || []);
   var expiryWarnings = [];
   var today = new Date(); today.setHours(0,0,0,0);
-  var warn30 = new Date(today); warn30.setDate(warn30.getDate()+30);
   var docLabels = { rcExpiry:"RC", insuranceExpiry:"Insurance", pucExpiry:"PUC", fitnessExpiry:"Fitness Cert" };
   allCars.forEach(function(car){
     Object.keys(docLabels).forEach(function(key){
@@ -1318,7 +1317,7 @@ async function renderDashboard(isLocal, c){
       if(!val) return;
       var exp = new Date(val); exp.setHours(0,0,0,0);
       var diff = Math.round((exp-today)/(1000*60*60*24));
-      if(diff <= 30){
+      if(diff <= 10){
         expiryWarnings.push({ car: car.name, doc: docLabels[key], diff: diff, exp: exp.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) });
       }
     });
@@ -1329,10 +1328,11 @@ async function renderDashboard(isLocal, c){
     expiryHtml = '<div style="margin-bottom:16px">' +
       expiryWarnings.map(function(w){
         var expired = w.diff < 0;
-        var bg = expired ? "#fef2f2" : "#fff8d0";
-        var border = expired ? "#fca5a5" : "#f5c518";
-        var color  = expired ? "#c0392b" : "#a16207";
-        var icon   = expired ? "🚨" : (w.diff<=7?"⚠️":"📋");
+        var urgent  = !expired && w.diff <= 3;
+        var bg     = expired ? "#fef2f2" : (urgent ? "#fff0e6" : "#fff8d0");
+        var border = expired ? "#fca5a5" : (urgent ? "#fb923c" : "#f5c518");
+        var color  = expired ? "#c0392b" : (urgent ? "#c2410c" : "#a16207");
+        var icon   = expired ? "🚨" : (urgent ? "🔴" : "⚠️");
         var msg    = expired ? "EXPIRED "+Math.abs(w.diff)+" day"+(Math.abs(w.diff)!==1?"s":"")+" ago"
                              : (w.diff===0?"Expires TODAY":"Expires in "+w.diff+" day"+(w.diff!==1?"s":""));
         return '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:.83rem">' +

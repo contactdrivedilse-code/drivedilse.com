@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
       if (error || !data) return json({ error: "Employee not found or inactive" }, 404);
       const e = data as Record<string, unknown>;
       return json({
-        id: e.id, employeeCode: e.employee_code, name: e.name, role: e.role,
+        employeeCode: e.employee_code, name: e.name, role: e.role,
         department: e.department, photoUrl: e.photo_url, joinedDate: e.joined_date,
         active: e.active, company: "DriveDilSe",
       });

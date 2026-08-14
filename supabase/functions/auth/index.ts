@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
         return json({ error: "Invalid or expired OTP" }, 400);
       }
 
-      // Successful verify â€” clear OTP state and reset attempt counter.
+      // Successful verify â€" clear OTP state and reset attempt counter.
       const updates: Record<string, unknown> = {
         otp: "", otp_expiry: null, phone_verified: true,
         otp_attempts: 0, otp_attempts_locked_until: null,
@@ -231,21 +231,11 @@ Deno.serve(async (req) => {
       return json(await signProfileKyc(mapProfile(data as Record<string, unknown>)));
     }
 
-    // POST /profile â€” KYC with file uploads
+    // POST /profile - KYC with file uploads (JWT required)
     if (req.method === "POST" && path === "/profile") {
-      let profileId: string | null = null;
       const jwtUser = await getUser(req);
-      if (jwtUser) {
-        profileId = jwtUser.id;
-      } else {
-        const tempForm = await req.clone().formData().catch(() => null);
-        const phone = tempForm?.get("phone") as string | null;
-        if (phone) {
-          const { data: byPhone } = await sb.from("profiles").select("id").eq("phone", phone).maybeSingle();
-          if (byPhone) profileId = (byPhone as Record<string, string>).id;
-        }
-      }
-      if (!profileId) return json({ error: "Unauthorized" }, 401);
+      if (!jwtUser) return json({ error: "Unauthorized" }, 401);
+      const profileId: string = jwtUser.id;
 
       const { data: existing } = await sb.from("profiles").select("*").eq("id", profileId).maybeSingle();
       if (!existing) return json({ error: "User not found" }, 404);

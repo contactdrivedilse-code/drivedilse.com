@@ -4091,7 +4091,7 @@ function filterCustomers(){
   if(tbody) tbody.innerHTML = filtered.map(custRow).join("");
 }
 
-function lookupByPhone(){
+async function lookupByPhone(){
   var phone = (document.getElementById("phone-lookup-inp")||{}).value||"";
   phone = phone.replace(/\D/g,"").trim();
   var res = document.getElementById("phone-lookup-result");

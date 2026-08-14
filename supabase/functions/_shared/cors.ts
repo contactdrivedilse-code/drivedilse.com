@@ -7,10 +7,12 @@ export const corsHeaders = {
   "Vary": "Origin",
 };
 
-export function json(data: unknown, status = 200): Response {
+export function json(data: unknown, status = 200, req?: Request): Response {
+  const origin = req?.headers.get("origin") ?? "";
+  const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : "https://drivedilse.com";
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Access-Control-Allow-Origin": allowOrigin, "Content-Type": "application/json" },
   });
 }
 

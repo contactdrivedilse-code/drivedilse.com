@@ -10,7 +10,11 @@ const sb = createClient(
 );
 
 function makeBookingId(): string { return "DS" + Date.now().toString(36).toUpperCase(); }
-function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
+function generateOtp(): string {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(100000 + (buf[0] % 900000));
+}
 
 // Refundable security deposit — fixed platform-wide amount, decided
 // server-side only. Never trust a client-supplied deposit amount; only

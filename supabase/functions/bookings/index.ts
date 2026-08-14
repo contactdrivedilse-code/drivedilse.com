@@ -22,7 +22,11 @@ async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<str
 }
 
 const CHECKIN_WINDOW_MINS = 30;
-function generateOtp(): string { return String(Math.floor(100000 + Math.random() * 900000)); }
+function generateOtp(): string {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(100000 + (buf[0] % 900000));
+}
 const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
 
 // Marginal bracket rates (â‚¹/hr, excl GST) â€" mirrors frontend calcDynamicPrice

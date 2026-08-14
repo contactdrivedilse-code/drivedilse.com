@@ -38,7 +38,9 @@ async function signProfileKyc(p: Record<string, unknown>): Promise<Record<string
 }
 
 function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(100000 + (buf[0] % 900000));
 }
 
 async function sendEmailOtp(email: string, otp: string) {

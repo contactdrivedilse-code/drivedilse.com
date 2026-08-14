@@ -311,6 +311,14 @@ Deno.serve(async (req) => {
       if (!front || !rear || !passengerSide || !driverSide)
         return json({ error: "Missing photo URLs" }, 400);
 
+      // Only accept URLs from our own Supabase storage — reject any external
+      // host that a customer could supply to bypass the real photo requirement.
+      const supabaseHost = new URL(Deno.env.get("SUPABASE_URL")!).host;
+      const allowedPrefix = `https://${supabaseHost}/storage/`;
+      const photoUrls = [front, rear, passengerSide, driverSide];
+      if (photoUrls.some((u) => !u.startsWith(allowedPrefix)))
+        return json({ error: "Invalid photo URL — must be uploaded to DriveDilSe storage" }, 400);
+
       const otp = (b.checkin_otp as string) || generateOtp();
       await sb.from("bookings").update({
         checkin_front: front, checkin_rear: rear,

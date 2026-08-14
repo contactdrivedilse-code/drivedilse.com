@@ -1278,12 +1278,8 @@ function csTick(){
   document.getElementById('csSec').textContent  = pad(s);
 }
 (function(){
-  var alreadyUnlocked = false;
-  try{ alreadyUnlocked = localStorage.getItem('dds_preview') === '1'; }catch(e){}
-  if(alreadyUnlocked){ csUnlock(false); return; }
-  document.documentElement.style.overflow = 'hidden';
-  csTick();
-  csTimer = setInterval(csTick, 1000);
+  // Site is live — always unlock immediately, no countdown or celebration overlay.
+  csUnlock(false);
 })();
 </script>
 <!-- ======== HOME ======== -->

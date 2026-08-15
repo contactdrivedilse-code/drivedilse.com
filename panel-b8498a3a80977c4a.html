@@ -1352,7 +1352,7 @@ async function renderDashboard(isLocal, c){
   }
 
   // ── Document expiry warnings ───────────────────────────────────────────────
-  var allCars = isLocal ? DEMO_FLEET : (window._allCarsCache || []);
+  allCars = isLocal ? DEMO_FLEET : (allCars.length ? allCars : (window._allCarsCache || []));
   var expiryWarnings = [];
   var today = new Date(); today.setHours(0,0,0,0);
   var docLabels = { rcExpiry:"RC", insuranceExpiry:"Insurance", pucExpiry:"PUC", fitnessExpiry:"Fitness Cert" };
@@ -1668,8 +1668,8 @@ async function renderSchedule(isLocal, c){
   function ensureDay(k){ if(!dayMap[k]) dayMap[k] = {pickup:0, drop:0, pause:0}; return dayMap[k]; }
   bookings.forEach(function(b){
     if(b.status === "cancelled" || b.status === "no_show") return;
-    if(b.pickupDate){ ensureDay(fmtYmd(new Date(b.pickupDate))).pickup++; }
-    if(b.dropDate){ ensureDay(fmtYmd(new Date(b.dropDate))).drop++; }
+    if(b.pickup&&b.pickup.date){ ensureDay(fmtYmd(new Date(b.pickup.date))).pickup++; }
+    if(b.drop&&b.drop.date){ ensureDay(fmtYmd(new Date(b.drop.date))).drop++; }
   });
   cars.forEach(function(car){
     (car.pauses||[]).forEach(function(p){
@@ -1714,11 +1714,11 @@ async function renderSchedule(isLocal, c){
   var selItems = [];
   bookings.forEach(function(b){
     if(b.status === "cancelled" || b.status === "no_show") return;
-    if(b.pickupDate && fmtYmd(new Date(b.pickupDate)) === scheduleSelDate){
-      selItems.push({id:b._id||b.id, type:"pickup", time:b.pickupDate, carName:b.carName, customer:b.customer, phone:b.phone, location:b.pickupLocation, source:b.source, done:b.pickupDone});
+    if(b.pickup&&b.pickup.date && fmtYmd(new Date(b.pickup.date)) === scheduleSelDate){
+      selItems.push({id:b._id||b.id, type:"pickup", time:b.pickup.date, carName:b.carName, customer:b.customer, phone:b.phone, location:b.pickup.location, source:b.source, done:b.pickupDone});
     }
-    if(b.dropDate && fmtYmd(new Date(b.dropDate)) === scheduleSelDate){
-      selItems.push({id:b._id||b.id, type:"drop", time:b.dropDate, carName:b.carName, customer:b.customer, phone:b.phone, location:b.dropLocation, source:b.source, done:b.dropDone});
+    if(b.drop&&b.drop.date && fmtYmd(new Date(b.drop.date)) === scheduleSelDate){
+      selItems.push({id:b._id||b.id, type:"drop", time:b.drop.date, carName:b.carName, customer:b.customer, phone:b.phone, location:b.drop.location, source:b.source, done:b.dropDone});
     }
   });
   selItems.sort(function(a,b){ return new Date(a.time) - new Date(b.time); });
@@ -2672,7 +2672,7 @@ function openEditCarModal(car){
   document.getElementById("car-modal-title").textContent = "Edit Car — " + car.name;
   document.getElementById("cm-id").value       = car._id || car.id || "";
   document.getElementById("cm-name").value     = car.name || "";
-  document.getElementById("cm-cat").value      = car.category || "Hatchback";
+  document.getElementById("cm-cat").value      = car.category || "Compact Hatchback";
   document.getElementById("cm-tm").value       = car.transmission || "Manual";
   document.getElementById("cm-fuel").value     = car.fuel || "Petrol";
   document.getElementById("cm-seats").value    = car.seats || 5;
@@ -2828,13 +2828,17 @@ async function renderPricing(isLocal, c){
 
 async function applyPricingSuggestion(id){
   if(!confirm("Apply this suggested price to all active cars in this category?")) return;
-  await adminFetch("/admin/pricing/suggestions/"+id+"/apply", { method: "POST" });
-  navTo("pricing", document.querySelector('[data-tab="pricing"]'));
+  try {
+    await adminFetch("/admin/pricing/suggestions/"+id+"/apply", { method: "POST" });
+    navTo("pricing", document.querySelector('[data-tab="pricing"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
 async function dismissPricingSuggestion(id){
-  await adminFetch("/admin/pricing/suggestions/"+id+"/dismiss", { method: "POST" });
-  navTo("pricing", document.querySelector('[data-tab="pricing"]'));
+  try {
+    await adminFetch("/admin/pricing/suggestions/"+id+"/dismiss", { method: "POST" });
+    navTo("pricing", document.querySelector('[data-tab="pricing"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
 async function renderCoupons(isLocal, c){
@@ -3206,7 +3210,7 @@ async function submitExtension(id){
     if(idx>=0){ allBookings[idx].drop = { date: newDrop.toISOString(), location: b.drop&&b.drop.location }; allBookings[idx].days = newDays; allBookings[idx].total = newTotal; }
     if(window._bkDetailsMap[id]){ window._bkDetailsMap[id].drop = { date: newDrop.toISOString(), location: b.drop&&b.drop.location }; window._bkDetailsMap[id].days = newDays; window._bkDetailsMap[id].total = newTotal; }
     toast("Booking extended by "+extraDays+" day"+(extraDays!==1?"s":"")+".", "success");
-    openBkDetails(id);
+    openBkDetailsModal(id);
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
@@ -3234,8 +3238,7 @@ async function markPayment(id, partial){
     if(window._bkDetailsMap[id]){ window._bkDetailsMap[id].amountCollected = newCollected; window._bkDetailsMap[id].paymentMode = mode; }
     var fullyPaid = newCollected >= total;
     toast(fullyPaid ? "✅ Payment recorded — fully paid" : "✔ Partial payment recorded ("+inr(newCollected)+" of "+inr(total)+")", "success");
-    // Refresh the detail view
-    openBkDetails(id);
+    openBkDetailsModal(id);
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
 
@@ -4294,8 +4297,8 @@ async function lookupByPhone(){
   var bkRows = bks.slice().sort(function(a,b){ return new Date(b.createdAt)-new Date(a.createdAt); }).map(function(b){
     var statusColors = {completed:"#1a7a3c",active:"#2563eb",confirmed:"#d97706",cancelled:"#9ca3af",pending:"#d97706",pending_kyc:"#d97706"};
     var sc = statusColors[b.status]||"#555";
-    var from = b.startDate ? new Date(b.startDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short"}) : "—";
-    var to   = b.endDate   ? new Date(b.endDate).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+    var from = (b.pickup&&b.pickup.date) ? new Date(b.pickup.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short"}) : "—";
+    var to   = (b.drop&&b.drop.date)    ? new Date(b.drop.date).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
     var amt  = (b.payment&&b.payment.amount)||b.totalAmount||0;
     var dmg  = b.checkout&&b.checkout.damagePhotos&&b.checkout.damagePhotos.length ? ' <span style="font-size:.72rem;color:#c0392b;font-weight:700">🚨 damage</span>' : '';
     var kmDist = (b.checkout&&b.checkout.kmReading&&b.checkin&&b.checkin.kmReading)

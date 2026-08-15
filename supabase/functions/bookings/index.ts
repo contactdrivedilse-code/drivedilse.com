@@ -40,8 +40,11 @@ const CAT_BRACKETS: Record<string, number[]> = {
 const BRACKET_CUTS = [0, 12, 24, 168, Infinity];
 
 function getCatBrackets(category: string, pricePerDay: number): number[] {
-  if (category === "MPV") return CAT_BRACKETS.MPV;
-  if (category === "SUV" || category === "Compact SUV") return CAT_BRACKETS.SUV;
+  const cat = (category || "").toLowerCase();
+  if (cat === "mpv") return CAT_BRACKETS.MPV;
+  if (cat === "compact suv" || cat === "suv") return CAT_BRACKETS.SUV;
+  if (cat === "premium hatchback" || cat === "sedan") return CAT_BRACKETS.premium;
+  if (cat === "compact hatchback") return CAT_BRACKETS.compact;
   return pricePerDay < 1580 ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
 }
 
@@ -55,7 +58,7 @@ function getMarginalBase(rates: number[], fromHr: number, toHr: number): number 
   return cost;
 }
 
-function calcPrice(pricePerDay: number, pickup: Date, drop: Date, category = "Hatchback") {
+function calcPrice(pricePerDay: number, pickup: Date, drop: Date, category = "") {
   const hours = (drop.getTime() - pickup.getTime()) / 3600000;
   const rates = getCatBrackets(category, pricePerDay);
   const base  = Math.round(getMarginalBase(rates, 0, hours));
@@ -764,7 +767,7 @@ Deno.serve(async (req) => {
       const id = checkoutVerifyMatch[1];
       const body = await req.json() as Record<string, unknown>;
       const { otp, kmReading, fuelPhotoB64, fuelPhotoMime } = body as { otp: string; kmReading?: string; fuelPhotoB64?: string; fuelPhotoMime?: string };
-      const { data: booking } = await sb.from("bookings").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const { data: booking } = await sb.from("bookings").select("*, cars(category)").eq("id", id).eq("user_id", user.id).maybeSingle();
       const b = booking as Record<string, unknown> | null;
       if (!b) return json({ error: "Booking not found" }, 404);
       if (b.status !== "active") return json({ error: "Booking is not active" }, 400);
@@ -773,8 +776,9 @@ Deno.serve(async (req) => {
 
       const checkedOutAt = new Date().toISOString();
       const availableAt  = new Date(Date.now() + 4 * 3600000).toISOString();
+      const carCategory  = ((b.cars as Record<string, unknown>)?.category as string) || "";
 
-      const { base, gst, days } = calcPrice(b.price_per_day as number, new Date(b.pickup_date as string), new Date(b.drop_date as string), b.car_category as string || "Hatchback");
+      const { base, gst, days } = calcPrice(b.price_per_day as number, new Date(b.pickup_date as string), new Date(b.drop_date as string), carCategory);
 
       const lateMs    = Date.now() - new Date(b.drop_date as string).getTime();
       const lateHours = lateMs > 0 ? Math.ceil(lateMs / 3600000) : 0;

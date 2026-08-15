@@ -299,7 +299,7 @@ Deno.serve(async (req) => {
 
       await sb.from("profiles").update(updates).eq("id", profileId);
       const { data: updated } = await sb.from("profiles").select("*").eq("id", profileId).maybeSingle();
-      const freshToken = jwtUser ? null : await signJwt({ id: profileId, phone: (existing as Record<string,unknown>).phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
+      const freshToken = await signJwt({ id: profileId, phone: (existing as Record<string,unknown>).phone as string }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
       return json({ success: true, user: await signProfileKyc(mapProfile(updated as Record<string, unknown>)), ...(freshToken ? { token: freshToken } : {}) });
     }
 

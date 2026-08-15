@@ -2355,28 +2355,23 @@ var DOC_TYPES = [
 ];
 
 function openCarDocsModal(carId, carName) {
-  try {
-    carDocsCarId = carId;
-    var overlay = document.getElementById("car-docs-modal");
-    if (!overlay) { alert("car-docs-modal element missing"); return; }
-    document.getElementById("cdm-car-name").textContent = carName;
-    overlay.classList.add("open");
-    var car = (allCars || []).find(function(c){ return (c._id || c.id) === carId; }) || null;
-    var body = document.getElementById("cdm-body");
-    if (!body) { alert("cdm-body element missing"); return; }
-    body.innerHTML = DOC_TYPES.map(function(d) {
-      var fieldMap = { rc:"rcDocUrl", insurance:"insuranceDocUrl", puc:"pucDocUrl", fitness:"fitnessDocUrl" };
-      var hasDoc = car && car[fieldMap[d.type]];
-      return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:14px">' +
-        '<div style="font-weight:700;font-size:.88rem;margin-bottom:8px">' + d.label + (hasDoc ? ' <span style="color:#16a34a;font-size:.75rem">&#10003; Uploaded</span>' : '') + '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center">' +
-          '<input type="file" id="doc-file-' + d.type + '" accept=".pdf,.jpg,.jpeg,.png,.webp" style="flex:1;font-size:.8rem">' +
-          '<button class="btn btn-y btn-sm" onclick="uploadCarDoc(\'' + carId + '\',\'' + d.type + '\')">Upload</button>' +
-          (hasDoc ? '<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteCarDoc(\'' + carId + '\',\'' + d.type + '\',\'' + carName.replace(/'/g,"\\'") + '\')">Remove</button>' : '') +
-        '</div>' +
-      '</div>';
-    }).join("");
-  } catch(err) { alert("openCarDocsModal error: " + err.message); }
+  carDocsCarId = carId;
+  document.getElementById("cdm-car-name").textContent = carName;
+  document.getElementById("car-docs-modal").classList.add("open");
+  var car = (allCars || []).find(function(c){ return (c._id || c.id) === carId; }) || null;
+  var body = document.getElementById("cdm-body");
+  body.innerHTML = DOC_TYPES.map(function(d) {
+    var fieldMap = { rc:"rcDocUrl", insurance:"insuranceDocUrl", puc:"pucDocUrl", fitness:"fitnessDocUrl" };
+    var hasDoc = car && car[fieldMap[d.type]];
+    return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:14px">' +
+      '<div style="font-weight:700;font-size:.88rem;margin-bottom:8px">' + d.label + (hasDoc ? ' <span style="color:#16a34a;font-size:.75rem">&#10003; Uploaded</span>' : '') + '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center">' +
+        '<input type="file" id="doc-file-' + d.type + '" accept=".pdf,.jpg,.jpeg,.png,.webp" style="flex:1;font-size:.8rem">' +
+        '<button class="btn btn-y btn-sm" onclick="uploadCarDoc(\'' + carId + '\',\'' + d.type + '\')">Upload</button>' +
+        (hasDoc ? '<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteCarDoc(\'' + carId + '\',\'' + d.type + '\',\'' + carName.replace(/'/g,"\\'") + '\')">Remove</button>' : '') +
+      '</div>' +
+    '</div>';
+  }).join("");
 }
 
 function closeCarDocsModal() { document.getElementById("car-docs-modal").classList.remove("open"); }
@@ -2427,17 +2422,13 @@ async function deleteCarDoc(carId, docType, carName) {
 var currentDocsLink = "";
 
 function openCarShareModal(carId, carName) {
-  try {
-    var overlay = document.getElementById("car-share-modal");
-    if (!overlay) { alert("car-share-modal element missing"); return; }
-    var link = "https://drivedilse.com/car-docs.html?id=" + carId;
-    currentDocsLink = link;
-    document.getElementById("csm-car-name").textContent = carName;
-    document.getElementById("csm-link").textContent = link;
-    var qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(link);
-    document.getElementById("csm-qr").src = qrUrl;
-    overlay.classList.add("open");
-  } catch(err) { alert("openCarShareModal error: " + err.message); }
+  var link = "https://drivedilse.com/car-docs.html?id=" + carId;
+  currentDocsLink = link;
+  document.getElementById("csm-car-name").textContent = carName;
+  document.getElementById("csm-link").textContent = link;
+  var qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(link);
+  document.getElementById("csm-qr").src = qrUrl;
+  document.getElementById("car-share-modal").classList.add("open");
 }
 
 function closeCarShareModal() { document.getElementById("car-share-modal").classList.remove("open"); }
@@ -2644,7 +2635,7 @@ function openAddCarModal(){
   document.getElementById("cm-puc-expiry").value      = "";
   document.getElementById("cm-fitness-expiry").value  = "";
   resetCarPhotoSections();
-  _carFeaturesSelected = FEATURES_BY_CAT["Hatchback"].slice();
+  _carFeaturesSelected = FEATURES_BY_CAT["Compact Hatchback"].slice();
   renderFeatureChips();
   document.getElementById("car-modal").classList.add("open");
 }

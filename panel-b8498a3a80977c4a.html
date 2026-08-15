@@ -2295,8 +2295,8 @@ async function renderFleet(isLocal, c){
         (isFleetRole ? '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick="openManualBookingModal(\''+car._id+'\',\''+car.name+'\')">📋 Book Elsewhere (Zoomcar etc.)</button>' : '') +
         '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick=\'openEditCarModal('+JSON.stringify(car)+')\'>✏️ Edit / Photos</button>' +
         '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-y btn-sm" style="flex:1" onclick="openCarDocsModal(\''+car._id+'\',\''+car.name+'\')">📄 Docs</button>' +
-          '<button class="btn btn-y btn-sm" style="flex:1" onclick="openCarShareModal(\''+car._id+'\',\''+car.name+'\')">🔗 Share / QR</button>' +
+          '<button class="btn btn-y btn-sm" style="flex:1" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="openCarDocsModal(this.dataset.carid,this.dataset.carname)">📄 Docs</button>' +
+          '<button class="btn btn-y btn-sm" style="flex:1" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="openCarShareModal(this.dataset.carid,this.dataset.carname)">🔗 Share / QR</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -2354,23 +2354,12 @@ var DOC_TYPES = [
   { type:"fitness",   label:"Fitness Certificate" },
 ];
 
-async function openCarDocsModal(carId, carName) {
+function openCarDocsModal(carId, carName) {
   carDocsCarId = carId;
   document.getElementById("cdm-car-name").textContent = carName;
-  document.getElementById("cdm-body").innerHTML = "<div style='color:var(--ts);font-size:.85rem'>Loading…</div>";
   document.getElementById("car-docs-modal").classList.add("open");
 
-  // Refresh fleet list to get latest doc URLs
-  var car = null;
-  try {
-    invalidateCache("/admin/fleet");
-    var cars = await adminFetch("/admin/fleet");
-    allCars = cars;
-    car = (cars || []).find(function(c){ return c._id === carId || c.id === carId; }) || null;
-  } catch(e) {
-    car = (allCars || []).find(function(c){ return c._id === carId || c.id === carId; }) || null;
-  }
-
+  var car = (allCars || []).find(function(c){ return (c._id || c.id) === carId; }) || null;
   var body = document.getElementById("cdm-body");
   body.innerHTML = DOC_TYPES.map(function(d) {
     var fieldMap = { rc:"rcDocUrl", insurance:"insuranceDocUrl", puc:"pucDocUrl", fitness:"fitnessDocUrl" };
@@ -2396,12 +2385,20 @@ async function uploadCarDoc(carId, docType) {
   form.append("file", file);
   form.append("docType", docType);
   try {
-    await adminFetch("/admin/fleet/" + carId + "/upload-doc", { method:"POST", body:form });
+    var updated = await adminFetch("/admin/fleet/" + carId + "/upload-doc", { method:"POST", body:form });
     toast("Document uploaded.", "success");
-    invalidateCache("/admin/fleet");
-    // Re-open to refresh state
+    // Patch allCars locally so the modal shows the new doc as uploaded
+    if (updated && updated.url) {
+      var fmap = { rc:"rcDocUrl", insurance:"insuranceDocUrl", puc:"pucDocUrl", fitness:"fitnessDocUrl" };
+      allCars = (allCars || []).map(function(c){
+        if ((c._id||c.id) !== carId) return c;
+        var copy = Object.assign({}, c);
+        copy[fmap[updated.docType]] = updated.url;
+        return copy;
+      });
+    }
     var carName = document.getElementById("cdm-car-name").textContent;
-    await openCarDocsModal(carId, carName);
+    openCarDocsModal(carId, carName);
   } catch(e) { toast("Upload failed: " + e.message, "error"); }
 }
 
@@ -2410,8 +2407,15 @@ async function deleteCarDoc(carId, docType, carName) {
   try {
     await adminFetch("/admin/fleet/" + carId + "/delete-doc", { method:"DELETE", body:JSON.stringify({ docType:docType }), headers:{"Content-Type":"application/json"} });
     toast("Document removed.", "success");
-    invalidateCache("/admin/fleet");
-    await openCarDocsModal(carId, carName);
+    // Clear the field in allCars locally
+    var fieldMap2 = { rc:"rcDocUrl", insurance:"insuranceDocUrl", puc:"pucDocUrl", fitness:"fitnessDocUrl" };
+    allCars = (allCars || []).map(function(c){
+      if ((c._id||c.id) !== carId) return c;
+      var copy = Object.assign({}, c);
+      copy[fieldMap2[docType]] = null;
+      return copy;
+    });
+    openCarDocsModal(carId, carName);
   } catch(e) { toast("Failed: " + e.message, "error"); }
 }
 

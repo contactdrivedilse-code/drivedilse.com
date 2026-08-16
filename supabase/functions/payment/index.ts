@@ -2,6 +2,7 @@
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { sendBookingConfirmationEmail } from "../_shared/email.ts";
+import { checkRateLimit } from "../_shared/ratelimit.ts";
 // Zoho Books invoice generation removed
 
 const sb = createClient(
@@ -316,6 +317,10 @@ Deno.serve(async (req) => {
 
     // POST /guest-order
     if (req.method === "POST" && path === "/guest-order") {
+      // IP rate limit: 10 guest order attempts per IP per 10 minutes.
+      const grl = await checkRateLimit(sb, req, "payment-order", 10, 600);
+      if (!grl.allowed) return json({ error: "Too many requests. Please try again later." }, 429);
+
       const { phone, name, carId, pickupDate, dropDate, pickupLocation, dropLocation, deliveryCharge: gdc, couponCode, depositChoice, sessionId: gSessionId } = await req.json();
       if (!phone || !/^[6-9]\d{9}$/.test(phone))
         return json({ error: "Valid 10-digit Indian mobile number required" }, 400);
@@ -380,6 +385,10 @@ Deno.serve(async (req) => {
 
     // POST /order
     if (req.method === "POST" && path === "/order") {
+      // IP rate limit: 10 order attempts per IP per 10 minutes. Blocks bots creating fake orders.
+      const rl = await checkRateLimit(sb, req, "payment-order", 10, 600);
+      if (!rl.allowed) return json({ error: "Too many requests. Please try again later." }, 429);
+
       const user = await getUser(req);
       if (!user) return json({ error: "Unauthorized" }, 401);
 

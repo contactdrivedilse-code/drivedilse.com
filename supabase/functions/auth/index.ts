@@ -2,6 +2,7 @@
 import { json, preflight } from "../_shared/cors.ts";
 import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
 import { signStorageUrl } from "../_shared/storage.ts";
+import { checkRateLimit } from "../_shared/ratelimit.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -104,6 +105,10 @@ Deno.serve(async (req) => {
     // POST /send-otp
     // Rate limited: one OTP per 60 seconds per email address.
     if (req.method === "POST" && path === "/send-otp") {
+      // IP rate limit: 5 OTP requests per IP per 10 minutes. Blocks bots hammering the endpoint.
+      const rl = await checkRateLimit(sb, req, "otp", 5, 600);
+      if (!rl.allowed) return json({ error: "Too many requests. Please try again later." }, 429);
+
       const { phone, email } = await req.json();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
         return json({ error: "Invalid email address" }, 400);

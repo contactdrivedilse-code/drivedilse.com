@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Opening Document — DriveDilSe</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#161616}
+  .card{background:#fff;border-radius:16px;padding:48px 36px;text-align:center;max-width:400px;width:calc(100% - 32px);box-shadow:0 4px 24px rgba(0,0,0,.08)}
+  .logo{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:32px;color:#161616}
+  .logo span{color:#e8b800}
+  .spinner{width:44px;height:44px;border:3px solid #f0f0f0;border-top-color:#161616;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .msg{font-size:15px;color:#555;line-height:1.5}
+  .doc-name{font-weight:600;color:#161616;margin-bottom:6px;font-size:16px}
+  .err{display:none;color:#c0392b;background:#fdf3f3;border:1px solid #f5c6cb;border-radius:10px;padding:16px;font-size:14px;margin-top:20px}
+  .back{display:inline-block;margin-top:24px;color:#555;font-size:14px;text-decoration:none}
+  .back:hover{color:#161616}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Drive<span>Dil</span>Se</div>
+  <div id="main">
+    <div class="spinner"></div>
+    <div id="docLabel" class="doc-name"></div>
+    <div class="msg">Opening document securely…</div>
+  </div>
+  <div id="err" class="err"></div>
+  <a class="back" href="javascript:history.back()">← Go back</a>
+</div>
+
+<script>
+const API  = "https://fuesnifgaiivcapppexw.supabase.co/functions/v1";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1ZXNuaWZnYWlpdmNhcHBwZXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODgzMDksImV4cCI6MjA5NTI2NDMwOX0.R4UjqPMiXqdAunW-cECs5i2yap8lr9TJH8ocOjCYMic";
+
+const DOC_LABELS = { rc: "Registration Certificate (RC)", insurance: "Insurance Certificate", puc: "PUC Certificate", fitness: "Fitness Certificate" };
+
+function showError(msg) {
+  document.getElementById("main").style.display = "none";
+  const el = document.getElementById("err");
+  el.style.display = "block";
+  el.textContent = msg;
+}
+
+async function openDoc() {
+  const params = new URLSearchParams(location.search);
+  const carId  = params.get("car");
+  const type   = params.get("type");
+
+  if (!carId || !type) { showError("Invalid link. Please scan the QR code again."); return; }
+
+  document.getElementById("docLabel").textContent = DOC_LABELS[type] || "Document";
+
+  try {
+    const res  = await fetch(API + "/fleet/car-docs/" + carId, { headers: { "Authorization": "Bearer " + ANON } });
+    const data = await res.json();
+    if (!res.ok || data.error) { showError(data.error || "Failed to load document."); return; }
+
+    const doc = (data.docs || []).find(function(d) { return d.type === type; });
+    if (!doc || !doc.url) { showError("This document has not been uploaded yet."); return; }
+
+    // Redirect to the signed URL — user briefly sees drivedilse.com/doc?... then lands on the file
+    location.replace(doc.url);
+  } catch(e) {
+    showError("Network error. Please try again.");
+  }
+}
+
+openDoc();
+</script>
+</body>
+</html>

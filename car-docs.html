@@ -117,7 +117,7 @@ async function load() {
           expiryBadge(doc.expiry) +
         '</div>' +
         (doc.url
-          ? '<a class="view-btn" href="' + doc.url + '" target="_blank" rel="noopener">View</a>'
+          ? '<a class="view-btn" href="/doc?car=' + carId + '&type=' + doc.type + '" target="_blank" rel="noopener">View</a>'
           : '<span class="no-doc">Not uploaded</span>') +
       '</div>';
     }).join("");

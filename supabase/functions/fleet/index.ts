@@ -192,9 +192,18 @@ Deno.serve(async (req) => {
       // the car-docs bucket public. Non-uploaded docs return "".
       async function signDoc(url: unknown): Promise<string> {
         if (!url || typeof url !== "string") return "";
-        const m = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
-        if (!m) return url;
-        const { data: sd } = await sb.storage.from(m[1]).createSignedUrl(decodeURIComponent(m[2].split("?")[0]), 3600);
+        // Accept either a bare storage path ("carId/rc.pdf") or a legacy full public URL.
+        const fullUrlMatch = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+        let bucket: string, path: string;
+        if (fullUrlMatch) {
+          bucket = fullUrlMatch[1];
+          path   = decodeURIComponent(fullUrlMatch[2].split("?")[0]);
+        } else {
+          bucket = "car-docs";
+          path   = decodeURIComponent(url.split("?")[0]);
+        }
+        // 15-minute signed URL — short enough to limit damage if intercepted.
+        const { data: sd } = await sb.storage.from(bucket).createSignedUrl(path, 15 * 60);
         return sd?.signedUrl ?? "";
       }
 

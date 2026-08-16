@@ -16,7 +16,7 @@ const PUBLIC_RE = /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/;
 export async function signStorageUrl(
   sb: SupabaseClient,
   url: string | null | undefined,
-  expirySec = 60 * 60,
+  expirySec = 15 * 60,
 ): Promise<string> {
   if (!url) return "";
   const m = url.match(PUBLIC_RE);

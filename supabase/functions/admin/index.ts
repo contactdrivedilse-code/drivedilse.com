@@ -1045,10 +1045,9 @@ Deno.serve(async (req) => {
       const buf = new Uint8Array(await file.arrayBuffer());
       const { error: upErr } = await sb.storage.from("car-docs").upload(storagePath, buf, { contentType: file.type, upsert: true });
       if (upErr) throw upErr;
-      const publicUrl = sb.storage.from("car-docs").getPublicUrl(storagePath).data.publicUrl;
-
-      await sb.from("cars").update({ [VALID_DOC_TYPES[docType]]: publicUrl }).eq("id", carId);
-      return json({ success: true, url: publicUrl, docType });
+      // Store bare storage path — bucket is private, URLs are signed on read by the fleet function.
+      await sb.from("cars").update({ [VALID_DOC_TYPES[docType]]: storagePath }).eq("id", carId);
+      return json({ success: true, docType });
     }
 
     // DELETE /fleet/:id/delete-doc — remove a compliance document

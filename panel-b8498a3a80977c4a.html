@@ -696,7 +696,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
           <input class="inp" id="mb-delivery" type="number" min="0" placeholder="0" oninput="mbCalcPrice()">
         </div>
         <div>
-          <label class="lbl">💵 Custom Base Fare (₹) <span style="font-size:.7rem;color:var(--ts)">overrides auto-price</span></label>
+          <label class="lbl">💵 Custom Total (₹) <span style="font-size:.7rem;color:var(--ts)">incl. GST — overrides auto-price</span></label>
           <input class="inp" id="mb-custom-fare" type="number" min="0" placeholder="Leave blank to auto-calculate" oninput="mbCalcPrice()">
         </div>
         <div style="grid-column:1/-1">
@@ -3471,13 +3471,22 @@ function mbCalcPrice(){
   var hrs = (d - p) / 3600000;
   if(hrs <= 0){ preview.style.display="none"; return; }
   var days = Math.max(1, Math.ceil(hrs/24));
-  var base = customFare >= 0 && !isNaN(customFare) ? Math.round(customFare) : Math.round(pricePerDay * days);
   var isCustom = customFare >= 0 && !isNaN(customFare);
-  var gst  = Math.round((base + del) * 0.18);
-  var dep  = depChoice === "now" ? 1000 : 0;
-  var total = base + del + gst + dep;
+  var base, gst, total;
+  var dep = depChoice === "now" ? 1000 : 0;
+  if(isCustom){
+    // Custom amount is GST-inclusive — back-calculate base and GST
+    var customTotal = Math.round(customFare);
+    base = Math.round(customTotal / 1.18);
+    gst  = customTotal - base;
+    total = customTotal + del + dep;
+  } else {
+    base  = Math.round(pricePerDay * days);
+    gst   = Math.round((base + del) * 0.18);
+    total = base + del + gst + dep;
+  }
   var lines = [
-    {l:(isCustom ? "Base Fare (custom)" : "Base Fare ("+days+" day"+(days!==1?"s":'')+" × ₹"+pricePerDay+")"), v:inr(base)+(isCustom?'<span style="font-size:.7rem;margin-left:4px;color:#2563eb">✏️ custom</span>':'')},
+    {l:(isCustom ? "Base Fare (excl. GST)" : "Base Fare ("+days+" day"+(days!==1?"s":'')+" × ₹"+pricePerDay+")"), v:inr(base)+(isCustom?'<span style="font-size:.7rem;margin-left:4px;color:#2563eb">✏️ custom</span>':'')},
     del ? {l:"Delivery Fee", v:inr(del)} : null,
     {l:"GST (18%)", v:inr(gst)},
     dep ? {l:"Security Deposit (paid now)", v:inr(dep)} : null,
@@ -3513,7 +3522,7 @@ async function submitManualBooking(){
   var payload = { phone, name, email, carId, pickupDate: new Date(pickup).toISOString(), dropDate: new Date(drop).toISOString(),
     pickupLocation: pickupLoc||"Pune", dropLocation: dropLoc||"Pune",
     deliveryFee: delivery, depositChoice: depChoice, notes };
-  if(customFare !== "" && !isNaN(parseFloat(customFare))) payload.baseFare = parseFloat(customFare);
+  if(customFare !== "" && !isNaN(parseFloat(customFare))) payload.baseFare = Math.round(parseFloat(customFare) / 1.18);
   try {
     var result = await adminFetch("/admin/bookings/manual", {
       method: "POST",

@@ -673,22 +673,45 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
           </select>
         </div>
         <div style="grid-column:1/-1">
-          <label class="lbl">📅 Pickup Date &amp; Time <span style="color:#c0392b">*</span></label>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-            <input class="inp" id="mb-pickup-date" type="date" onchange="mbSyncDT();mbCalcPrice()" style="font-size:.9rem">
-            <select class="inp" id="mb-pickup-time" onchange="mbSyncDT();mbCalcPrice()" style="width:110px;font-size:.9rem"></select>
-          </div>
+          <label class="lbl">📅 Pickup &amp; Drop Date / Time <span style="color:#c0392b">*</span></label>
+          <button type="button" id="mb-dt-trigger" onclick="mbDpOpen()" style="width:100%;background:var(--ow);border:1.5px solid var(--b);border-radius:10px;padding:13px 16px;font-family:'Inter',sans-serif;font-size:.88rem;font-weight:600;color:var(--t);text-align:left;cursor:pointer;display:flex;align-items:center;gap:10px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--yd)'" onmouseleave="this.style.borderColor='var(--b)'">
+            <span style="font-size:1rem">📅</span>
+            <span id="mb-dt-label" style="flex:1;color:var(--ts)">Select pickup &amp; drop dates</span>
+            <span style="color:var(--ts);font-size:.75rem">▼</span>
+          </button>
         </div>
-        <div style="grid-column:1/-1">
-          <label class="lbl">📅 Drop Date &amp; Time <span style="color:#c0392b">*</span></label>
-          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-            <input class="inp" id="mb-drop-date" type="date" onchange="mbSyncDT();mbCalcPrice()" style="font-size:.9rem">
-            <select class="inp" id="mb-drop-time" onchange="mbSyncDT();mbCalcPrice()" style="width:110px;font-size:.9rem"></select>
-          </div>
-        </div>
-        <!-- hidden combined datetime values read by submitManualBooking / mbCalcPrice -->
         <input type="hidden" id="mb-pickup">
         <input type="hidden" id="mb-drop">
+
+        <!-- Date-range picker popup -->
+        <div id="mb-dp-backdrop" onclick="mbDpClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100"></div>
+        <div id="mb-dp-popup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.25);width:min(740px,96vw);max-height:92vh;overflow-y:auto;z-index:1101;padding:24px 28px">
+          <!-- Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+            <div id="mb-dp-header-label" style="font-weight:800;font-size:.95rem;color:var(--t)">📅 25 Aug'26, 10 AM → 26 Aug'26, 10 AM</div>
+            <div style="display:flex;gap:12px;align-items:center">
+              <button type="button" onclick="mbDpReset()" style="font-size:.78rem;font-weight:700;color:var(--yd);background:none;border:none;cursor:pointer;letter-spacing:.5px;text-transform:uppercase">RESET</button>
+              <button type="button" onclick="mbDpClose()" style="width:28px;height:28px;border-radius:50%;background:var(--ow);border:1.5px solid var(--b);cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+            </div>
+          </div>
+          <!-- Calendars -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px" id="mb-dp-cals"></div>
+          <!-- Time sliders -->
+          <div style="border-top:1px solid var(--b);padding-top:18px;margin-bottom:20px">
+            <div style="font-weight:800;font-size:.88rem;margin-bottom:14px">Select pickup &amp; drop time <span style="font-weight:400;color:var(--ts);font-size:.78rem">All times in IST.</span></div>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:600;margin-bottom:6px"><span>Pickup Time</span><span id="mb-dp-pt-lbl" style="color:var(--yd);font-weight:700">10:00 AM</span></div>
+                <input type="range" id="mb-dp-pt" min="0" max="47" value="20" oninput="mbDpTimeChange()" style="width:100%;accent-color:var(--yd);height:6px;cursor:pointer">
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:600;margin-bottom:6px"><span>Drop Time</span><span id="mb-dp-dt-lbl" style="color:var(--yd);font-weight:700">10:00 AM</span></div>
+                <input type="range" id="mb-dp-dt" min="0" max="47" value="20" oninput="mbDpTimeChange()" style="width:100%;accent-color:var(--yd);height:6px;cursor:pointer">
+              </div>
+            </div>
+          </div>
+          <button type="button" onclick="mbDpConfirm()" style="width:100%;background:var(--y);color:var(--t);font-family:'Inter',sans-serif;font-weight:800;font-size:.92rem;border:none;border-radius:12px;padding:16px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase">CONTINUE</button>
+        </div>
         <div>
           <label class="lbl">📍 Pickup Location</label>
           <input class="inp" id="mb-pickup-loc" type="text" placeholder="e.g. Pune / Customer Address">
@@ -3436,16 +3459,20 @@ async function openManualBookingModal(){
   document.getElementById("mb-price-preview").style.display = "none";
   document.getElementById("mb-error").style.display = "none";
   document.getElementById("mb-customer-hint").textContent = "";
-  // Build time dropdowns and default pickup = tomorrow 10am, drop = day after 10am
-  mbBuildTimeOptions("mb-pickup-time","10:00");
-  mbBuildTimeOptions("mb-drop-time","10:00");
-  var p=function(n){return String(n).padStart(2,"0");};
-  var tmr = new Date(); tmr.setDate(tmr.getDate()+1);
-  var drp = new Date(tmr); drp.setDate(drp.getDate()+1);
-  var toLocalDate = function(d){ return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); };
-  document.getElementById("mb-pickup-date").value = toLocalDate(tmr);
-  document.getElementById("mb-drop-date").value   = toLocalDate(drp);
-  mbSyncDT();
+  // Default pickup = tomorrow 10am, drop = day after 10am
+  var p2=function(n){return String(n).padStart(2,"0");};
+  var tmr=new Date(); tmr.setDate(tmr.getDate()+1);
+  var drp=new Date(tmr); drp.setDate(drp.getDate()+1);
+  _mbDp.pickDate=new Date(tmr.getFullYear(),tmr.getMonth(),tmr.getDate());
+  _mbDp.dropDate=new Date(drp.getFullYear(),drp.getMonth(),drp.getDate());
+  document.getElementById("mb-dp-pt").value=20; // 10:00 AM = slot 20
+  document.getElementById("mb-dp-dt").value=20;
+  document.getElementById("mb-pickup").value=tmr.getFullYear()+"-"+p2(tmr.getMonth()+1)+"-"+p2(tmr.getDate())+"T10:00";
+  document.getElementById("mb-drop").value=drp.getFullYear()+"-"+p2(drp.getMonth()+1)+"-"+p2(drp.getDate())+"T10:00";
+  var months2=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var labelEl=document.getElementById("mb-dt-label");
+  labelEl.textContent=(tmr.getDate()+" "+months2[tmr.getMonth()]+" "+tmr.getFullYear()+", 10:00 AM → "+drp.getDate()+" "+months2[drp.getMonth()]+" "+drp.getFullYear()+", 10:00 AM");
+  labelEl.style.color="var(--t)";
   document.getElementById("manual-booking-modal").classList.add("open");
 }
 
@@ -3470,29 +3497,148 @@ function mbLookupCustomer(phone){
   }, 600);
 }
 
-function mbBuildTimeOptions(selId, defaultH){
-  var sel = document.getElementById(selId);
-  if(!sel) return;
-  sel.innerHTML = "";
-  var slots = [
-    "12:00 AM","12:30 AM","1:00 AM","1:30 AM","2:00 AM","2:30 AM","3:00 AM","3:30 AM",
-    "4:00 AM","4:30 AM","5:00 AM","5:30 AM","6:00 AM","6:30 AM","7:00 AM","7:30 AM",
-    "8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM",
-    "12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM",
-    "4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM","7:30 PM",
-    "8:00 PM","8:30 PM","9:00 PM","9:30 PM","10:00 PM","10:30 PM","11:00 PM","11:30 PM"
-  ];
-  var vals = [];
-  for(var h=0;h<24;h++) for(var m=0;m<60;m+=30) vals.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"));
-  slots.forEach(function(label,i){ var o=document.createElement("option"); o.value=vals[i]; o.textContent=label; if(vals[i]===defaultH) o.selected=true; sel.appendChild(o); });
+// ── Date-range picker (manual booking modal) ──────────────────────────────
+var _mbDp = { pickDate: null, dropDate: null, viewYear: 0, viewMonth: 0 };
+
+function mbDpSlotLabel(idx){
+  var h = Math.floor(idx/2), m = idx%2===1?"30":"00";
+  var ampm = h<12?"AM":"PM", h12 = h===0?12:h>12?h-12:h;
+  return h12+":"+m+" "+ampm;
 }
-function mbSyncDT(){
-  var pd = document.getElementById("mb-pickup-date").value;
-  var pt = document.getElementById("mb-pickup-time").value;
-  var dd = document.getElementById("mb-drop-date").value;
-  var dt = document.getElementById("mb-drop-time").value;
-  document.getElementById("mb-pickup").value = pd && pt ? pd+"T"+pt : "";
-  document.getElementById("mb-drop").value   = dd && dt ? dd+"T"+dt : "";
+function mbDpLocalStr(d){
+  var p=function(n){return String(n).padStart(2,"0");};
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+}
+function mbDpFmtHeader(d, slotIdx){
+  var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return d.getDate()+" "+months[d.getMonth()]+"'"+String(d.getFullYear()).slice(2)+", "+mbDpSlotLabel(slotIdx);
+}
+function mbDpUpdateHeader(){
+  var pd = _mbDp.pickDate, dd = _mbDp.dropDate;
+  var pt = parseInt(document.getElementById("mb-dp-pt").value);
+  var dt = parseInt(document.getElementById("mb-dp-dt").value);
+  var lbl = "";
+  if(pd) lbl += "📅 "+mbDpFmtHeader(pd,pt);
+  else lbl += "📅 Select pickup";
+  lbl += "  →  ";
+  if(dd) lbl += "📅 "+mbDpFmtHeader(dd,dt);
+  else lbl += "Select drop";
+  document.getElementById("mb-dp-header-label").textContent = lbl;
+  document.getElementById("mb-dp-pt-lbl").textContent = mbDpSlotLabel(pt);
+  document.getElementById("mb-dp-dt-lbl").textContent = mbDpSlotLabel(dt);
+}
+function mbDpRenderCals(){
+  var months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var days=["S","M","T","W","T","F","S"];
+  var container = document.getElementById("mb-dp-cals");
+  container.innerHTML = "";
+  for(var m=0;m<2;m++){
+    var yr = _mbDp.viewYear, mo = _mbDp.viewMonth+m;
+    if(mo>11){mo-=12;yr++;}
+    var calEl = document.createElement("div");
+    // Month header
+    var hdrHtml = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+    if(m===0) hdrHtml += '<button type="button" onclick="mbDpNavMonth(-1)" style="background:none;border:1.5px solid var(--b);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center">‹</button>';
+    else hdrHtml += '<span></span>';
+    hdrHtml += '<span style="font-weight:800;font-size:.88rem">'+months[mo]+' \''+String(yr).slice(2)+'</span>';
+    if(m===1) hdrHtml += '<button type="button" onclick="mbDpNavMonth(1)" style="background:none;border:1.5px solid var(--b);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center">›</button>';
+    else hdrHtml += '<span></span>';
+    hdrHtml += '</div>';
+    // Day headers
+    var gridHtml = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">';
+    days.forEach(function(d){ gridHtml += '<div style="text-align:center;font-size:.7rem;font-weight:700;color:var(--ts);padding:4px 0">'+d+'</div>'; });
+    gridHtml += '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+    var first = new Date(yr,mo,1).getDay();
+    var daysIn = new Date(yr,mo+1,0).getDate();
+    var pd = _mbDp.pickDate, dd = _mbDp.dropDate;
+    for(var b=0;b<first;b++) gridHtml += '<div></div>';
+    for(var day=1;day<=daysIn;day++){
+      var thisDate = new Date(yr,mo,day);
+      var thisStr = mbDpLocalStr(thisDate);
+      var pdStr = pd ? mbDpLocalStr(pd) : null;
+      var ddStr = dd ? mbDpLocalStr(dd) : null;
+      var isPickup = pdStr===thisStr, isDrop = ddStr===thisStr;
+      var inRange = pd && dd && thisDate>pd && thisDate<dd;
+      var today = new Date(); today.setHours(0,0,0,0);
+      var isPast = thisDate < today;
+      var bg="transparent", color="var(--t)", radius="8px", fw="500";
+      if(isPickup||isDrop){ bg="var(--yd)"; color="#fff"; fw="800"; }
+      else if(inRange){ bg="#fef9e7"; }
+      if(isPast){ color="#ccc"; }
+      var onclick = isPast ? "" : 'mbDpPickDay('+yr+','+mo+','+day+')';
+      gridHtml += '<div onclick="'+onclick+'" style="text-align:center;padding:7px 2px;font-size:.82rem;font-weight:'+fw+';background:'+bg+';color:'+color+';border-radius:'+radius+';cursor:'+(isPast?'default':'pointer')+';user-select:none" '+((!isPast)? 'onmouseenter="if(this.style.background===\'transparent\'||this.style.background===\'\')this.style.background=\'var(--wg)\'" onmouseleave="if(this.style.background===\'var(--wg)\')this.style.background=\'transparent\'"' : '')+'>'+day+'</div>';
+    }
+    gridHtml += '</div>';
+    calEl.innerHTML = hdrHtml + gridHtml;
+    container.appendChild(calEl);
+  }
+}
+function mbDpNavMonth(dir){
+  _mbDp.viewMonth += dir;
+  if(_mbDp.viewMonth>11){_mbDp.viewMonth=0;_mbDp.viewYear++;}
+  if(_mbDp.viewMonth<0){_mbDp.viewMonth=11;_mbDp.viewYear--;}
+  mbDpRenderCals();
+}
+function mbDpPickDay(yr,mo,day){
+  var d = new Date(yr,mo,day);
+  if(!_mbDp.pickDate || (_mbDp.pickDate && _mbDp.dropDate)){
+    _mbDp.pickDate = d; _mbDp.dropDate = null;
+  } else {
+    if(d <= _mbDp.pickDate){ _mbDp.pickDate = d; _mbDp.dropDate = null; }
+    else { _mbDp.dropDate = d; }
+  }
+  mbDpRenderCals(); mbDpUpdateHeader();
+}
+function mbDpTimeChange(){ mbDpUpdateHeader(); }
+function mbDpOpen(){
+  var now = new Date();
+  _mbDp.viewYear = now.getFullYear(); _mbDp.viewMonth = now.getMonth();
+  // Pre-populate from existing hidden values
+  var existing = document.getElementById("mb-pickup").value;
+  if(existing){ var ep=new Date(existing); if(!isNaN(ep)){
+    _mbDp.pickDate=new Date(ep.getFullYear(),ep.getMonth(),ep.getDate());
+    var slot=ep.getHours()*2+(ep.getMinutes()>=30?1:0);
+    document.getElementById("mb-dp-pt").value=slot;
+  }}
+  var existingD = document.getElementById("mb-drop").value;
+  if(existingD){ var ed=new Date(existingD); if(!isNaN(ed)){
+    _mbDp.dropDate=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());
+    var slotD=ed.getHours()*2+(ed.getMinutes()>=30?1:0);
+    document.getElementById("mb-dp-dt").value=slotD;
+  }}
+  mbDpRenderCals(); mbDpUpdateHeader();
+  document.getElementById("mb-dp-backdrop").style.display="block";
+  document.getElementById("mb-dp-popup").style.display="block";
+}
+function mbDpClose(){
+  document.getElementById("mb-dp-backdrop").style.display="none";
+  document.getElementById("mb-dp-popup").style.display="none";
+}
+function mbDpReset(){
+  _mbDp.pickDate=null; _mbDp.dropDate=null;
+  document.getElementById("mb-dp-pt").value=20;
+  document.getElementById("mb-dp-dt").value=20;
+  mbDpRenderCals(); mbDpUpdateHeader();
+}
+function mbDpConfirm(){
+  if(!_mbDp.pickDate||!_mbDp.dropDate){ alert("Please select both pickup and drop dates."); return; }
+  var p=function(n){return String(n).padStart(2,"0");};
+  var pt=parseInt(document.getElementById("mb-dp-pt").value);
+  var dt=parseInt(document.getElementById("mb-dp-dt").value);
+  var ph=Math.floor(pt/2), pm=pt%2===1?"30":"00";
+  var dh=Math.floor(dt/2), dm=dt%2===1?"30":"00";
+  var pd=_mbDp.pickDate, dd=_mbDp.dropDate;
+  var pickupStr = pd.getFullYear()+"-"+p(pd.getMonth()+1)+"-"+p(pd.getDate())+"T"+p(ph)+":"+pm;
+  var dropStr   = dd.getFullYear()+"-"+p(dd.getMonth()+1)+"-"+p(dd.getDate())+"T"+p(dh)+":"+dm;
+  document.getElementById("mb-pickup").value = pickupStr;
+  document.getElementById("mb-drop").value   = dropStr;
+  // Update trigger button label
+  var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var tlbl = pd.getDate()+" "+months[pd.getMonth()]+" "+pd.getFullYear()+", "+mbDpSlotLabel(pt)
+           +" → "+dd.getDate()+" "+months[dd.getMonth()]+" "+dd.getFullYear()+", "+mbDpSlotLabel(dt);
+  var labelEl = document.getElementById("mb-dt-label");
+  labelEl.textContent = tlbl; labelEl.style.color="var(--t)";
+  mbDpClose(); mbCalcPrice();
 }
 function mbCalcPrice(){
   var sel = document.getElementById("mb-car");

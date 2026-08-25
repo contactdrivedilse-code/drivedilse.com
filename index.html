@@ -4164,8 +4164,9 @@ var HOLIDAYS = new Set([
 
 function getDayType(dateStr){
   if(HOLIDAYS.has(dateStr)) return "holiday";
-  var d = new Date(dateStr + "T00:00:00");
-  var dow = d.getDay();
+  // Use UTC so day-of-week matches the server (backend uses T00:00:00Z)
+  var d = new Date(dateStr + "T00:00:00Z");
+  var dow = d.getUTCDay();
   if(dow === 0 || dow === 6) return "weekend";
   return "weekday";
 }
@@ -4174,10 +4175,10 @@ function getDayMult(type){
   if(type === "weekend") return 1.20;  // weekend (Sat/Sun): +20%
   return 1.0;                          // weekday: base rate
 }
-// Returns the local YYYY-MM-DD for a JS Date (user's timezone = IST on Indian devices)
+// Returns the IST (UTC+5:30) calendar date for a UTC ms timestamp — matches server toISTDate()
 function toLocalDateStr(dt){
-  var y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,"0"), d2 = String(dt.getDate()).padStart(2,"0");
-  return y+"-"+m+"-"+d2;
+  var ist = new Date(dt.getTime() + 5.5 * 3600000);
+  return ist.toISOString().slice(0, 10);
 }
 // ── MONTHLY LEASE PRICES (GST inclusive, fixed per category) ──
 var LEASE_MONTHLY = {

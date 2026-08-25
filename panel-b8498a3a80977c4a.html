@@ -2522,6 +2522,7 @@ async function submitPause(){
     });
     toast("Pause added.", "success");
     closePauseModal();
+    allCars = []; window._allCarsCache = null;
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }
@@ -4116,6 +4117,7 @@ async function removePause(carId, pauseId){
   try {
     await adminFetch("/admin/fleet/"+carId+"/pause/"+pauseId, { method: "DELETE" });
     toast("Pause removed.", "success");
+    allCars = []; window._allCarsCache = null;
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }

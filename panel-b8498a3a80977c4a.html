@@ -682,36 +682,9 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         </div>
         <input type="hidden" id="mb-pickup">
         <input type="hidden" id="mb-drop">
+      </div>
 
-        <!-- Date-range picker popup -->
-        <div id="mb-dp-backdrop" onclick="mbDpClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100"></div>
-        <div id="mb-dp-popup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.25);width:min(740px,96vw);max-height:92vh;overflow-y:auto;z-index:1101;padding:24px 28px">
-          <!-- Header -->
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-            <div id="mb-dp-header-label" style="font-weight:800;font-size:.95rem;color:var(--t)">📅 25 Aug'26, 10 AM → 26 Aug'26, 10 AM</div>
-            <div style="display:flex;gap:12px;align-items:center">
-              <button type="button" onclick="mbDpReset()" style="font-size:.78rem;font-weight:700;color:var(--yd);background:none;border:none;cursor:pointer;letter-spacing:.5px;text-transform:uppercase">RESET</button>
-              <button type="button" onclick="mbDpClose()" style="width:28px;height:28px;border-radius:50%;background:var(--ow);border:1.5px solid var(--b);cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
-            </div>
-          </div>
-          <!-- Calendars -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px" id="mb-dp-cals"></div>
-          <!-- Time sliders -->
-          <div style="border-top:1px solid var(--b);padding-top:18px;margin-bottom:20px">
-            <div style="font-weight:800;font-size:.88rem;margin-bottom:14px">Select pickup &amp; drop time <span style="font-weight:400;color:var(--ts);font-size:.78rem">All times in IST.</span></div>
-            <div style="display:flex;flex-direction:column;gap:14px">
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:600;margin-bottom:6px"><span>Pickup Time</span><span id="mb-dp-pt-lbl" style="color:var(--yd);font-weight:700">10:00 AM</span></div>
-                <input type="range" id="mb-dp-pt" min="0" max="47" value="20" oninput="mbDpTimeChange()" style="width:100%;accent-color:var(--yd);height:6px;cursor:pointer">
-              </div>
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:600;margin-bottom:6px"><span>Drop Time</span><span id="mb-dp-dt-lbl" style="color:var(--yd);font-weight:700">10:00 AM</span></div>
-                <input type="range" id="mb-dp-dt" min="0" max="47" value="20" oninput="mbDpTimeChange()" style="width:100%;accent-color:var(--yd);height:6px;cursor:pointer">
-              </div>
-            </div>
-          </div>
-          <button type="button" onclick="mbDpConfirm()" style="width:100%;background:var(--y);color:var(--t);font-family:'Inter',sans-serif;font-weight:800;font-size:.92rem;border:none;border-radius:12px;padding:16px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase">CONTINUE</button>
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
         <div>
           <label class="lbl">📍 Pickup Location</label>
           <input class="inp" id="mb-pickup-loc" type="text" placeholder="e.g. Pune / Customer Address">
@@ -720,6 +693,36 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
           <label class="lbl">📍 Drop Location</label>
           <input class="inp" id="mb-drop-loc" type="text" placeholder="e.g. Pune">
         </div>
+      </div>
+
+      <!-- Date-range picker popup -->
+      <div id="mb-dp-backdrop" onclick="mbDpClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100"></div>
+      <div id="mb-dp-popup" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.25);width:min(740px,96vw);max-height:92vh;overflow-y:auto;z-index:1101;padding:24px 28px">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+          <div id="mb-dp-header-label" style="font-weight:800;font-size:.95rem;color:var(--t)">📅 Select dates</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <button type="button" onclick="mbDpReset()" style="font-size:.78rem;font-weight:700;color:var(--yd);background:none;border:none;cursor:pointer;letter-spacing:.5px;text-transform:uppercase">RESET</button>
+            <button type="button" onclick="mbDpClose()" style="width:28px;height:28px;border-radius:50%;background:var(--ow);border:1.5px solid var(--b);cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+          </div>
+        </div>
+        <!-- Calendars -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px" id="mb-dp-cals"></div>
+        <!-- Time sliders -->
+        <div style="border-top:1px solid var(--b);padding-top:18px;margin-bottom:20px">
+          <div style="font-weight:800;font-size:.88rem;margin-bottom:14px">Select pickup &amp; drop time <span style="font-weight:400;color:var(--ts);font-size:.78rem">All times in IST.</span></div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:600;margin-bottom:6px"><span>Pickup Time</span><span id="mb-dp-pt-lbl" style="color:var(--yd);font-weight:700">10:00 AM</span></div>
+              <input type="range" id="mb-dp-pt" min="0" max="47" value="20" oninput="mbDpTimeChange()" style="width:100%;accent-color:var(--yd);height:6px;cursor:pointer">
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:.82rem;font-weight:600;margin-bottom:6px"><span>Drop Time</span><span id="mb-dp-dt-lbl" style="color:var(--yd);font-weight:700">10:00 AM</span></div>
+              <input type="range" id="mb-dp-dt" min="0" max="47" value="20" oninput="mbDpTimeChange()" style="width:100%;accent-color:var(--yd);height:6px;cursor:pointer">
+            </div>
+          </div>
+        </div>
+        <button type="button" onclick="mbDpConfirm()" style="width:100%;background:var(--y);color:var(--t);font-family:'Inter',sans-serif;font-weight:800;font-size:.92rem;border:none;border-radius:12px;padding:16px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase">CONTINUE</button>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
@@ -753,7 +756,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <div id="mb-error" style="display:none;color:#c0392b;font-size:.82rem;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;margin-bottom:10px"></div>
     </div>
     <div class="modal-footer" style="margin-top:8px">
-      <button class="btn btn-g btn-sm" style="flex:1" onclick="document.getElementById('manual-booking-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-g btn-sm" style="flex:1" onclick="mbDpClose();document.getElementById('manual-booking-modal').classList.remove('open')">Cancel</button>
       <button class="btn btn-y btn-sm" style="flex:1;font-weight:700" id="mb-submit-btn" onclick="submitManualBooking()">✅ Create Booking</button>
     </div>
   </div>
@@ -3584,15 +3587,14 @@ function mbDpPickDay(yr,mo,day){
   if(!_mbDp.pickDate || (_mbDp.pickDate && _mbDp.dropDate)){
     _mbDp.pickDate = d; _mbDp.dropDate = null;
   } else {
-    if(d <= _mbDp.pickDate){ _mbDp.pickDate = d; _mbDp.dropDate = null; }
+    // allow same-day selection (d < instead of d <=)
+    if(d < _mbDp.pickDate){ _mbDp.pickDate = d; _mbDp.dropDate = null; }
     else { _mbDp.dropDate = d; }
   }
   mbDpRenderCals(); mbDpUpdateHeader();
 }
 function mbDpTimeChange(){ mbDpUpdateHeader(); }
 function mbDpOpen(){
-  var now = new Date();
-  _mbDp.viewYear = now.getFullYear(); _mbDp.viewMonth = now.getMonth();
   // Pre-populate from existing hidden values
   var existing = document.getElementById("mb-pickup").value;
   if(existing){ var ep=new Date(existing); if(!isNaN(ep)){
@@ -3606,6 +3608,9 @@ function mbDpOpen(){
     var slotD=ed.getHours()*2+(ed.getMinutes()>=30?1:0);
     document.getElementById("mb-dp-dt").value=slotD;
   }}
+  // Scroll calendar to pickup month (or current month if nothing selected)
+  var anchor = _mbDp.pickDate || new Date();
+  _mbDp.viewYear = anchor.getFullYear(); _mbDp.viewMonth = anchor.getMonth();
   mbDpRenderCals(); mbDpUpdateHeader();
   document.getElementById("mb-dp-backdrop").style.display="block";
   document.getElementById("mb-dp-popup").style.display="block";
@@ -3659,11 +3664,12 @@ function mbCalcPrice(){
   var base, gst, total;
   var dep = depChoice === "now" ? 1000 : 0;
   if(isCustom){
-    // Custom amount is GST-inclusive — back-calculate base and GST
+    // Custom amount is GST-inclusive for the base only; delivery is added on top (server adds GST on both)
     var customTotal = Math.round(customFare);
     base = Math.round(customTotal / 1.18);
-    gst  = customTotal - base;
-    total = customTotal + del + dep;
+    // Server formula: GST = round((baseFare + delFee) * 0.18) — must match exactly
+    gst  = Math.round((base + del) * 0.18);
+    total = base + del + gst + dep;
   } else {
     base  = Math.round(pricePerDay * days);
     gst   = Math.round((base + del) * 0.18);

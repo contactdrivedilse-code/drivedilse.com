@@ -4995,7 +4995,8 @@ async function payNow(){
   // Convert local datetime string to UTC ISO — fixes IST +5:30 offset
   var pickupISO = new Date(priceResult.pickup).toISOString();
   var dropISO   = new Date(priceResult.drop).toISOString();
-  var totalWithDelivery = priceResult.total + deliveryCharge + tripProtectionFee + depositFee - couponDiscount;
+  var gstWithFees = Math.round((priceResult.base + deliveryCharge + tripProtectionFee) * 0.18);
+  var totalWithDelivery = priceResult.base + deliveryCharge + tripProtectionFee + gstWithFees + depositFee - couponDiscount;
   var chargeDeliveryFee = deliveryCharge + tripProtectionFee;
   var couponCode = appliedCoupon ? appliedCoupon.code : undefined;
   var pickupLoc = deliveryCharge > 0 && deliveryAddress ? deliveryAddress + " (Doorstep)" : "Hub, Pune";
@@ -6981,11 +6982,11 @@ function closeDeliveryPickerModal(){
 
 function updateDeliveryTotal(){
   if(!priceResult) return;
-  // GST applies to (base fare + delivery charge), not base alone
-  var gst = Math.round((priceResult.base + deliveryCharge) * 0.18);
+  // GST applies to (base fare + delivery charge + trip protection), matching server formula
+  var gst = Math.round((priceResult.base + deliveryCharge + tripProtectionFee) * 0.18);
   var gstEl = document.getElementById("r-gst");
   if(gstEl) gstEl.textContent = inr(gst);
-  var newTotal = priceResult.base + deliveryCharge + gst + tripProtectionFee + depositFee - couponDiscount;
+  var newTotal = priceResult.base + deliveryCharge + tripProtectionFee + gst + depositFee - couponDiscount;
   var row = document.getElementById("r-delivery-row");
   var amt = document.getElementById("r-delivery-amt");
   var tpRow = document.getElementById("r-tripprotect-row");

@@ -818,6 +818,13 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <label class="lbl">📝 Internal Notes</label>
       <textarea class="inp" id="ebm-notes" rows="3" placeholder="Internal notes (optional)" style="resize:vertical"></textarea>
     </div>
+
+    <!-- Confirm with customer -->
+    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--wg);border:1.5px solid var(--b);border-radius:10px;cursor:pointer;margin-bottom:16px;font-size:.88rem;font-weight:600;user-select:none">
+      <input type="checkbox" id="ebm-confirmed-customer" style="width:18px;height:18px;accent-color:#16a34a;cursor:pointer">
+      <span>✅ I have confirmed all changes with the customer</span>
+    </label>
+
     <div id="ebm-error" style="display:none;color:#c0392b;font-size:.82rem;margin-bottom:10px;padding:8px 12px;background:#fef2f2;border-radius:6px"></div>
     <div class="modal-footer" style="margin-top:4px">
       <button class="btn btn-sec btn-sm" onclick="document.getElementById('edit-booking-modal').classList.remove('open');if(_editBkId)openBkDetailsModal(_editBkId)">Cancel</button>
@@ -3270,20 +3277,10 @@ function openEditBookingModal(id){
   _ebmCalc  = null;
   document.getElementById("bk-details-modal").classList.remove("open");
   document.getElementById("ebm-id").textContent = b.bookingId || id;
-
-  // Populate car dropdown from allCars
-  var sel = document.getElementById("ebm-car-select");
-  sel.innerHTML = '<option value="">— Select car —</option>';
-  (allCars || []).forEach(function(c){
-    var opt = document.createElement("option");
-    opt.value = c._id || c.id;
-    opt.textContent = c.name + " (" + (c.category||"") + ")";
-    opt.dataset.ppd = c.pricePerDay || c.price_per_day || 0;
-    opt.dataset.cat = c.category || "";
-    opt.dataset.name = c.name || "";
-    if((c._id||c.id) === b.carId || c.name === b.carName) opt.selected = true;
-    sel.appendChild(opt);
-  });
+  document.getElementById("ebm-error").style.display = "none";
+  document.getElementById("ebm-price-preview").style.display = "none";
+  document.getElementById("ebm-submit-btn").disabled = false;
+  document.getElementById("ebm-submit-btn").textContent = "💾 Save Changes";
 
   var pickup = (b.pickup && b.pickup.date) || b.pickup || "";
   var drop   = (b.drop   && b.drop.date)   || b.drop   || "";
@@ -3295,12 +3292,41 @@ function openEditBookingModal(id){
   document.getElementById("ebm-amount-collected").value = b.amountCollected != null ? b.amountCollected : "";
   document.getElementById("ebm-status").value = b.status || "confirmed";
   document.getElementById("ebm-notes").value  = b.notes || "";
-  document.getElementById("ebm-error").style.display = "none";
-  document.getElementById("ebm-price-preview").style.display = "none";
-  document.getElementById("ebm-submit-btn").disabled = false;
-  document.getElementById("ebm-submit-btn").textContent = "💾 Save Changes";
+  document.getElementById("ebm-confirmed-customer").checked = false;
   document.getElementById("edit-booking-modal").classList.add("open");
-  ebmRecalc();
+
+  // Fetch cars fresh if not loaded (e.g. opened from Bookings tab without visiting Fleet)
+  ebmPopulateCars(b, function(){ ebmRecalc(); });
+}
+
+function ebmPopulateCars(b, cb){
+  var sel = document.getElementById("ebm-car-select");
+  function fill(cars){
+    sel.innerHTML = '<option value="">— Select car —</option>';
+    cars.forEach(function(c){
+      var opt = document.createElement("option");
+      opt.value = c._id || c.id;
+      opt.textContent = c.name + (c.category ? " · " + c.category : "");
+      opt.dataset.ppd  = c.pricePerDay || c.price_per_day || 0;
+      opt.dataset.cat  = c.category || "";
+      opt.dataset.name = c.name || "";
+      if((c._id||c.id) === b.carId || c.name === b.carName) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if(cb) cb();
+  }
+  if(allCars && allCars.length){
+    fill(allCars);
+  } else {
+    sel.innerHTML = '<option value="">Loading cars…</option>';
+    adminFetch("/admin/fleet").then(function(data){
+      allCars = Array.isArray(data) ? data : (data.cars || []);
+      window._allCarsCache = allCars;
+      fill(allCars);
+    }).catch(function(){
+      sel.innerHTML = '<option value="">Failed to load cars</option>';
+    });
+  }
 }
 
 function ebmCarChanged(){
@@ -3341,6 +3367,11 @@ async function submitEditBooking(){
   var btn   = document.getElementById("ebm-submit-btn");
   var errEl = document.getElementById("ebm-error");
   errEl.style.display = "none";
+
+  if(!document.getElementById("ebm-confirmed-customer").checked){
+    errEl.textContent = "Please confirm that you have discussed these changes with the customer.";
+    errEl.style.display = "block"; return;
+  }
 
   var pickup = document.getElementById("ebm-pickup").value;
   var drop   = document.getElementById("ebm-drop").value;

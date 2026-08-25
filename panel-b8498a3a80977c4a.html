@@ -750,20 +750,25 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 </div>
 
 <div class="modal-overlay" id="edit-booking-modal">
-  <div class="modal-box" style="max-width:600px;width:100%;max-height:92vh;overflow-y:auto">
+  <div class="modal-box" style="max-width:620px;width:100%;max-height:92vh;overflow-y:auto">
     <div class="modal-title">✏️ Edit Booking — <span id="ebm-id" style="color:var(--yd);font-family:monospace"></span></div>
+
+    <!-- Car selector -->
     <div style="margin-bottom:14px">
-      <label class="lbl">🚗 Car Name</label>
-      <input class="inp" id="ebm-car-name" type="text" placeholder="Car name">
+      <label class="lbl">🚗 Car</label>
+      <select class="inp" id="ebm-car-select" onchange="ebmCarChanged()">
+        <option value="">— Select car —</option>
+      </select>
     </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
       <div>
         <label class="lbl">📅 Pickup Date & Time</label>
-        <input class="inp" id="ebm-pickup" type="datetime-local">
+        <input class="inp" id="ebm-pickup" type="datetime-local" onchange="ebmRecalc()">
       </div>
       <div>
         <label class="lbl">📅 Drop Date & Time</label>
-        <input class="inp" id="ebm-drop" type="datetime-local">
+        <input class="inp" id="ebm-drop" type="datetime-local" onchange="ebmRecalc()">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
@@ -776,6 +781,17 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         <input class="inp" id="ebm-drop-loc" type="text" placeholder="e.g. Pune Airport">
       </div>
     </div>
+
+    <!-- Auto price preview -->
+    <div id="ebm-price-preview" style="display:none;background:var(--wg);border:1.5px solid var(--yd);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:.85rem">
+      <div style="font-weight:700;margin-bottom:6px;color:var(--yd)">💡 Auto-calculated Price</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Duration</span><span id="ebm-calc-days" style="font-weight:600"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>Base fare</span><span id="ebm-calc-base"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span>GST (18%)</span><span id="ebm-calc-gst"></span></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:.95rem;border-top:1px solid var(--b);padding-top:6px;margin-top:4px"><span>Total</span><span id="ebm-calc-total" style="color:var(--yd)"></span></div>
+      <button class="btn btn-y btn-sm" style="width:100%;margin-top:10px;font-size:.8rem" onclick="ebmApplyPrice()">✅ Apply this price to Total field</button>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
       <div>
         <label class="lbl">💰 Total Amount (₹)</label>
@@ -3245,14 +3261,30 @@ async function markPayment(id, partial){
 
 // ── EDIT BOOKING ─────────────────────────────────────────────────────
 var _editBkId = null;
+var _ebmCalc = null; // last auto-calculated price
+
 function openEditBookingModal(id){
   var b = window._bkDetailsMap[id];
   if(!b){ toast("Booking not found", "error"); return; }
   _editBkId = id;
-  // Close detail modal first (same z-index conflict)
+  _ebmCalc  = null;
   document.getElementById("bk-details-modal").classList.remove("open");
   document.getElementById("ebm-id").textContent = b.bookingId || id;
-  document.getElementById("ebm-car-name").value = b.carName || "";
+
+  // Populate car dropdown from allCars
+  var sel = document.getElementById("ebm-car-select");
+  sel.innerHTML = '<option value="">— Select car —</option>';
+  (allCars || []).forEach(function(c){
+    var opt = document.createElement("option");
+    opt.value = c._id || c.id;
+    opt.textContent = c.name + " (" + (c.category||"") + ")";
+    opt.dataset.ppd = c.pricePerDay || c.price_per_day || 0;
+    opt.dataset.cat = c.category || "";
+    opt.dataset.name = c.name || "";
+    if((c._id||c.id) === b.carId || c.name === b.carName) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
   var pickup = (b.pickup && b.pickup.date) || b.pickup || "";
   var drop   = (b.drop   && b.drop.date)   || b.drop   || "";
   document.getElementById("ebm-pickup").value = pickup ? new Date(pickup).toISOString().slice(0,16) : "";
@@ -3264,9 +3296,44 @@ function openEditBookingModal(id){
   document.getElementById("ebm-status").value = b.status || "confirmed";
   document.getElementById("ebm-notes").value  = b.notes || "";
   document.getElementById("ebm-error").style.display = "none";
+  document.getElementById("ebm-price-preview").style.display = "none";
   document.getElementById("ebm-submit-btn").disabled = false;
   document.getElementById("ebm-submit-btn").textContent = "💾 Save Changes";
   document.getElementById("edit-booking-modal").classList.add("open");
+  ebmRecalc();
+}
+
+function ebmCarChanged(){
+  ebmRecalc();
+}
+
+function ebmRecalc(){
+  var sel    = document.getElementById("ebm-car-select");
+  var opt    = sel.options[sel.selectedIndex];
+  var ppd    = parseFloat(opt && opt.dataset.ppd ? opt.dataset.ppd : 0);
+  var pickup = document.getElementById("ebm-pickup").value;
+  var drop   = document.getElementById("ebm-drop").value;
+  var preview = document.getElementById("ebm-price-preview");
+  if(!ppd || !pickup || !drop || new Date(drop) <= new Date(pickup)){
+    preview.style.display = "none"; _ebmCalc = null; return;
+  }
+  var hrs  = (new Date(drop) - new Date(pickup)) / 3600000;
+  var days = Math.ceil(hrs / 24);
+  // simple daily rate * days + 18% GST
+  var base  = Math.round(ppd * days);
+  var gst   = Math.round(base * 0.18);
+  var total = base + gst;
+  _ebmCalc  = { base: base, gst: gst, total: total, days: days };
+  document.getElementById("ebm-calc-days").textContent  = days + " day" + (days===1?"":"s") + " (" + Math.round(hrs*10)/10 + " hrs)";
+  document.getElementById("ebm-calc-base").textContent  = "₹" + base.toLocaleString("en-IN");
+  document.getElementById("ebm-calc-gst").textContent   = "₹" + gst.toLocaleString("en-IN");
+  document.getElementById("ebm-calc-total").textContent = "₹" + total.toLocaleString("en-IN");
+  preview.style.display = "block";
+}
+
+function ebmApplyPrice(){
+  if(!_ebmCalc) return;
+  document.getElementById("ebm-total").value = _ebmCalc.total;
 }
 
 async function submitEditBooking(){
@@ -3281,19 +3348,23 @@ async function submitEditBooking(){
     errEl.textContent = "Drop must be after pickup."; errEl.style.display = "block"; return;
   }
 
-  var totalRaw = document.getElementById("ebm-total").value.trim();
+  var totalRaw  = document.getElementById("ebm-total").value.trim();
   var amtColRaw = document.getElementById("ebm-amount-collected").value.trim();
+  var sel       = document.getElementById("ebm-car-select");
+  var selOpt    = sel.options[sel.selectedIndex];
 
   var payload = {};
-  var carName = document.getElementById("ebm-car-name").value.trim();
-  if(carName) payload.carName = carName;
+  if(selOpt && selOpt.value){
+    payload.carId   = selOpt.value;
+    payload.carName = selOpt.dataset.name || selOpt.textContent.split(" (")[0];
+  }
   if(pickup)  payload.pickupDate = new Date(pickup).toISOString();
   if(drop)    payload.dropDate   = new Date(drop).toISOString();
   var pLoc = document.getElementById("ebm-pickup-loc").value.trim();
   var dLoc = document.getElementById("ebm-drop-loc").value.trim();
   if(pLoc) payload.pickupLocation = pLoc;
   if(dLoc) payload.dropLocation   = dLoc;
-  if(totalRaw !== "") payload.total = parseFloat(totalRaw);
+  if(totalRaw !== "")  payload.total = parseFloat(totalRaw);
   if(amtColRaw !== "") payload.amountCollected = parseFloat(amtColRaw);
   else payload.amountCollected = null;
   payload.status = document.getElementById("ebm-status").value;
@@ -3306,12 +3377,10 @@ async function submitEditBooking(){
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify(payload),
     });
-    // Update local cache
     var idx = allBookings.findIndex(function(x){ return (x._id||x.id) === _editBkId; });
     if(idx >= 0) allBookings[idx] = updated;
     if(window._bkDetailsMap) window._bkDetailsMap[_editBkId] = updated;
     document.getElementById("edit-booking-modal").classList.remove("open");
-    // Re-open details with fresh data
     openBkDetailsModal(_editBkId);
     toast("✅ Booking updated successfully!", "success");
   } catch(e){

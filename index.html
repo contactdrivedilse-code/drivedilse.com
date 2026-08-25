@@ -4205,8 +4205,12 @@ var CAT_BRACKETS = {
 var HATCH_PPD_SPLIT = 1580;
 
 function getCatBrackets(cat, baseRate){
-  if(cat === "MPV") return CAT_BRACKETS.MPV;
-  if(cat === "SUV" || cat === "Compact SUV") return CAT_BRACKETS.SUV;
+  var c = (cat || "").toLowerCase();
+  if(c === "mpv") return CAT_BRACKETS.MPV;
+  if(c === "compact suv" || c === "suv") return CAT_BRACKETS.SUV;
+  if(c === "premium hatchback" || c === "sedan") return CAT_BRACKETS.premium;
+  if(c === "compact hatchback") return CAT_BRACKETS.compact;
+  // fallback for unknown categories
   return (baseRate||0) < HATCH_PPD_SPLIT ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
 }
 

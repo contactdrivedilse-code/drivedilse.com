@@ -672,14 +672,23 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
             <option value="">— Select car —</option>
           </select>
         </div>
-        <div>
+        <div style="grid-column:1/-1">
           <label class="lbl">📅 Pickup Date &amp; Time <span style="color:#c0392b">*</span></label>
-          <input class="inp" id="mb-pickup" type="datetime-local" onchange="mbCalcPrice()">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+            <input class="inp" id="mb-pickup-date" type="date" onchange="mbSyncDT();mbCalcPrice()" style="font-size:.9rem">
+            <select class="inp" id="mb-pickup-time" onchange="mbSyncDT();mbCalcPrice()" style="width:110px;font-size:.9rem"></select>
+          </div>
         </div>
-        <div>
+        <div style="grid-column:1/-1">
           <label class="lbl">📅 Drop Date &amp; Time <span style="color:#c0392b">*</span></label>
-          <input class="inp" id="mb-drop" type="datetime-local" onchange="mbCalcPrice()">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+            <input class="inp" id="mb-drop-date" type="date" onchange="mbSyncDT();mbCalcPrice()" style="font-size:.9rem">
+            <select class="inp" id="mb-drop-time" onchange="mbSyncDT();mbCalcPrice()" style="width:110px;font-size:.9rem"></select>
+          </div>
         </div>
+        <!-- hidden combined datetime values read by submitManualBooking / mbCalcPrice -->
+        <input type="hidden" id="mb-pickup">
+        <input type="hidden" id="mb-drop">
         <div>
           <label class="lbl">📍 Pickup Location</label>
           <input class="inp" id="mb-pickup-loc" type="text" placeholder="e.g. Pune / Customer Address">
@@ -3427,12 +3436,16 @@ async function openManualBookingModal(){
   document.getElementById("mb-price-preview").style.display = "none";
   document.getElementById("mb-error").style.display = "none";
   document.getElementById("mb-customer-hint").textContent = "";
-  // Default pickup = tomorrow 10am, drop = day after 10am (local time, not UTC)
-  function toLocalDT(d){ var p=function(n){return String(n).padStart(2,"0");}; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); }
-  var tmr = new Date(); tmr.setDate(tmr.getDate()+1); tmr.setHours(10,0,0,0);
+  // Build time dropdowns and default pickup = tomorrow 10am, drop = day after 10am
+  mbBuildTimeOptions("mb-pickup-time","10:00");
+  mbBuildTimeOptions("mb-drop-time","10:00");
+  var p=function(n){return String(n).padStart(2,"0");};
+  var tmr = new Date(); tmr.setDate(tmr.getDate()+1);
   var drp = new Date(tmr); drp.setDate(drp.getDate()+1);
-  document.getElementById("mb-pickup").value = toLocalDT(tmr);
-  document.getElementById("mb-drop").value   = toLocalDT(drp);
+  var toLocalDate = function(d){ return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); };
+  document.getElementById("mb-pickup-date").value = toLocalDate(tmr);
+  document.getElementById("mb-drop-date").value   = toLocalDate(drp);
+  mbSyncDT();
   document.getElementById("manual-booking-modal").classList.add("open");
 }
 
@@ -3457,6 +3470,30 @@ function mbLookupCustomer(phone){
   }, 600);
 }
 
+function mbBuildTimeOptions(selId, defaultH){
+  var sel = document.getElementById(selId);
+  if(!sel) return;
+  sel.innerHTML = "";
+  var slots = [
+    "12:00 AM","12:30 AM","1:00 AM","1:30 AM","2:00 AM","2:30 AM","3:00 AM","3:30 AM",
+    "4:00 AM","4:30 AM","5:00 AM","5:30 AM","6:00 AM","6:30 AM","7:00 AM","7:30 AM",
+    "8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM",
+    "12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM",
+    "4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM","7:30 PM",
+    "8:00 PM","8:30 PM","9:00 PM","9:30 PM","10:00 PM","10:30 PM","11:00 PM","11:30 PM"
+  ];
+  var vals = [];
+  for(var h=0;h<24;h++) for(var m=0;m<60;m+=30) vals.push(String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"));
+  slots.forEach(function(label,i){ var o=document.createElement("option"); o.value=vals[i]; o.textContent=label; if(vals[i]===defaultH) o.selected=true; sel.appendChild(o); });
+}
+function mbSyncDT(){
+  var pd = document.getElementById("mb-pickup-date").value;
+  var pt = document.getElementById("mb-pickup-time").value;
+  var dd = document.getElementById("mb-drop-date").value;
+  var dt = document.getElementById("mb-drop-time").value;
+  document.getElementById("mb-pickup").value = pd && pt ? pd+"T"+pt : "";
+  document.getElementById("mb-drop").value   = dd && dt ? dd+"T"+dt : "";
+}
 function mbCalcPrice(){
   var sel = document.getElementById("mb-car");
   var opt = sel.options[sel.selectedIndex];

@@ -699,40 +699,18 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
           <label class="lbl">💵 Custom Base Fare (₹) <span style="font-size:.7rem;color:var(--ts)">overrides auto-price</span></label>
           <input class="inp" id="mb-custom-fare" type="number" min="0" placeholder="Leave blank to auto-calculate" oninput="mbCalcPrice()">
         </div>
-        <div>
-          <label class="lbl">🔒 Deposit</label>
+        <div style="grid-column:1/-1">
+          <label class="lbl">🔒 Security Deposit</label>
           <select class="inp" id="mb-deposit" onchange="mbCalcPrice()">
-            <option value="later">Collect separately</option>
-            <option value="now">Paid now (included)</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl">💳 Payment Mode</label>
-          <select class="inp" id="mb-payment">
-            <option value="cash">Cash</option>
-            <option value="gpay">GPay / UPI</option>
-            <option value="online">Online</option>
+            <option value="later">Collect separately (pay later)</option>
+            <option value="now">Paid now (include in total)</option>
           </select>
         </div>
       </div>
 
       <div id="mb-price-preview" style="display:none;background:var(--s);border:1.5px solid var(--b);border-radius:10px;padding:14px;margin-bottom:14px;font-size:.83rem">
-        <div style="font-weight:700;margin-bottom:8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--ts)">💰 Price Breakdown</div>
+        <div style="font-weight:700;margin-bottom:8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--ts)">💰 Price Breakdown (incl. GST)</div>
         <div style="display:flex;flex-direction:column;gap:5px" id="mb-price-lines"></div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-        <div>
-          <label class="lbl">💵 Amount Collected (₹) <span style="color:#c0392b">*</span></label>
-          <input class="inp" id="mb-amount-collected" type="number" min="0" placeholder="Amount received now" oninput="mbCalcPrice()">
-        </div>
-        <div>
-          <label class="lbl">⏳ Pending Amount</label>
-          <div id="mb-pending-display" style="padding:10px 12px;border:1.5px solid var(--b);border-radius:8px;font-weight:700;font-size:.95rem;min-height:40px;background:var(--s);color:#c0392b">—</div>
-        </div>
-      </div>
-      <div id="mb-pending-note" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:.8rem;color:#92400e;margin-bottom:14px">
-        ⚠️ Customer must pay the pending amount before check-in. Check-in will be blocked until fully paid.
       </div>
 
       <div style="margin-bottom:14px">
@@ -3444,12 +3422,9 @@ async function openManualBookingModal(){
     sel.appendChild(opt);
   });
   // Reset form
-  ["mb-cust-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-custom-fare","mb-amount-collected","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
+  ["mb-cust-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-custom-fare","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
   document.getElementById("mb-deposit").value = "later";
-  document.getElementById("mb-payment").value = "cash";
   document.getElementById("mb-price-preview").style.display = "none";
-  document.getElementById("mb-pending-display").textContent = "—";
-  document.getElementById("mb-pending-note").style.display = "none";
   document.getElementById("mb-error").style.display = "none";
   document.getElementById("mb-customer-hint").textContent = "";
   // Default pickup = tomorrow 10am, drop = day after 10am
@@ -3501,31 +3476,17 @@ function mbCalcPrice(){
   var gst  = Math.round((base + del) * 0.18);
   var dep  = depChoice === "now" ? 1000 : 0;
   var total = base + del + gst + dep;
-  var amtCollected = parseFloat(document.getElementById("mb-amount-collected").value);
-  var pending = (!isNaN(amtCollected) && amtCollected >= 0) ? Math.max(0, total - amtCollected) : null;
   var lines = [
     {l:(isCustom ? "Base Fare (custom)" : "Base Fare ("+days+" day"+(days!==1?"s":'')+" × ₹"+pricePerDay+")"), v:inr(base)+(isCustom?'<span style="font-size:.7rem;margin-left:4px;color:#2563eb">✏️ custom</span>':'')},
     del ? {l:"Delivery Fee", v:inr(del)} : null,
     {l:"GST (18%)", v:inr(gst)},
     dep ? {l:"Security Deposit (paid now)", v:inr(dep)} : null,
-    {l:"<strong>Total to Collect</strong>", v:"<strong>"+inr(total)+"</strong>"},
+    {l:"<strong>Total Amount (incl. GST)</strong>", v:'<strong style="color:var(--yd)">'+inr(total)+'</strong>'},
   ].filter(Boolean);
   document.getElementById("mb-price-lines").innerHTML = lines.map(function(x){
     return '<div style="display:flex;justify-content:space-between"><span style="color:var(--ts)">'+x.l+'</span><span>'+x.v+'</span></div>';
   }).join("");
   preview.style.display = "block";
-  // Pending amount display
-  var pendingEl = document.getElementById("mb-pending-display");
-  var pendingNote = document.getElementById("mb-pending-note");
-  if(pending !== null){
-    pendingEl.textContent = "₹" + pending.toLocaleString("en-IN");
-    pendingEl.style.color = pending > 0 ? "#c0392b" : "#15803d";
-    pendingNote.style.display = pending > 0 ? "block" : "none";
-  } else {
-    pendingEl.textContent = "—";
-    pendingEl.style.color = "";
-    pendingNote.style.display = "none";
-  }
 }
 
 async function submitManualBooking(){
@@ -3543,10 +3504,7 @@ async function submitManualBooking(){
   var delivery   = parseFloat(document.getElementById("mb-delivery").value) || 0;
   var customFare = document.getElementById("mb-custom-fare").value.trim();
   var depChoice  = document.getElementById("mb-deposit").value;
-  var payMode    = document.getElementById("mb-payment").value;
   var notes      = document.getElementById("mb-notes").value.trim();
-  var amtCollectedRaw = document.getElementById("mb-amount-collected").value.trim();
-  var amtCollected = amtCollectedRaw !== "" ? parseFloat(amtCollectedRaw) : null;
   if(!phone){ errEl.textContent="Phone number is required."; errEl.style.display="block"; return; }
   if(!carId) { errEl.textContent="Please select a car."; errEl.style.display="block"; return; }
   if(!pickup || !drop){ errEl.textContent="Pickup and drop dates are required."; errEl.style.display="block"; return; }
@@ -3554,9 +3512,8 @@ async function submitManualBooking(){
   btn.disabled = true; btn.textContent = "Creating…";
   var payload = { phone, name, email, carId, pickupDate: new Date(pickup).toISOString(), dropDate: new Date(drop).toISOString(),
     pickupLocation: pickupLoc||"Pune", dropLocation: dropLoc||"Pune",
-    deliveryFee: delivery, depositChoice: depChoice, paymentMode: payMode, notes };
+    deliveryFee: delivery, depositChoice: depChoice, notes };
   if(customFare !== "" && !isNaN(parseFloat(customFare))) payload.baseFare = parseFloat(customFare);
-  if(amtCollected !== null && !isNaN(amtCollected)) payload.amountCollected = amtCollected;
   try {
     var result = await adminFetch("/admin/bookings/manual", {
       method: "POST",

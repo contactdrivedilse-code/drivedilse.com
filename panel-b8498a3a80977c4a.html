@@ -3427,11 +3427,12 @@ async function openManualBookingModal(){
   document.getElementById("mb-price-preview").style.display = "none";
   document.getElementById("mb-error").style.display = "none";
   document.getElementById("mb-customer-hint").textContent = "";
-  // Default pickup = tomorrow 10am, drop = day after 10am
+  // Default pickup = tomorrow 10am, drop = day after 10am (local time, not UTC)
+  function toLocalDT(d){ var p=function(n){return String(n).padStart(2,"0");}; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); }
   var tmr = new Date(); tmr.setDate(tmr.getDate()+1); tmr.setHours(10,0,0,0);
   var drp = new Date(tmr); drp.setDate(drp.getDate()+1);
-  document.getElementById("mb-pickup").value = tmr.toISOString().slice(0,16);
-  document.getElementById("mb-drop").value   = drp.toISOString().slice(0,16);
+  document.getElementById("mb-pickup").value = toLocalDT(tmr);
+  document.getElementById("mb-drop").value   = toLocalDT(drp);
   document.getElementById("manual-booking-modal").classList.add("open");
 }
 

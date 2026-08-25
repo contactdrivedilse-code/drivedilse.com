@@ -4252,10 +4252,8 @@ function calcDynamicPrice(baseRate, pickupISO, dropISO, carCat){
 function isAvail(car, pickup, drop){
   if(!car.active) return false;
   var p = new Date(pickup), d = new Date(drop);
-  for(var i=0; i<car.paused.length; i++){
-    var ps = new Date(car.paused[i].start), pe = new Date(car.paused[i].end);
-    if(p < pe && d > ps) return false;
-  }
+  // NOTE: car.paused is NOT checked here — it's stale page-load data and pauses may have
+  // been added/removed since. The server /fleet/available is the authoritative source.
   // Check admin BOOKINGS list
   for(var j=0; j<BOOKINGS.length; j++){
     var b = BOOKINGS[j];
@@ -4414,7 +4412,8 @@ function renderFleet(pickup, drop, searched, gridId, carsList){
   var g = document.getElementById(gridId || "fleet-grid");
   g.innerHTML = "";
   (carsList || FLEET).forEach(function(car){
-    var avail = searched ? (car.availableNow !== undefined ? car.availableNow : isAvail(car, pickup, drop)) : true;
+    // Only trust server-set availableNow — isAvail() uses stale page-load data (pauses may have changed).
+    var avail = searched ? (car.availableNow === false ? false : (car.availableNow === true ? true : isAvail(car, pickup, drop))) : true;
     var div = document.createElement("div");
     div.className = "car-card" + (searched && !avail ? " unavailable" : "");
     var isOnHold = searched && !avail && car.onHold;
@@ -4708,8 +4707,9 @@ function openCar(id){
   if(calcBtn){ calcBtn.disabled = false; calcBtn.style.opacity = ""; calcBtn.style.cursor = ""; calcBtn.title = ""; }
   var searchedHrs = hp2 && hd2 ? (new Date(hd2) - new Date(hp2)) / 3600000 : 0;
   if(hp2 && hd2 && selCar && searchedHrs >= 6){
-    // Prefer server-verified availableNow over local isAvail — local data may be incomplete
-    var carAvailForDates = (selCar.availableNow !== undefined) ? selCar.availableNow : isAvail(selCar, hp2, hd2);
+    // Only mark unavailable if the SERVER explicitly confirmed it (availableNow === false).
+    // Never use stale local paused[] data — pauses may have been removed since page load.
+    var carAvailForDates = selCar.availableNow === false ? false : true;
     if(!carAvailForDates){
       if(unavailNotice) unavailNotice.style.display = "flex";
       if(payBtn2){ payBtn2.disabled = true; payBtn2.style.opacity = ".45"; payBtn2.style.cursor = "not-allowed"; payBtn2.title = "Car is unavailable for your selected dates"; }

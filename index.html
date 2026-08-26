@@ -5029,6 +5029,21 @@ async function payNow(){
     var order = await apiFetch(orderEndpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(orderBody) });
     if(order.guestToken){ authToken = order.guestToken; setAuthToken(authToken); }
 
+    // Guard: if server recalculated a different amount (e.g. car price changed since page load),
+    // warn the customer before Razorpay opens so they aren't charged a surprise amount.
+    if(Math.abs(order.amount - totalWithDelivery) > 2){
+      var proceed = confirm(
+        "The price has been updated.\n\n" +
+        "You were shown: " + inr(totalWithDelivery) + "\n" +
+        "Actual charge:  " + inr(order.amount) + "\n\n" +
+        "Click OK to continue with the updated price, or Cancel to go back."
+      );
+      if(!proceed){
+        if(payBtn){payBtn.textContent="Pay & Confirm Booking";payBtn.disabled=false;}
+        return;
+      }
+    }
+
     var rzp = new Razorpay({
       key: order.keyId,
       amount: Math.round(order.amount * 100),

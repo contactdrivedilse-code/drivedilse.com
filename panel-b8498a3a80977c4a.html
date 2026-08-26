@@ -2050,49 +2050,65 @@ async function renderKycApprovals(isLocal, c){
     return;
   }
 
-  var cards = pending.map(function(u){
-    var name     = u.name || "—";
-    var phone    = u.phone || "—";
-    var aadhaar  = u.kyc && u.kyc.aadhaarUrl;
-    var dl       = u.kyc && u.kyc.dlUrl;
-    var joined   = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+  c.innerHTML =
+    '<div class="page-title">KYC Approvals</div>' +
+    '<div class="page-sub">'+pending.length+' customer'+(pending.length!==1?'s':'')+' waiting for document verification.</div>' +
+    '<div id="kyc-cards-wrap"></div>';
 
-    var docImg = function(url, label){
-      return url
-        ? '<div style="text-align:center">' +
-            '<a href="'+url+'" target="_blank">' +
-              '<img src="'+url+'" style="width:140px;height:100px;object-fit:cover;border-radius:10px;border:2px solid var(--b);display:block;margin:0 auto">' +
-            '</a>' +
-            '<div style="font-size:.7rem;font-weight:700;color:var(--ts);margin-top:6px;letter-spacing:.5px;text-transform:uppercase">'+label+'</div>' +
-            '<a href="'+url+'" target="_blank" style="font-size:.7rem;color:var(--yd);font-weight:700">View Full ↗</a>' +
-          '</div>'
-        : '<div style="text-align:center;color:#ccc;font-size:.8rem">Not uploaded</div>';
-    };
+  var wrap = document.getElementById("kyc-cards-wrap");
 
-    return '<div class="card" style="margin-bottom:16px">' +
+  function docImg(url, label){
+    return url
+      ? '<div style="text-align:center">' +
+          '<a href="'+url+'" target="_blank">' +
+            '<img src="'+url+'" style="width:140px;height:100px;object-fit:cover;border-radius:10px;border:2px solid var(--b);display:block;margin:0 auto" onerror="this.parentElement.parentElement.innerHTML=\'<div style=&quot;text-align:center;color:#c0392b;font-size:.78rem&quot;>⚠️ Could not load</div>\'">' +
+          '</a>' +
+          '<div style="font-size:.7rem;font-weight:700;color:var(--ts);margin-top:6px;letter-spacing:.5px;text-transform:uppercase">'+label+'</div>' +
+          '<a href="'+url+'" target="_blank" style="font-size:.7rem;color:var(--yd);font-weight:700">View Full ↗</a>' +
+        '</div>'
+      : '<div style="text-align:center;color:#ccc;font-size:.8rem">Not uploaded</div>';
+  }
+
+  // Fetch signed URLs for each pending customer and render cards one by one
+  pending.forEach(function(u){
+    var name   = u.name || "—";
+    var phone  = u.phone || "—";
+    var joined = u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+    var uid    = u._id || u.id;
+
+    // Placeholder card while docs load
+    var cardId = "kyc-card-"+uid;
+    wrap.innerHTML += '<div class="card" id="'+cardId+'" style="margin-bottom:16px">' +
       '<div class="card-hdr" style="display:flex;align-items:center;justify-content:space-between">' +
         '<div>' +
-          '<span class="card-title">'+name+'</span>' +
-          '<span style="font-size:.75rem;color:var(--ts);margin-left:10px">+91 '+phone+'</span>' +
+          '<span class="card-title">'+esc(name)+'</span>' +
+          '<span style="font-size:.75rem;color:var(--ts);margin-left:10px">+91 '+esc(phone)+'</span>' +
           '<span style="font-size:.72rem;color:var(--ts);margin-left:10px">Joined '+joined+'</span>' +
         '</div>' +
         '<span class="sbadge sb-up">⏳ Awaiting Review</span>' +
       '</div>' +
-      '<div style="display:flex;gap:32px;align-items:flex-start;justify-content:center;padding:24px;flex-wrap:wrap">' +
-        docImg(aadhaar, "Aadhaar Card") +
-        docImg(dl, "Driving Licence") +
+      '<div id="'+cardId+'-docs" style="display:flex;gap:32px;align-items:flex-start;justify-content:center;padding:24px;flex-wrap:wrap">' +
+        '<div style="color:var(--ts);font-size:.82rem">Loading documents…</div>' +
       '</div>' +
       '<div style="display:flex;gap:12px;justify-content:center;padding:0 24px 20px">' +
-        '<button class="btn btn-y btn-sm" style="padding:10px 28px;font-size:.9rem" onclick="approveKyc(\''+u._id+'\')">✅ Approve KYC</button>' +
-        '<button class="btn" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:10px 28px;font-size:.9rem;font-weight:700;cursor:pointer" onclick="rejectKyc(\''+u._id+'\')">❌ Reject</button>' +
+        '<button class="btn btn-y btn-sm" style="padding:10px 28px;font-size:.9rem" onclick="approveKyc(\''+uid+'\')">✅ Approve KYC</button>' +
+        '<button class="btn" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:10px 28px;font-size:.9rem;font-weight:700;cursor:pointer" onclick="rejectKyc(\''+uid+'\')">❌ Reject</button>' +
       '</div>' +
     '</div>';
-  }).join("");
 
-  c.innerHTML =
-    '<div class="page-title">KYC Approvals</div>' +
-    '<div class="page-sub">'+pending.length+' customer'+(pending.length!==1?'s':'')+' waiting for document verification.</div>' +
-    cards;
+    // Fetch signed URLs then fill in the docs section
+    (isLocal
+      ? Promise.resolve({ aadhaarUrl: u.kyc && u.kyc.aadhaarUrl, dlUrl: u.kyc && u.kyc.dlUrl })
+      : adminFetch("/admin/customers/"+uid+"/docs")
+    ).then(function(docs){
+      var docsEl = document.getElementById(cardId+"-docs");
+      if(!docsEl) return;
+      docsEl.innerHTML = docImg(docs.aadhaarUrl, "Aadhaar Card") + docImg(docs.dlUrl, "Driving Licence");
+    }).catch(function(){
+      var docsEl = document.getElementById(cardId+"-docs");
+      if(docsEl) docsEl.innerHTML = '<div style="color:#c0392b;font-size:.8rem">⚠️ Could not load documents</div>';
+    });
+  });
 }
 
 function updateFaceVerifyBadge(){

@@ -335,12 +335,9 @@ Deno.serve(async (req) => {
       if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = resolveDeliveryFee(gdc);
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode);
-      const chosenDeposit = resolveDepositChoice(depositChoice);
-      const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
-      const gst = Math.round((baseFare + deliveryFee) * 0.18);
-      const total = baseFare + deliveryFee + gst + depositNow - couponDiscount;
 
+      // Look up (or create) the guest profile first so we can pass verifiedUserId
+      // to applyCoupon — without it, applyCoupon always returns 0 discount.
       let { data: user } = await sb.from("profiles").select("id, name").eq("phone", phone).maybeSingle();
       const u = user as Record<string, unknown> | null;
       if (!u) {
@@ -351,6 +348,12 @@ Deno.serve(async (req) => {
         await sb.from("profiles").update({ name }).eq("id", u.id);
       }
       const userId = (user as Record<string, unknown>).id as string;
+
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: userId });
+      const chosenDeposit = resolveDepositChoice(depositChoice);
+      const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
+      const gst = Math.round((baseFare + deliveryFee) * 0.18);
+      const total = baseFare + deliveryFee + gst + depositNow - couponDiscount;
 
       const order = await razorpayCreate({ amount: total * 100, currency: "INR", receipt: makeBookingId(), notes: { carId, phone } });
       const token = await signJwt({ id: userId, phone }, Deno.env.get("JWT_SECRET")!, 2 * 60 * 60);
@@ -585,7 +588,7 @@ Deno.serve(async (req) => {
       const pickup = new Date(pISO2), drop = new Date(dISO2);
       const { base: baseFare2, total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee2 = resolveDeliveryFee(gddc);
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal2, couponCode);
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal2, couponCode, { verifiedUserId: p.id as string });
       const gst2 = Math.round((baseFare2 + deliveryFee2) * 0.18);
       const total = baseFare2 + deliveryFee2 + gst2 - couponDiscount;
       const bookingId = makeBookingId();

@@ -703,6 +703,17 @@ Deno.serve(async (req) => {
       return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
     }
 
+    // GET /bookings/deposit-refund-history — all settled trips with a
+    // non-null deposit_refund_status (failed, completed, or manual).
+    if (req.method === "GET" && path === "/bookings/deposit-refund-history" && isAdmin) {
+      const { data, error } = await sb.from("bookings").select("*")
+        .eq("status", "completed").not("settlement_filled_at", "is", null)
+        .not("deposit_refund_status", "is", null)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
+    }
+
     // POST /bookings/:id/settlement — fleet manager (or admin) records
     // post-checkout deductions against the deposit: damage, FASTag, fuel,
     // and a late-return/unbilled-extension charge. Produces a suggested

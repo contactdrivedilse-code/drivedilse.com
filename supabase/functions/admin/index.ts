@@ -760,7 +760,10 @@ Deno.serve(async (req) => {
 
       if (refundAmount > 0) {
         const paymentId = b.deposit_razorpay_payment_id as string;
-        if (paymentId && paymentId !== "manual") {
+        // Only attempt an online refund when we have a real Razorpay payment ID
+        // (always starts with "pay_"). Manual bookings store "cash"/"gpay"/"online"
+        // as the payment ID — passing those to Razorpay causes the failed_needs_manual error.
+        if (paymentId && paymentId.startsWith("pay_")) {
           try {
             const refund = await razorpayRefund(paymentId, Math.round(refundAmount * 100));
             refundId = refund.id;
@@ -770,6 +773,7 @@ Deno.serve(async (req) => {
             refundStatus = "failed_needs_manual";
           }
         }
+        // else: cash/gpay/unknown — stays "needs_manual" so admin marks it done manually
       } else {
         refundStatus = "refunded"; // nothing owed back — fully consumed by deductions
       }

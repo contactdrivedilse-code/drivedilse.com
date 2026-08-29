@@ -2761,24 +2761,28 @@ function _settlementCard(b, isFailed){
   var deductions = (s.damageAmount||0)+(s.fastagAmount||0)+(s.fuelAmount||0)+(s.extensionAmount||0);
   var defaultAmt = s.suggestedRefund != null ? s.suggestedRefund : (b.depositAmount||0);
   var border = isFailed ? 'border:1.5px solid #c0392b' : '';
+  // Only show Razorpay button when deposit was collected online (depositMethod === "online").
+  // Cash/GPay deposits have no Razorpay payment ID — clicking the button would always fail.
+  var canRazorpay = b.depositMethod === "online";
+  var depositMethodLabel = b.depositMethod === "cash" ? "💵 Cash" : b.depositMethod === "gpay" ? "📱 GPay" : b.depositMethod === "online" ? "💳 Online (Razorpay)" : "—";
   return '<div class="v-card" style="'+border+'">' +
     '<div class="v-body">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
         '<div><span class="bk-id">'+b.bookingId+'</span> <span style="font-weight:700;margin-left:6px">'+esc(b.carName||"")+'</span></div>' +
       '</div>' +
       '<div style="font-size:.8rem;color:var(--ts);margin-bottom:8px">'+esc(b.customer||"")+' &middot; '+esc(b.phone||"")+'</div>' +
-      '<div style="font-size:.78rem;margin-bottom:4px">Deposit collected: <strong>'+inr(b.depositAmount||0)+'</strong></div>' +
+      '<div style="font-size:.78rem;margin-bottom:4px">Deposit collected: <strong>'+inr(b.depositAmount||0)+'</strong> <span style="color:var(--ts)">via '+depositMethodLabel+'</span></div>' +
       (s.lateHours > 0 ? '<div style="font-size:.78rem;color:#a16207;margin-bottom:4px">⏱ Returned '+s.lateHours+'h late</div>' : '') +
       (deductions > 0 ? '<div style="font-size:.78rem;color:#b91c1c;margin-bottom:4px">Deductions: '+inr(deductions)+' (damage '+inr(s.damageAmount||0)+', FASTag '+inr(s.fastagAmount||0)+', fuel '+inr(s.fuelAmount||0)+', ext '+inr(s.extensionAmount||0)+')</div>' : '') +
       (s.notes ? '<div style="font-size:.76rem;color:var(--ts);margin-bottom:6px">Note: '+esc(s.notes)+'</div>' : '') +
-      (isFailed ? '<div style="font-size:.78rem;color:#c0392b;background:#fff1f1;border-radius:6px;padding:6px 10px;margin-bottom:8px">⚠️ Razorpay refund failed — please refund manually or retry.</div>' : '') +
+      (isFailed ? '<div style="font-size:.78rem;color:#c0392b;background:#fff1f1;border-radius:6px;padding:6px 10px;margin-bottom:8px">⚠️ Razorpay refund failed — refund manually via Cash or GPay below.</div>' : '') +
       '<div style="background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:10px;margin:8px 0">' +
         '<div style="font-size:.72rem;color:var(--ts);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Suggested Refund</div>' +
         '<div style="font-weight:800;font-size:1.1rem;color:var(--yd)">'+inr(s.suggestedRefund||0)+'</div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">' +
         '<input class="inp" type="number" id="settle-amt-'+b._id+'" value="'+defaultAmt+'" style="flex:1" min="0">' +
-        '<button class="btn btn-y btn-sm" onclick="initiateSettleRefund(\''+b._id+'\')" title="Trigger Razorpay refund (only works if deposit was paid online)">💳 Razorpay</button>' +
+        (canRazorpay ? '<button class="btn btn-y btn-sm" onclick="initiateSettleRefund(\''+b._id+'\')" title="Trigger Razorpay refund">💳 Razorpay</button>' : '') +
       '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
         '<button class="btn btn-g btn-sm" style="flex:1" onclick="markDepositRefundManual(\''+b._id+'\',\'cash\')">💵 Returned Cash</button>' +

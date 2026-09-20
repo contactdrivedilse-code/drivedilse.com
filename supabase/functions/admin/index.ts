@@ -721,6 +721,16 @@ Deno.serve(async (req) => {
       return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
     }
 
+    // GET /bookings/:id — single-booking detail with signed check-in/checkout
+    // photo URLs (the list endpoint above skips signing for performance).
+    const bkDetailMatch = path.match(/^\/bookings\/([^/]+)$/);
+    if (req.method === "GET" && bkDetailMatch) {
+      const { data, error } = await sb.from("bookings").select("*").eq("id", bkDetailMatch[1]).maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: "Booking not found" }, 404);
+      return json(await signBookingPhotos(mapBooking(data as Record<string, unknown>)));
+    }
+
     // POST /bookings/:id/settlement — fleet manager (or admin) records
     // post-checkout deductions against the deposit: damage, FASTag, fuel,
     // and a late-return/unbilled-extension charge. Produces a suggested

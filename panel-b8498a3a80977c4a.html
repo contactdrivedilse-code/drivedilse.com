@@ -3089,9 +3089,16 @@ function bkdmPhotoGrid(urls, emptyMsg){
     }).join("") +
   '</div>';
 }
-function openBkDetailsModal(id){
+async function openBkDetailsModal(id){
   var b = window._bkDetailsMap[id];
   if(!b){ toast("Booking data not found.", "error"); return; }
+  // The list endpoint (which populates _bkDetailsMap) skips photo signing for
+  // performance, so fetch this one booking fresh to get signed, viewable
+  // check-in/checkout photo URLs (private "checkin" bucket).
+  try{
+    var fresh = await adminFetch("/admin/bookings/"+id);
+    if(fresh){ window._bkDetailsMap[id] = fresh; b = fresh; }
+  }catch(e){ /* fall back to cached (unsigned photo) data if this fails */ }
   document.getElementById("bkdm-id").textContent = b.bookingId || id;
 
   var carName  = b.carName || (b.car&&b.car.name) || "—";

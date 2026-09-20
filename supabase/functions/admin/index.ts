@@ -32,18 +32,25 @@ async function rebuildBlogIndexAndSitemap(): Promise<void> {
 // Sign the check-in photo URLs on a mapped booking (private bucket support).
 async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<string, unknown>> {
   const ci = (b.checkin ?? {}) as Record<string, unknown>;
+  const co = (b.checkout ?? {}) as Record<string, unknown>;
   const photos = (ci.photos ?? {}) as Record<string, unknown>;
   const supaUrl = Deno.env.get("SUPABASE_URL")!;
   // Selfie is stored at {bookingUUID}/selfie.jpg in the checkin bucket
   const selfiePublicUrl = `${supaUrl}/storage/v1/object/public/checkin/${b._id as string}/selfie.jpg`;
-  const [front, rear, passengerSide, driverSide, selfieUrl] = await Promise.all([
+  const [front, rear, passengerSide, driverSide, selfieUrl, checkinFuelPhotoUrl, checkoutFuelPhotoUrl] = await Promise.all([
     signStorageUrl(sb, photos.front as string),
     signStorageUrl(sb, photos.rear as string),
     signStorageUrl(sb, photos.passengerSide as string),
     signStorageUrl(sb, photos.driverSide as string),
     signStorageUrl(sb, selfiePublicUrl),
+    signStorageUrl(sb, ci.fuelPhotoUrl as string),
+    signStorageUrl(sb, co.fuelPhotoUrl as string),
   ]);
-  return { ...b, checkin: { ...ci, photos: { front, rear, passengerSide, driverSide }, selfieUrl } };
+  return {
+    ...b,
+    checkin: { ...ci, photos: { front, rear, passengerSide, driverSide }, selfieUrl, fuelPhotoUrl: checkinFuelPhotoUrl },
+    checkout: { ...co, fuelPhotoUrl: checkoutFuelPhotoUrl },
+  };
 }
 
 function mapCar(c: Record<string, unknown>, pauses: Record<string, unknown>[] = []) {

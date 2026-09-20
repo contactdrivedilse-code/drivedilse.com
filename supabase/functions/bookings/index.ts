@@ -11,14 +11,21 @@ const sb = createClient(
 
 async function signBookingPhotos(b: Record<string, unknown>): Promise<Record<string, unknown>> {
   const ci = (b.checkin ?? {}) as Record<string, unknown>;
+  const co = (b.checkout ?? {}) as Record<string, unknown>;
   const photos = (ci.photos ?? {}) as Record<string, unknown>;
-  const [front, rear, passengerSide, driverSide] = await Promise.all([
+  const [front, rear, passengerSide, driverSide, checkinFuelPhotoUrl, checkoutFuelPhotoUrl] = await Promise.all([
     signStorageUrl(sb, photos.front as string),
     signStorageUrl(sb, photos.rear as string),
     signStorageUrl(sb, photos.passengerSide as string),
     signStorageUrl(sb, photos.driverSide as string),
+    signStorageUrl(sb, ci.fuelPhotoUrl as string),
+    signStorageUrl(sb, co.fuelPhotoUrl as string),
   ]);
-  return { ...b, checkin: { ...ci, photos: { front, rear, passengerSide, driverSide } } };
+  return {
+    ...b,
+    checkin: { ...ci, photos: { front, rear, passengerSide, driverSide }, fuelPhotoUrl: checkinFuelPhotoUrl },
+    checkout: { ...co, fuelPhotoUrl: checkoutFuelPhotoUrl },
+  };
 }
 
 const CHECKIN_WINDOW_MINS = 30;
@@ -790,9 +797,9 @@ Deno.serve(async (req) => {
           const buf = Uint8Array.from(atob(fuelPhotoB64), (c) => c.charCodeAt(0));
           const mime = fuelPhotoMime || "image/jpeg";
           const ext  = mime.includes("png") ? "png" : "jpg";
-          const storagePath = `checkins/${id}/checkout_fuel.${ext}`;
-          const { error: upErr } = await sb.storage.from("checkin-photos").upload(storagePath, buf, { contentType: mime, upsert: true });
-          if (!upErr) checkoutFuelUrl = sb.storage.from("checkin-photos").getPublicUrl(storagePath).data.publicUrl;
+          const storagePath = `${id}/checkout_fuel.${ext}`;
+          const { error: upErr } = await sb.storage.from("checkin").upload(storagePath, buf, { contentType: mime, upsert: true });
+          if (!upErr) checkoutFuelUrl = sb.storage.from("checkin").getPublicUrl(storagePath).data.publicUrl;
         } catch { /* non-fatal */ }
       }
 

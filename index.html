@@ -3579,7 +3579,7 @@ function showPage(id){
     var hash = _pageToHash(id);
     history.pushState(
       {page:id, carId: selCar ? String(selCar.id) : null},
-      '', location.pathname + location.search + (hash ? '#'+hash : '#')
+      '', location.pathname + location.search + (hash ? '#'+hash : '')
     );
   }
 }
@@ -3597,10 +3597,10 @@ function showPage(id){
   }
   // Seed history: guard entry below + real entry on top
   // Guard prevents exiting site on first back press from home
-  history.replaceState({page:'pg-home', carId:null, _guard:true}, '', location.pathname + location.search + '#');
+  history.replaceState({page:'pg-home', carId:null, _guard:true}, '', location.pathname + location.search);
   history.pushState(
     {page:initPage, carId:null},
-    '', location.pathname + location.search + (initHash ? '#'+initHash : '#')
+    '', location.pathname + location.search + (initHash ? '#'+initHash : '')
   );
 })();
 
@@ -3619,7 +3619,7 @@ window.addEventListener('popstate', function(e){
     }
     _backPressTime = now;
     // Push home back so they stay on site; show "press again" toast
-    history.pushState({page:'pg-home', carId:null}, '', location.pathname + location.search + '#');
+    history.pushState({page:'pg-home', carId:null}, '', location.pathname + location.search);
     if(typeof showToastMsg === 'function') showToastMsg('Press back again to exit');
     else { var t=document.createElement('div');
       t.textContent='Press back again to exit';

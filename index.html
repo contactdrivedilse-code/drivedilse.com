@@ -3531,6 +3531,9 @@ async function loadFleet(){
     var cpPu = spCar.get("pickup"), cpDr = spCar.get("drop");
     if(cpPu){ var piEl2 = document.getElementById("pickup"); if(piEl2) piEl2.value = cpPu.slice(0,16); }
     if(cpDr){ var drEl2 = document.getElementById("drop");   if(drEl2) drEl2.value = cpDr.slice(0,16); }
+    // Scrub the deep-link query now that it's been read, so the address bar
+    // doesn't keep showing raw ?car=<uuid> once the detail view is open.
+    history.replaceState(history.state, '', location.pathname);
     if(cpPu && cpDr) loadFleet();
     var match = FLEET.find(function(c){ return c.id === carParam; });
     if(match) setTimeout(function(){ openCar(match.id); }, cpPu && cpDr ? 800 : 0);
@@ -3541,6 +3544,7 @@ async function loadFleet(){
     var rbPickup = sp.get("pickup"), rbDrop = sp.get("drop");
     if(rbPickup){ var piEl = document.getElementById("pickup"); if(piEl) piEl.value = rbPickup.slice(0,16); }
     if(rbDrop)  { var drEl = document.getElementById("drop");   if(drEl) drEl.value = rbDrop.slice(0,16);   }
+    history.replaceState(history.state, '', location.pathname);
     if(rbPickup && rbDrop) loadFleet();
     setTimeout(function(){ var fs = document.getElementById("fleet-sec"); if(fs) fs.scrollIntoView({behavior:"smooth",block:"start"}); }, 600);
   }

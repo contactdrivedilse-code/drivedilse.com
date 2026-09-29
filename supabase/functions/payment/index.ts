@@ -1,198 +1,21 @@
-﻿import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
-import { signJwt, verifyJwt, getBearer, getUserToken } from "../_shared/jwt.ts";
+import { signJwt, verifyJwt, getUserToken } from "../_shared/jwt.ts";
 import { sendBookingConfirmationEmail } from "../_shared/email.ts";
 import { checkRateLimit } from "../_shared/ratelimit.ts";
+import { calcPrice } from "../_shared/pricing.ts";
+import { computeOrderPaymentSignature } from "../_shared/razorpay.ts";
+import {
+  DEPOSIT_AMOUNT, resolveDepositChoice, resolveDeliveryFee,
+  makeBookingId, generateOtp, hasDateConflict, CONFLICT_MSG,
+  applyCoupon, mapBooking, createBooking,
+} from "../_shared/booking.ts";
 // Zoho Books invoice generation removed
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
-
-function makeBookingId(): string { return "DS" + Date.now().toString(36).toUpperCase(); }
-function generateOtp(): string {
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  return String(100000 + (buf[0] % 900000));
-}
-
-// Refundable security deposit — fixed platform-wide amount, decided
-// server-side only. Never trust a client-supplied deposit amount; only
-// the choice of "now" vs "later" comes from the client.
-const DEPOSIT_AMOUNT = Number(Deno.env.get("DEPOSIT_AMOUNT_INR")) || 1000;
-function resolveDepositChoice(raw: unknown): "now" | "later" { return raw === "now" ? "now" : "later"; }
-
-// Delivery fee is client-supplied but capped server-side to prevent
-// manipulation (e.g. claiming 0 for a home delivery, or inflating to
-// a huge number). Set MAX_DELIVERY_FEE_INR in Supabase secrets.
-const MAX_DELIVERY_FEE = Number(Deno.env.get("MAX_DELIVERY_FEE_INR")) || 500;
-function resolveDeliveryFee(raw: unknown): number {
-  if (typeof raw !== "number" || raw <= 0) return 0;
-  return Math.min(Math.round(raw), MAX_DELIVERY_FEE);
-}
-
-// Checks both real bookings AND fleet-manager pause periods for the
-// requested window. A car paused for maintenance/Zoomcar etc. must be
-// just as unbookable as one with an overlapping confirmed booking —
-// this was previously only checked at the /fleet/available listing
-// step, not at actual booking creation, so a paused car could still be
-// booked through it (e.g. via the homepage carousel, which deliberately
-// keeps unavailable cars visible/clickable).
-const HOLD_MINUTES = 10;
-
-async function hasDateConflict(carId: string, pISO: string, dISO: string, ownSession?: string): Promise<boolean> {
-  const nowISO = new Date().toISOString();
-  let holdsQ = sb.from("car_holds").select("id").eq("car_id", carId)
-    .lt("pickup_date", dISO).gt("drop_date", pISO).gt("expires_at", nowISO);
-  if (ownSession) holdsQ = holdsQ.neq("session_id", ownSession);
-
-  const [{ data: bookingConflict }, { data: pauseConflict }, { data: holdConflict }] = await Promise.all([
-    sb.from("bookings").select("id").eq("car_id", carId)
-      .in("status", ["confirmed", "active", "pending_kyc", "pending", "completed"]).lt("pickup_date", dISO).gt("drop_date", pISO).maybeSingle(),
-    sb.from("car_pauses").select("id").eq("car_id", carId)
-      .lt("from_date", dISO).gt("to_date", pISO).maybeSingle(),
-    holdsQ.maybeSingle(),
-  ]);
-  return !!bookingConflict || !!pauseConflict || !!holdConflict;
-}
-const CONFLICT_MSG = "This car is paused or already booked for these dates. Please choose different dates or another car.";
-
-// Marginal bracket rates (₹/hr, excl GST) — must stay in sync with CAT_BRACKETS in index.html.
-// Brackets: [0-12hr, 12-24hr, 24-168hr, 168hr+]
-const CAT_BRACKETS: Record<string, number[]> = {
-  compact: [ 96, 60, 39, 48],
-  premium: [105, 65, 43, 54],
-  MPV:     [130, 81, 45, 64],
-  SUV:     [156, 97, 54, 73],
-};
-const HATCH_PPD_SPLIT = 1580;
-const BRACKET_CUTS = [0, 12, 24, 168, Infinity];
-
-function getCatBrackets(category: string, pricePerDay: number): number[] {
-  const cat = (category || "").toLowerCase();
-  if (cat === "mpv") return CAT_BRACKETS.MPV;
-  if (cat === "compact suv" || cat === "suv") return CAT_BRACKETS.SUV;
-  if (cat === "premium hatchback" || cat === "sedan") return CAT_BRACKETS.premium;
-  if (cat === "compact hatchback") return CAT_BRACKETS.compact;
-  return pricePerDay < HATCH_PPD_SPLIT ? CAT_BRACKETS.compact : CAT_BRACKETS.premium;
-}
-
-function getMarginalBase(rates: number[], fromHr: number, toHr: number): number {
-  let cost = 0;
-  for (let i = 0; i < rates.length; i++) {
-    const s = Math.max(fromHr, BRACKET_CUTS[i]);
-    const e = Math.min(toHr, BRACKET_CUTS[i + 1]);
-    if (e > s) cost += (e - s) * rates[i];
-  }
-  return cost;
-}
-
-// Indian national / public holidays — update annually.
-// Dates that are also weekends get the HIGHER of the two rates (holiday wins if >= weekend).
-const HOLIDAYS = new Set([
-  // 2026
-  "2026-01-01","2026-01-14","2026-01-26",
-  "2026-03-23","2026-03-30","2026-04-02","2026-04-03","2026-04-06","2026-04-14",
-  "2026-05-01","2026-05-23",
-  "2026-06-07","2026-07-27",
-  "2026-08-15","2026-08-19",
-  "2026-09-04","2026-09-18",
-  "2026-10-02","2026-10-21",
-  "2026-11-08","2026-11-26",
-  "2026-12-25",
-  // 2027
-  "2027-01-01","2027-01-14","2027-01-26",
-  "2027-03-12","2027-03-19","2027-03-31","2027-04-14","2027-04-26",
-  "2027-05-01","2027-05-13",
-  "2027-06-27",
-  "2027-08-15","2027-08-28",
-  "2027-09-24",
-  "2027-10-02","2027-10-10","2027-10-28",
-  "2027-11-18",
-  "2027-12-25",
-]);
-
-function getDayType(dateStr: string): "holiday" | "weekend" | "weekday" {
-  if (HOLIDAYS.has(dateStr)) return "holiday";
-  const dow = new Date(dateStr + "T00:00:00Z").getUTCDay();
-  if (dow === 0 || dow === 6) return "weekend";
-  return "weekday";
-}
-
-function getDayMultiplier(type: "holiday" | "weekend" | "weekday"): number {
-  if (type === "holiday") return 1.10;
-  if (type === "weekend") return 1.20;
-  return 1.0;
-}
-
-// Converts a UTC ms timestamp to an IST calendar date string "YYYY-MM-DD".
-function toISTDate(ms: number): string {
-  const ist = new Date(ms + 5.5 * 3600000);
-  return ist.toISOString().slice(0, 10);
-}
-
-function calcPrice(pricePerDay: number, pickup: Date, drop: Date, category = "") {
-  const hours = (drop.getTime() - pickup.getTime()) / 3600000;
-  if (hours <= 0) return { base: 0, gst: 0, total: 0, discount: 0, days: 0 };
-
-  const rates = getCatBrackets(category, pricePerDay);
-  let rawBase = 0, elapsed = 0, cur = pickup.getTime();
-  while (cur < drop.getTime()) {
-    const chunkEnd = Math.min(cur + 24 * 3600000, drop.getTime());
-    const chunkHrs = (chunkEnd - cur) / 3600000;
-    const mult     = getDayMultiplier(getDayType(toISTDate(cur)));
-    rawBase += getMarginalBase(rates, elapsed, elapsed + chunkHrs) * mult;
-    elapsed += chunkHrs;
-    cur = chunkEnd;
-  }
-  const base  = Math.round(rawBase);
-  const gst   = Math.round(base * 0.18);
-  const total = base + gst;
-  const days  = Math.max(1, Math.ceil(hours / 24));
-  return { base, gst, total, discount: 0, days };
-}
-
-// `verifiedUserId` must come from a real (non-guest) OTP-verified JWT — guest/demo bookings never pass one,
-// so ANY coupon now requires the customer to complete phone+OTP signup/login before it can be applied.
-async function applyCoupon(
-  baseTotal: number,
-  code: unknown,
-  ctx: { verifiedUserId?: string; consume?: boolean } = {},
-): Promise<{ discount: number; code: string | null }> {
-  if (typeof code !== "string" || !code.trim()) return { discount: 0, code: null };
-  if (!ctx.verifiedUserId) return { discount: 0, code: null };
-  const { data } = await sb.from("coupons").select("*").eq("code", code.toUpperCase().trim()).eq("active", true).maybeSingle();
-  const c = data as Record<string, unknown> | null;
-  if (!c) return { discount: 0, code: null };
-  const minAmount = (c.min_amount as number) ?? 0;
-  if (baseTotal < minAmount) return { discount: 0, code: null };
-  if (c.new_customer_only) {
-    const { data: priorBooking } = await sb.from("bookings").select("id")
-      .eq("user_id", ctx.verifiedUserId).limit(1).maybeSingle();
-    if (priorBooking) return { discount: 0, code: null };
-  }
-  const maxUses  = c.max_uses as number | null;
-  const timesUsed = (c.times_used as number) ?? 0;
-  if (maxUses != null && timesUsed >= maxUses) return { discount: 0, code: null };
-
-  if (ctx.consume && maxUses != null) {
-    // Atomic conditional increment — the WHERE clause is re-evaluated under
-    // row lock, so two simultaneous redemptions of the same one-time code
-    // can't both succeed.
-    const { data: updated } = await sb.from("coupons")
-      .update({ times_used: timesUsed + 1 })
-      .eq("id", c.id as string)
-      .lt("times_used", maxUses)
-      .select("id")
-      .maybeSingle();
-    if (!updated) return { discount: 0, code: null };
-  }
-
-  const raw = c.type === "flat" ? (c.value as number) : Math.round(baseTotal * (c.value as number) / 100);
-  const discount = Math.max(0, Math.min(raw, baseTotal));
-  return { discount, code: c.code as string };
-}
 
 async function getUser(req: Request) {
   const token = getUserToken(req);
@@ -214,30 +37,27 @@ async function razorpayCreate(body: Record<string, unknown>) {
 }
 
 async function verifyRazorpay(orderId: string, paymentId: string, signature: string): Promise<boolean> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", enc.encode(Deno.env.get("RAZORPAY_KEY_SECRET")!),
-    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const buf = await crypto.subtle.sign("HMAC", key, enc.encode(`${orderId}|${paymentId}`));
-  const expected = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+  const expected = await computeOrderPaymentSignature(orderId, paymentId, Deno.env.get("RAZORPAY_KEY_SECRET")!);
   return expected === signature;
 }
 
-function mapBooking(b: Record<string, unknown>) {
-  return {
-    _id: b.id, id: b.id, bookingId: b.booking_id,
-    car: { _id: b.car_id, id: b.car_id, name: b.car_name }, carName: b.car_name,
-    customer: b.customer, phone: b.phone,
-    pickup: { date: b.pickup_date, location: b.pickup_location },
-    drop:   { date: b.drop_date,   location: b.drop_location },
-    days: b.days, pricePerDay: b.price_per_day, total: b.total,
-    deposit: b.deposit, discount: b.discount, deliveryFee: b.delivery_fee ?? 0,
-    depositAmount: b.deposit_amount ?? 0, depositChoice: b.deposit_choice ?? "later", depositPaid: b.deposit_paid ?? false,
-    couponCode: b.coupon_code ?? null, couponDiscount: b.coupon_discount ?? 0,
-    payment: { status: b.payment_status, paidAt: b.paid_at },
-    checkin: { photos: {}, otp: b.checkin_otp, otpVerified: b.checkin_otp_verified },
-    checkout: { otp: b.checkout_otp, otpVerified: b.checkout_otp_verified },
-    status: b.status, createdAt: b.created_at, extensions: [],
-  };
+// Stashes everything needed to reconstruct the booking from a bare Razorpay
+// order id — read by the payment.captured webhook (payment-webhook/index.ts)
+// if the client-side /verify call never happens (e.g. a UPI app redirect
+// kills the browser tab before it can come back and confirm).
+async function savePendingOrder(orderId: string, p: {
+  userId: string; carId: string; pickupDate: string; dropDate: string;
+  pickupLocation?: string; dropLocation?: string; deliveryFee: number;
+  couponCode?: string; depositChoice: "now" | "later"; sessionId?: string;
+}) {
+  const { error } = await sb.from("pending_orders").insert({
+    razorpay_order_id: orderId, user_id: p.userId, car_id: p.carId,
+    pickup_date: p.pickupDate, drop_date: p.dropDate,
+    pickup_location: p.pickupLocation ?? null, drop_location: p.dropLocation ?? null,
+    delivery_fee: p.deliveryFee, coupon_code: p.couponCode ?? null,
+    deposit_choice: p.depositChoice, session_id: p.sessionId ?? null,
+  });
+  if (error) console.error("savePendingOrder failed", orderId, error.message);
 }
 
 Deno.serve(async (req) => {
@@ -266,7 +86,7 @@ Deno.serve(async (req) => {
       const pISO    = new Date(pickupDate).toISOString();
       const dISO    = new Date(dropDate).toISOString();
       const nowISO  = new Date().toISOString();
-      const expires = new Date(Date.now() + HOLD_MINUTES * 60000).toISOString();
+      const expires = new Date(Date.now() + 10 * 60000).toISOString();
 
       // Block regular bookings ≥ 15 days — must use Monthly Lease
       const holdHrs = (new Date(dISO).getTime() - new Date(pISO).getTime()) / 3600000;
@@ -304,7 +124,7 @@ Deno.serve(async (req) => {
         throw error;
       }
 
-      return json({ holdId: (hold as Record<string, unknown>).id, expiresAt: expires, minutesLeft: HOLD_MINUTES });
+      return json({ holdId: (hold as Record<string, unknown>).id, expiresAt: expires, minutesLeft: 10 });
     }
 
     // DELETE /hold — release a hold when customer navigates away or books successfully
@@ -332,7 +152,7 @@ Deno.serve(async (req) => {
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const gDurErr = durationError(pickup.toISOString(), drop.toISOString());
       if (gDurErr) return gDurErr;
-      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(sb, carId, pickup.toISOString(), drop.toISOString(), gSessionId)) return json({ error: CONFLICT_MSG }, 400);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = resolveDeliveryFee(gdc);
 
@@ -349,7 +169,7 @@ Deno.serve(async (req) => {
       }
       const userId = (user as Record<string, unknown>).id as string;
 
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: userId });
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(sb, baseTotal, couponCode, { verifiedUserId: userId });
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
       const gst = Math.round((baseFare + deliveryFee) * 0.18);
@@ -357,6 +177,11 @@ Deno.serve(async (req) => {
 
       const order = await razorpayCreate({ amount: total * 100, currency: "INR", receipt: makeBookingId(), notes: { carId, phone } });
       const token = await signJwt({ id: userId, phone }, Deno.env.get("JWT_SECRET")!, 2 * 60 * 60);
+      await savePendingOrder(order.id, {
+        userId, carId, pickupDate: pickup.toISOString(), dropDate: drop.toISOString(),
+        pickupLocation, dropLocation, deliveryFee, couponCode: appliedCoupon ?? undefined,
+        depositChoice: chosenDeposit, sessionId: gSessionId,
+      });
 
       return json({
         orderId: order.id, amount: total, currency: "INR",
@@ -381,7 +206,7 @@ Deno.serve(async (req) => {
       if (!c) return json({ error: "Car not available" }, 404);
 
       const { total: baseTotal } = calcPrice(c.price_per_day as number, new Date(pickupDate), new Date(dropDate), (c.category as string) || "");
-      const { discount, code } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
+      const { discount, code } = await applyCoupon(sb, baseTotal, couponCode, { verifiedUserId: user.id });
       if (!code) return json({ error: "Invalid or expired coupon code." }, 400);
       return json({ discount, code });
     }
@@ -403,18 +228,24 @@ Deno.serve(async (req) => {
       const pISO = new Date(pickupDate).toISOString(), dISO = new Date(dropDate).toISOString();
       const oDurErr = durationError(pISO, dISO);
       if (oDurErr) return oDurErr;
-      if (await hasDateConflict(carId, pISO, dISO, oSessionId)) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(sb, carId, pISO, dISO, oSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       const pickup = new Date(pickupDate), drop = new Date(dropDate);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = resolveDeliveryFee(odc);
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: user.id });
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(sb, baseTotal, couponCode, { verifiedUserId: user.id });
       const chosenDeposit = resolveDepositChoice(depositChoice);
       const depositNow = chosenDeposit === "now" ? DEPOSIT_AMOUNT : 0;
       const gst = Math.round((baseFare + deliveryFee) * 0.18);
       const total = baseFare + deliveryFee + gst + depositNow - couponDiscount;
 
       const order = await razorpayCreate({ amount: total * 100, currency: "INR", receipt: makeBookingId(), notes: { carId, phone: user.phone } });
+      await savePendingOrder(order.id, {
+        userId: user.id, carId, pickupDate: pISO, dropDate: dISO,
+        pickupLocation, dropLocation, deliveryFee, couponCode: appliedCoupon ?? undefined,
+        depositChoice: chosenDeposit, sessionId: oSessionId,
+      });
+
       return json({
         orderId: order.id, amount: total, currency: "INR",
         keyId: Deno.env.get("RAZORPAY_KEY_ID"),
@@ -433,64 +264,15 @@ Deno.serve(async (req) => {
       if (!await verifyRazorpay(razorpayOrderId, razorpayPaymentId, razorpaySignature))
         return json({ error: "Payment verification failed" }, 400);
 
-      const [{ data: car }, { data: profile }] = await Promise.all([
-        sb.from("cars").select("*").eq("id", carId).maybeSingle(),
-        sb.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-      ]);
-      const c = car as Record<string, unknown>, p = profile as Record<string, unknown>;
+      const result = await createBooking(sb, {
+        userId: user.id, carId, pickupDate, dropDate, pickupLocation, dropLocation,
+        deliveryCharge: vdc, couponCode, depositChoice, sessionId: vSessionId,
+        razorpayOrderId, razorpayPaymentId, razorpaySignature,
+      });
+      if (!result.ok) return json({ error: result.message }, result.reason === "blacklisted" ? 403 : 400);
 
-      const pickup = new Date(pickupDate), drop = new Date(dropDate);
-      // This is the endpoint that actually inserts the booking row — it
-      // previously had NO conflict check at all (only /order, the earlier
-      // preview step, did, and even that missed pauses). A booking made or
-      // a pause added between /order and /verify could slip through.
-      if (await hasDateConflict(carId, pickup.toISOString(), drop.toISOString(), vSessionId)) return json({ error: CONFLICT_MSG }, 400);
-      const { data: blEntry } = await sb.from("blacklist").select("phone, reason").eq("phone", (p.phone as string || "").replace(/\D/g, "")).maybeSingle();
-      if (blEntry) return json({ error: "Booking unavailable. Please contact support." }, 403);
-      const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
-      const deliveryFee = resolveDeliveryFee(vdc);
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
-      const chosenDeposit = resolveDepositChoice(depositChoice);
-      const depositPaidNow = chosenDeposit === "now";
-      const gst = Math.round((baseFare + deliveryFee) * 0.18);
-      const total = baseFare + deliveryFee + gst + (depositPaidNow ? DEPOSIT_AMOUNT : 0) - couponDiscount;
-      const bookingId = makeBookingId();
-      const isConfirmed = p.kyc_status === "verified";
-
-      const { data: booking, error } = await sb.from("bookings").insert({
-        id: crypto.randomUUID(), booking_id: bookingId,
-        car_id: c.id, car_name: c.name,
-        user_id: p.id, customer: p.name ?? "", phone: p.phone,
-        pickup_date: pickup.toISOString(), pickup_location: pickupLocation ?? "Pune",
-        drop_date: drop.toISOString(), drop_location: dropLocation ?? "Pune",
-        days, price_per_day: c.price_per_day, total,
-        deposit: 0, discount, delivery_fee: deliveryFee,
-        deposit_amount: DEPOSIT_AMOUNT, deposit_choice: chosenDeposit,
-        deposit_paid: depositPaidNow, deposit_paid_at: depositPaidNow ? new Date().toISOString() : null,
-        deposit_razorpay_payment_id: depositPaidNow ? razorpayPaymentId : null,
-        coupon_code: appliedCoupon, coupon_discount: couponDiscount,
-        razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
-        razorpay_signature: razorpaySignature, payment_status: "paid",
-        paid_at: new Date().toISOString(),
-        status: isConfirmed ? "confirmed" : "pending_kyc",
-        // Check-in OTP is generated as soon as the booking is confirmed,
-        // so the fleet manager has it ready before the customer even uploads photos.
-        checkin_otp: isConfirmed ? generateOtp() : null,
-      }).select("*").maybeSingle();
-      if (error) throw error;
-
-      if (isConfirmed && p.email) {
-        sendBookingConfirmationEmail({
-          to: p.email as string, customerName: p.name as string, bookingId,
-          carName: c.name as string, pickupDate: pickup.toISOString(), dropDate: drop.toISOString(),
-          pickupLocation: (pickupLocation as string) ?? "Pune", total,
-          customerPhone: p.phone as string | undefined,
-        }).catch((e) => console.error("Booking confirmation email failed", bookingId, (e as Error).message));
-      }
-
-
-      const token = await signJwt({ id: p.id, phone: p.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
-      return json({ success: true, bookingId, booking: mapBooking(booking as Record<string, unknown>), token });
+      const token = await signJwt({ id: user.id, phone: user.phone }, Deno.env.get("JWT_SECRET")!, 30 * 24 * 60 * 60);
+      return json({ success: true, bookingId: result.bookingId, booking: mapBooking(result.booking), token });
     }
 
     // POST /direct — create booking without Razorpay (test / demo mode)
@@ -514,12 +296,12 @@ Deno.serve(async (req) => {
       const pISO = pickup.toISOString(), dISO = drop.toISOString();
       const dDurErr = durationError(pISO, dISO);
       if (dDurErr) return dDurErr;
-      if (await hasDateConflict(carId, pISO, dISO, dSessionId)) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(sb, carId, pISO, dISO, dSessionId)) return json({ error: CONFLICT_MSG }, 400);
       const { data: blEntry2 } = await sb.from("blacklist").select("phone").eq("phone", (p.phone as string || "").replace(/\D/g, "")).maybeSingle();
       if (blEntry2) return json({ error: "Booking unavailable. Please contact support." }, 403);
       const { base: baseFare, total: baseTotal, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee = resolveDeliveryFee(dc);
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(sb, baseTotal, couponCode, { verifiedUserId: p.id as string, consume: true });
       const gst = Math.round((baseFare + deliveryFee) * 0.18);
       const total = baseFare + deliveryFee + gst - couponDiscount;
       const bookingId = makeBookingId();
@@ -570,7 +352,7 @@ Deno.serve(async (req) => {
       const pISO2 = new Date(pickupDate).toISOString(), dISO2 = new Date(dropDate).toISOString();
       const gdDurErr = durationError(pISO2, dISO2);
       if (gdDurErr) return gdDurErr;
-      if (await hasDateConflict(carId, pISO2, dISO2, gdSessionId)) return json({ error: CONFLICT_MSG }, 400);
+      if (await hasDateConflict(sb, carId, pISO2, dISO2, gdSessionId)) return json({ error: CONFLICT_MSG }, 400);
 
       let { data: prof } = await sb.from("profiles").select("*").eq("phone", phone).maybeSingle();
       if (!prof) {
@@ -588,7 +370,7 @@ Deno.serve(async (req) => {
       const pickup = new Date(pISO2), drop = new Date(dISO2);
       const { base: baseFare2, total: baseTotal2, discount, days } = calcPrice(c.price_per_day as number, pickup, drop, (c.category as string) || "");
       const deliveryFee2 = resolveDeliveryFee(gddc);
-      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(baseTotal2, couponCode, { verifiedUserId: p.id as string });
+      const { discount: couponDiscount, code: appliedCoupon } = await applyCoupon(sb, baseTotal2, couponCode, { verifiedUserId: p.id as string });
       const gst2 = Math.round((baseFare2 + deliveryFee2) * 0.18);
       const total = baseFare2 + deliveryFee2 + gst2 - couponDiscount;
       const bookingId = makeBookingId();

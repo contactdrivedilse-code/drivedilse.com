@@ -721,6 +721,51 @@ Deno.serve(async (req) => {
       return json((data ?? []).map((b: Record<string, unknown>) => mapBooking(b)));
     }
 
+    // GET /bookings/unregistered-payments — cross-checks Razorpay's captured
+    // payments against our bookings table so the fleet manager can see any
+    // payment that was captured but never turned into a booking (e.g. the
+    // browser-callback-lost case the payment.captured webhook now prevents
+    // going forward — see payment-webhook/index.ts — plus anything older).
+    if (req.method === "GET" && path === "/bookings/unregistered-payments" && isAdmin) {
+      const days = Math.min(90, Math.max(1, Number(url.searchParams.get("days")) || 30));
+      const from = Math.floor((Date.now() - days * 86400000) / 1000);
+      const rzpAuth = btoa(`${Deno.env.get("RAZORPAY_KEY_ID")}:${Deno.env.get("RAZORPAY_KEY_SECRET")}`);
+
+      const payments: Record<string, unknown>[] = [];
+      let skip = 0;
+      while (true) {
+        const res = await fetch(`https://api.razorpay.com/v1/payments?from=${from}&count=100&skip=${skip}`, {
+          headers: { "Authorization": `Basic ${rzpAuth}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const page = await res.json();
+        const items = (page.items ?? []) as Record<string, unknown>[];
+        payments.push(...items);
+        if (items.length < 100) break;
+        skip += 100;
+        if (skip >= 1000) break; // safety cap
+      }
+
+      // Payments with no order_id never went through our checkout (Razorpay
+      // test-mode/dashboard transactions) — nothing was ever going to book.
+      const captured = payments.filter((p) => p.status === "captured" && p.order_id);
+      const paymentIds = captured.map((p) => p.id as string);
+      const { data: matched } = paymentIds.length
+        ? await sb.from("bookings").select("razorpay_payment_id").in("razorpay_payment_id", paymentIds)
+        : { data: [] as Record<string, unknown>[] };
+      const matchedIds = new Set(((matched ?? []) as Record<string, unknown>[]).map((b) => b.razorpay_payment_id as string));
+
+      const orphaned = captured
+        .filter((p) => !matchedIds.has(p.id as string))
+        .map((p) => ({
+          paymentId: p.id, orderId: p.order_id, amount: (p.amount as number) / 100,
+          createdAt: new Date((p.created_at as number) * 1000).toISOString(),
+          contact: p.contact, email: p.email, method: p.method,
+        }));
+
+      return json({ daysChecked: days, orphaned });
+    }
+
     // GET /bookings/:id — single-booking detail with signed check-in/checkout
     // photo URLs (the list endpoint above skips signing for performance).
     const bkDetailMatch = path.match(/^\/bookings\/([^/]+)$/);

@@ -750,27 +750,29 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         <button type="button" onclick="mbDpConfirm()" style="width:100%;background:var(--y);color:var(--t);font-family:'Inter',sans-serif;font-weight:800;font-size:.92rem;border:none;border-radius:12px;padding:16px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase">CONTINUE</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-        <div>
-          <label class="lbl">🚚 Delivery Fee (₹)</label>
-          <input class="inp" id="mb-delivery" type="number" min="0" placeholder="0" oninput="mbCalcPrice()">
+      <div id="mb-pricing-section">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label class="lbl">🚚 Delivery Fee (₹)</label>
+            <input class="inp" id="mb-delivery" type="number" min="0" placeholder="0" oninput="mbCalcPrice()">
+          </div>
+          <div>
+            <label class="lbl">💵 Custom Total (₹) <span style="font-size:.7rem;color:var(--ts)">incl. GST — overrides auto-price</span></label>
+            <input class="inp" id="mb-custom-fare" type="number" min="0" placeholder="Leave blank to auto-calculate" oninput="mbCalcPrice()">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="lbl">🔒 Security Deposit</label>
+            <select class="inp" id="mb-deposit" onchange="mbCalcPrice()">
+              <option value="later">Collect separately (pay later)</option>
+              <option value="now">Paid now (include in total)</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label class="lbl">💵 Custom Total (₹) <span style="font-size:.7rem;color:var(--ts)">incl. GST — overrides auto-price</span></label>
-          <input class="inp" id="mb-custom-fare" type="number" min="0" placeholder="Leave blank to auto-calculate" oninput="mbCalcPrice()">
-        </div>
-        <div style="grid-column:1/-1">
-          <label class="lbl">🔒 Security Deposit</label>
-          <select class="inp" id="mb-deposit" onchange="mbCalcPrice()">
-            <option value="later">Collect separately (pay later)</option>
-            <option value="now">Paid now (include in total)</option>
-          </select>
-        </div>
-      </div>
 
-      <div id="mb-price-preview" style="display:none;background:var(--s);border:1.5px solid var(--b);border-radius:10px;padding:14px;margin-bottom:14px;font-size:.83rem">
-        <div style="font-weight:700;margin-bottom:8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--ts)">💰 Price Breakdown (incl. GST)</div>
-        <div style="display:flex;flex-direction:column;gap:5px" id="mb-price-lines"></div>
+        <div id="mb-price-preview" style="display:none;background:var(--s);border:1.5px solid var(--b);border-radius:10px;padding:14px;margin-bottom:14px;font-size:.83rem">
+          <div style="font-weight:700;margin-bottom:8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--ts)">💰 Price Breakdown (incl. GST)</div>
+          <div style="display:flex;flex-direction:column;gap:5px" id="mb-price-lines"></div>
+        </div>
       </div>
 
       <div style="margin-bottom:14px">
@@ -3168,7 +3170,12 @@ async function openBkDetailsModal(id){
   var collected = b.amountCollected != null ? Number(b.amountCollected) : null;
   var payStatus = b.payment && b.payment.status;
 
-  if(collected != null){
+  if(currentRole === "fleet"){
+    var isPaidFully = payStatus === "paid" || (collected != null && (total - collected) <= 0);
+    pendingBanner = isPaidFully
+      ? '<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#15803d;font-weight:600">✅ Payment Completed</div>'
+      : '<div style="background:#fff8d0;border:1.5px solid var(--yd);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#a16207;font-weight:600">⏳ Payment Pending</div>';
+  } else if(collected != null){
     var pendingAmt = total - collected;
     if(pendingAmt > 0){
       pendingBanner =
@@ -3234,7 +3241,7 @@ async function openBkDetailsModal(id){
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Pickup</div><div>'+(pickup?new Date(pickup).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div>'+((b.pickup&&b.pickup.location)?'<div style="font-size:.78rem;color:var(--ts);margin-top:2px">📍 '+b.pickup.location+'</div>':'')+'</div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Drop</div><div>'+(drop?new Date(drop).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div>'+((b.drop&&b.drop.location)?'<div style="font-size:.78rem;color:var(--ts);margin-top:2px">📍 '+b.drop.location+'</div>':'')+'</div>' +
     '</div>' +
-    priceBreakdownHtml +
+    (currentRole === "admin" ? priceBreakdownHtml : '') +
     (currentRole === "admin" ? depositSectionHtml(b) : '') +
     (currentRole === "admin" && b.status === "cancelled" && b.refund ? refundSectionHtml(b) : '') +
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
@@ -3599,13 +3606,15 @@ async function openManualBookingModal(){
   }
   var sel = document.getElementById("mb-car");
   sel.innerHTML = '<option value="">— Select car —</option>';
+  var showPricing = currentRole !== "fleet";
   _mbFleetCars.forEach(function(c){
     var opt = document.createElement("option");
     opt.value = c.id || c._id;
-    opt.textContent = c.name + (c.pricePerDay ? " (₹"+c.pricePerDay+"/day)" : "");
+    opt.textContent = c.name + (c.pricePerDay && showPricing ? " (₹"+c.pricePerDay+"/day)" : "");
     opt.dataset.price = c.pricePerDay || c.price_per_day || 0;
     sel.appendChild(opt);
   });
+  document.getElementById("mb-pricing-section").style.display = showPricing ? "" : "none";
   // Reset form
   ["mb-cust-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-custom-fare","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
   document.getElementById("mb-is-delivery").checked = false;
@@ -4041,6 +4050,10 @@ function settlementSectionHtml(b){
   var lateNote = s.lateHours > 0
     ? '<div style="font-size:.76rem;color:#a16207;margin-bottom:8px">⏱ Car was returned '+s.lateHours+' hour(s) after the scheduled drop time. If this wasn\'t covered by an in-app extension, add it as a deduction below.</div>'
     : '';
+
+  if(s.filledAt && currentRole === "fleet"){
+    return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.82rem;color:#15803d;font-weight:600">✅ Checkout settlement submitted — admin will process the refund.</div>';
+  }
 
   if(s.filledAt){
     var deductions = (s.damageAmount||0)+(s.fastagAmount||0)+(s.fuelAmount||0)+(s.extensionAmount||0);

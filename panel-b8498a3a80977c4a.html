@@ -181,6 +181,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 /* ── MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
+#photo-lightbox{z-index:400}
 .modal-box{background:var(--w);border-radius:20px;padding:32px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .modal-title{font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:20px;letter-spacing:-.02em}
 .modal-footer{display:flex;gap:10px;margin-top:24px}
@@ -624,6 +625,9 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 
 <div class="modal-overlay" id="photo-lightbox" onclick="closePhotoLightbox()" style="background:rgba(0,0,0,.85);align-items:center;justify-content:center">
   <img id="photo-lightbox-img" src="" style="max-width:92vw;max-height:92vh;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)" onclick="event.stopPropagation()">
+  <button id="photo-lightbox-prev" onclick="event.stopPropagation();lightboxNav(-1)" style="display:none;position:absolute;left:16px;top:50%;transform:translateY(-50%);align-items:center;justify-content:center;background:rgba(255,255,255,.14);border:none;color:#fff;font-size:1.8rem;width:48px;height:48px;border-radius:50%;cursor:pointer;line-height:1">‹</button>
+  <button id="photo-lightbox-next" onclick="event.stopPropagation();lightboxNav(1)" style="display:none;position:absolute;right:16px;top:50%;transform:translateY(-50%);align-items:center;justify-content:center;background:rgba(255,255,255,.14);border:none;color:#fff;font-size:1.8rem;width:48px;height:48px;border-radius:50%;cursor:pointer;line-height:1">›</button>
+  <div id="photo-lightbox-count" style="display:none;position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:#fff;font-size:.8rem;font-weight:700;background:rgba(0,0,0,.4);padding:4px 12px;border-radius:20px"></div>
   <button onclick="closePhotoLightbox()" style="position:absolute;top:20px;right:28px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1">✕</button>
 </div>
 
@@ -2677,13 +2681,49 @@ function existingPhotoChip(carId, url, section){
   '</div>';
 }
 
-function openPhotoLightbox(url){
-  document.getElementById("photo-lightbox-img").src = url;
+var _photoGalleries = {};
+var _photoGalleryCounter = 0;
+function registerPhotoGallery(urls){
+  var key = "g" + (++_photoGalleryCounter);
+  _photoGalleries[key] = urls;
+  return key;
+}
+function openGalleryPhoto(key, idx){
+  openPhotoLightbox(_photoGalleries[key] || [], idx);
+}
+
+var _lightboxUrls = [];
+var _lightboxIdx = 0;
+function openPhotoLightbox(urls, idx){
+  _lightboxUrls = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+  _lightboxIdx = (idx >= 0 && idx < _lightboxUrls.length) ? idx : 0;
+  renderPhotoLightbox();
   document.getElementById("photo-lightbox").classList.add("open");
+}
+function renderPhotoLightbox(){
+  document.getElementById("photo-lightbox-img").src = _lightboxUrls[_lightboxIdx] || "";
+  var multi = _lightboxUrls.length > 1;
+  document.getElementById("photo-lightbox-prev").style.display = multi ? "flex" : "none";
+  document.getElementById("photo-lightbox-next").style.display = multi ? "flex" : "none";
+  var countEl = document.getElementById("photo-lightbox-count");
+  countEl.style.display = multi ? "block" : "none";
+  countEl.textContent = (_lightboxIdx+1)+" / "+_lightboxUrls.length;
+}
+function lightboxNav(delta){
+  if(_lightboxUrls.length < 2) return;
+  _lightboxIdx = (_lightboxIdx + delta + _lightboxUrls.length) % _lightboxUrls.length;
+  renderPhotoLightbox();
 }
 function closePhotoLightbox(){
   document.getElementById("photo-lightbox").classList.remove("open");
 }
+document.addEventListener("keydown", function(e){
+  var lb = document.getElementById("photo-lightbox");
+  if(!lb || !lb.classList.contains("open")) return;
+  if(e.key === "Escape") closePhotoLightbox();
+  else if(e.key === "ArrowLeft") lightboxNav(-1);
+  else if(e.key === "ArrowRight") lightboxNav(1);
+});
 
 function openEditCarModal(car){
   document.getElementById("car-modal-title").textContent = "Edit Car — " + car.name;
@@ -3104,9 +3144,10 @@ function parseDamagePhotos(notes, key){
 }
 function bkdmPhotoGrid(urls, emptyMsg){
   if(!urls.length) return '<div style="font-size:.78rem;color:var(--ts);padding:8px 0">'+emptyMsg+'</div>';
+  var gKey = registerPhotoGallery(urls);
   return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:8px">' +
-    urls.map(function(u){
-      return '<a href="'+u+'" target="_blank"><img src="'+u+'" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:1.5px solid var(--b)"></a>';
+    urls.map(function(u,i){
+      return '<img src="'+u+'" onclick="openGalleryPhoto(\''+gKey+'\','+i+')" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:1.5px solid var(--b);cursor:zoom-in">';
     }).join("") +
   '</div>';
 }
@@ -3253,7 +3294,7 @@ async function openBkDetailsModal(id){
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
     '<div style="font-weight:700;font-size:.88rem;margin-bottom:4px">📸 Check-In Photos</div>' +
     (ci.checkedInAt ? '<div style="font-size:.72rem;color:var(--ts)">Checked in '+new Date(ci.checkedInAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div>' : '') +
-    (ci.kmReading != null ? '<div style="margin:8px 0;padding:8px 12px;background:var(--s);border:1px solid var(--b);border-radius:8px;font-size:.82rem;display:flex;gap:16px"><span>🔢 <strong>KM at pickup:</strong> '+Number(ci.kmReading).toLocaleString("en-IN")+'&nbsp;km</span>'+(ci.fuelPhotoUrl?'<a href="'+ci.fuelPhotoUrl+'" target="_blank" style="color:var(--yd);font-weight:700;text-decoration:none">⛽ View Fuel Photo →</a>':'')+'</div>' : '') +
+    (ci.kmReading != null ? '<div style="margin:8px 0;padding:8px 12px;background:var(--s);border:1px solid var(--b);border-radius:8px;font-size:.82rem;display:flex;gap:16px"><span>🔢 <strong>KM at pickup:</strong> '+Number(ci.kmReading).toLocaleString("en-IN")+'&nbsp;km</span>'+(ci.fuelPhotoUrl?'<a href="javascript:void(0)" onclick="openPhotoLightbox(\''+ci.fuelPhotoUrl+'\')" style="color:var(--yd);font-weight:700;text-decoration:none">⛽ View Fuel Photo →</a>':'')+'</div>' : '') +
     bkdmPhotoGrid(ciPhotos, "No check-in photos uploaded yet.") +
     (preExistingCi.length ? '<div style="margin-top:10px;background:#fff8d0;border:1.5px solid var(--yd);border-radius:10px;padding:10px 12px"><div style="font-weight:800;font-size:.78rem;color:#a16207;margin-bottom:6px">⚠️ Pre-existing damage noted at check-in</div>'+bkdmPhotoGrid(preExistingCi,"")+'</div>' : '') +
     '<hr style="border:none;border-top:1px solid var(--b);margin:14px 0">' +
@@ -3262,13 +3303,13 @@ async function openBkDetailsModal(id){
     (co.kmReading != null ? '<div style="margin:8px 0;padding:8px 12px;background:var(--s);border:1px solid var(--b);border-radius:8px;font-size:.82rem;display:flex;gap:16px;flex-wrap:wrap">' +
       '<span>🔢 <strong>KM at drop:</strong> '+Number(co.kmReading).toLocaleString("en-IN")+'&nbsp;km</span>' +
       (ci.kmReading != null ? '<span style="color:#15803d">📏 Distance driven: '+(Number(co.kmReading)-Number(ci.kmReading)).toLocaleString("en-IN")+' km</span>' : '') +
-      (co.fuelPhotoUrl ? '<a href="'+co.fuelPhotoUrl+'" target="_blank" style="color:var(--yd);font-weight:700;text-decoration:none">⛽ View Fuel Photo →</a>' : '') +
+      (co.fuelPhotoUrl ? '<a href="javascript:void(0)" onclick="openPhotoLightbox(\''+co.fuelPhotoUrl+'\')" style="color:var(--yd);font-weight:700;text-decoration:none">⛽ View Fuel Photo →</a>' : '') +
     '</div>' : '') +
     (preExistingCo.length
       ? '<div style="margin-top:12px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 14px">' +
           '<div style="font-weight:800;font-size:.82rem;color:#b91c1c;margin-bottom:8px">🚨 Damage Reported at Check-Out ('+preExistingCo.length+' photo'+(preExistingCo.length!==1?'s':'')+')</div>' +
           '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px">' +
-            preExistingCo.map(function(u,i){ return '<a href="'+u+'" target="_blank" title="Photo '+(i+1)+'"><img src="'+u+'" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:2px solid #fca5a5"></a>'; }).join("") +
+            (function(){ var gKey = registerPhotoGallery(preExistingCo); return preExistingCo.map(function(u,i){ return '<img src="'+u+'" title="Photo '+(i+1)+'" onclick="openGalleryPhoto(\''+gKey+'\','+i+')" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:2px solid #fca5a5;cursor:zoom-in">'; }).join(""); })() +
           '</div>' +
         '</div>'
       : (co.checkedOutAt

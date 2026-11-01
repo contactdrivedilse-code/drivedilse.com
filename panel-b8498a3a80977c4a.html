@@ -114,6 +114,17 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .v-body{padding:16px 18px}
 .v-status{position:absolute;top:10px;right:10px}
 
+/* ── BOOKING CARDS ── */
+.bk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.bk-card{border-radius:14px;overflow:hidden;background:var(--w);border:1px solid var(--b);box-shadow:0 2px 8px rgba(0,0,0,.04);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.bk-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08);border-color:#fde68a}
+.bk-img{height:110px;background:var(--ow);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-size:2.2rem}
+.bk-body{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bk-id{font-family:monospace;font-weight:800;font-size:.8rem;color:var(--yd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-tag{font-size:.6rem;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;letter-spacing:.3px;flex-shrink:0}
+.bk-tag-pickup{background:#eef2ff;color:#4338ca}
+.bk-tag-delivery{background:#e0f2fe;color:#0369a1}
+
 /* ── TOOLBAR ── */
 .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
 .search-inp{border:1.5px solid var(--b);border-radius:10px;padding:9px 14px;font-family:'Inter',sans-serif;font-size:.85rem;background:var(--w);outline:none;transition:border-color .15s;min-width:220px}
@@ -158,10 +169,6 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .toast.show{transform:translateY(0);opacity:1}
 .toast.success{border-left:4px solid #1a7a3c}
 .toast.error{border-left:4px solid #e74c3c}
-
-/* ── SELECT STATUS ── */
-.status-sel{font-size:.75rem;border:1.5px solid var(--b);border-radius:8px;padding:4px 8px;background:var(--w);font-family:'Inter',sans-serif;cursor:pointer;outline:none}
-.status-sel:focus{border-color:var(--yd)}
 
 /* ── CHECK-IN OTP ── */
 .adm-table td { max-width: 260px; }
@@ -1854,6 +1861,7 @@ async function renderBookings(statusFilter, isLocal, c){
   if(!isLocal){
     try {
       if(!allBookings.length) allBookings = await cachedFetch("/admin/bookings");
+      if(!allCars.length){ allCars = await cachedFetch("/admin/fleet"); window._allCarsCache = allCars; }
       updateBadges();
       bks = statusFilter === null ? allBookings :
         Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
@@ -1863,6 +1871,7 @@ async function renderBookings(statusFilter, isLocal, c){
 
   if(isLocal){
     allBookings = DEMO_BOOKINGS.slice();
+    allCars = DEMO_FLEET.slice();
     updateBadges();
     bks = statusFilter === null ? allBookings :
       Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
@@ -1911,7 +1920,7 @@ async function renderBookings(statusFilter, isLocal, c){
         '</div>' +
       '</div>' +
     '</div>' +
-    '<div class="card"><div class="table-wrap" id="bk-table-wrap">' + buildTable(bks, true) + '</div></div>';
+    '<div id="bk-table-wrap">' + buildBookingCards(bks) + '</div>';
   window._curBks = bks;
 }
 
@@ -1920,7 +1929,7 @@ function filterBookingStatus(status, btn){
   btn.classList.add("on");
   var src = window._curBks || [];
   var filtered = status ? src.filter(function(b){ return b.status===status; }) : src;
-  document.getElementById("bk-table-wrap").innerHTML = buildTable(filtered, true);
+  document.getElementById("bk-table-wrap").innerHTML = buildBookingCards(filtered);
 }
 
 function filterBookingTable(){
@@ -1935,135 +1944,35 @@ function filterBookingTable(){
       custName.toLowerCase().includes(q) ||
       phone.includes(q);
   });
-  document.getElementById("bk-table-wrap").innerHTML = buildTable(filtered, true);
+  document.getElementById("bk-table-wrap").innerHTML = buildBookingCards(filtered);
 }
 
 window._bkDetailsMap = window._bkDetailsMap || {};
-function buildTable(bks, showActions){
-  if(!bks.length) return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">No bookings found.</div></div>';
-  var rows = bks.map(function(b){
-    window._bkDetailsMap[b._id||b.bookingId] = b;
-    var carName  = b.carName || (b.car&&b.car.name) || "—";
-    var custName = b.customer || (b.user&&b.user.name) || "—";
-    var phone    = b.phone    || (b.user&&b.user.phone) || "—";
-    var pickup   = b.pickup&&b.pickup.date ? b.pickup.date : b.pickup;
-    var drop     = b.drop&&b.drop.date     ? b.drop.date   : b.drop;
-    var payBadge = b.payment&&b.payment.status==="paid"
-      ? '<span class="sbadge sb-act">Paid</span>'
-      : '<span class="sbadge sb-pend">Pending</span>';
-
-    // Check-in OTP column — OTP is generated as soon as the booking is
-    // confirmed, so it's shown to the fleet manager right away; photo links
-    // are added on top once the customer has uploaded them.
-    var otpCell = "";
-    var ci = b.checkin;
-    if(ci && ci.otp && !ci.otpVerified){
-      otpCell = '<td>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-family:monospace;font-size:1rem;font-weight:900;background:#fff8d0;border:2px solid var(--yd);padding:5px 12px;border-radius:10px;letter-spacing:3px;color:var(--yd)">'+ci.otp+'</span>' +
-          '<span style="font-size:.68rem;color:var(--ts);line-height:1.3">Check-In OTP<br><strong style="color:#c0392b">Share with rep only</strong></span>' +
-        '</div>' +
-        (ci.photosUploadedAt ? (
-        '<div style="margin-top:6px"><a href="'+ci.photos.front+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Front ↗</a>' +
-        '<a href="'+ci.photos.rear+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Rear ↗</a>' +
-        '<a href="'+ci.photos.passengerSide+'" target="_blank" style="font-size:.7rem;color:var(--yd);margin-right:8px">Psgr ↗</a>' +
-        '<a href="'+ci.photos.driverSide+'" target="_blank" style="font-size:.7rem;color:var(--yd)">Driver ↗</a></div>'
-        ) : '<div style="margin-top:6px;font-size:.68rem;color:var(--ts)">Photos not uploaded yet</div>') +
-      '</td>';
-    } else if(ci && ci.otpVerified){
-      otpCell = '<td><span class="sbadge sb-act">✅ Checked In</span><div style="font-size:.7rem;color:var(--ts);margin-top:4px">'+new Date(ci.checkedInAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div></td>';
-    } else {
-      otpCell = '<td><span style="font-size:.75rem;color:var(--ts)">Not confirmed yet</span></td>';
-    }
-
-    // Check-out OTP column — shown for active bookings
-    var co = b.checkout;
-    var coOtpCell = "";
-    if(b.status === "active" && co && co.otp && !co.otpVerified){
-      coOtpCell = '<td>' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-family:monospace;font-size:1rem;font-weight:900;background:#fff8d0;border:2px solid var(--yd);padding:5px 12px;border-radius:10px;letter-spacing:3px;color:var(--yd)">'+co.otp+'</span>' +
-          '<span style="font-size:.68rem;color:var(--ts);line-height:1.3">Check-Out OTP<br><strong style="color:#c0392b">Share with rep only</strong></span>' +
-        '</div>' +
-      '</td>';
-    } else if(co && co.otpVerified){
-      coOtpCell = '<td><span class="sbadge sb-done">✅ Checked Out</span><div style="font-size:.7rem;color:var(--ts);margin-top:4px">'+new Date(co.checkedOutAt).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</div></td>';
-    } else {
-      coOtpCell = '<td><span style="font-size:.75rem;color:var(--ts)">—</span></td>';
-    }
-
-    var actCell = showActions
-      ? '<td><select class="status-sel" onchange="updateStatus(\''+b._id+'\',this.value,this)">' +
-          ['pending','confirmed','active','completed','cancelled','no_show'].map(function(s){
-            return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s.replace('_',' ')+'</option>';
-          }).join('') + '</select></td>'
-      : '';
-    var isFleet = currentRole === "fleet";
-    var bk = calcBreakdown(b);
-    var totalCell = '<td style="white-space:nowrap;cursor:pointer" onclick="openBkDetailsModal(\''+(b._id||b.bookingId)+'\')" title="Click for full price breakdown">' +
-      '<div style="font-weight:800;font-size:.92rem">'+inr(bk.total)+'</div>' +
-      (bk.depositAmount ? '<div style="font-size:.66rem;margin-top:3px;font-weight:600;color:'+(bk.depositPaid?'#15803d':'#92400e')+'">' +
-        '🔒 '+(bk.depositPaid ? 'Deposit paid' : 'Deposit due')+
-      '</div>' : '') +
-    '</td>';
-    var depCell = '<td style="white-space:nowrap;font-size:.78rem">' +
-      (bk.depositAmount
-        ? '<div style="font-weight:700;color:'+(bk.depositPaid?'#15803d':'#92400e')+'">'+inr(bk.depositAmount)+'</div>' +
-          '<div style="font-size:.65rem;color:var(--ts)">'+(bk.depositPaid ? '✅ Paid' : '⏳ Unpaid')+'</div>'
-        : '<span style="color:var(--ts)">—</span>') +
-    '</td>';
-    return '<tr>' +
-      '<td style="font-weight:700;color:var(--yd);font-family:monospace;cursor:pointer;text-decoration:underline" onclick="openBkDetailsModal(\''+(b._id||b.bookingId)+'\')">'+(b.bookingId||b._id||"—")+'</td>' +
-      '<td style="font-weight:600">'+carName+'</td>' +
-      '<td>'+custName+'</td>' +
-      '<td style="color:var(--ts)">'+phone+'</td>' +
-      '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(pickup).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
-      '<td style="font-size:.75rem;color:var(--ts);white-space:nowrap">'+new Date(drop).toLocaleString("en-IN",{dateStyle:"short",timeStyle:"short"})+'</td>' +
-      (isFleet ? depCell : totalCell) +
-      '<td>'+badge(b.status)+'</td>' +
-      (isFleet ? '' : '<td>'+payBadge+'</td>') +
-      otpCell +
-      coOtpCell +
-      actCell +
-    '</tr>';
-  }).join("");
-  var isFleet = currentRole === "fleet";
-  var actHdr = showActions ? '<th>Change Status</th>' : '';
-  return '<table class="adm-table"><thead><tr>' +
-    '<th>Booking ID</th><th>Car</th><th>Customer</th><th>Phone</th><th>Pickup</th><th>Drop</th>' +
-    (isFleet ? '<th>Deposit</th>' : '<th>Amount Breakdown</th>') +
-    '<th>Status</th>' +
-    (isFleet ? '' : '<th>Payment</th>') +
-    '<th>Check-In OTP</th><th>Check-Out OTP</th>' + actHdr +
-    '</tr></thead><tbody>'+rows+'</tbody></table>';
+function bkCardImage(b){
+  var carId   = b.carId || (b.car && (b.car._id||b.car.id)) || "";
+  var carName = b.carName || (b.car && b.car.name) || "";
+  var car = (allCars||[]).find(function(c){ return carId && (c._id||c.id)===carId; }) ||
+            (allCars||[]).find(function(c){ return carName && c.name===carName; });
+  return (car && (car.imageUrl || car.coverPhoto)) || "";
 }
-
-async function updateStatus(id, status, selEl){
-  var b = allBookings.find(function(b){ return b._id===id; });
-  var prevStatus = b ? b.status : null;
-  if(!confirm('Change this booking\'s status to "'+status.replace('_',' ')+'"?')){
-    if(selEl && prevStatus) selEl.value = prevStatus;
-    return;
-  }
-  if(adminToken === "local"){
-    if(b) b.status = status;
-    toast("Status updated to " + status, "success");
-    updateBadges();
-    return;
-  }
-  try {
-    await adminFetch("/admin/bookings/"+id+"/status", {
-      method: "PUT",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ status: status })
-    });
-    if(b) b.status = status;
-    invalidateCache("/admin/bookings"); invalidateCache("/admin/dashboard"); toast("Status updated to " + status, "success");
-    updateBadges();
-  } catch(e){
-    toast("Failed: " + e.message, "error");
-    if(selEl && prevStatus) selEl.value = prevStatus;
-  }
+function buildBookingCards(bks){
+  if(!bks.length) return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">No bookings found.</div></div>';
+  return '<div class="bk-grid">' + bks.map(function(b){
+    var id = b._id || b.bookingId;
+    window._bkDetailsMap[id] = b;
+    var img = bkCardImage(b);
+    var bk = calcBreakdown(b);
+    var tag = bk.deliveryFee > 0
+      ? '<span class="bk-tag bk-tag-delivery">🚚 Delivery</span>'
+      : '<span class="bk-tag bk-tag-pickup">🏬 Self Pickup</span>';
+    return '<div class="bk-card" onclick="openBkDetailsModal(\''+id+'\')">' +
+      '<div class="bk-img" style="'+(img ? 'background-image:url(\''+img+'\')' : '')+'">'+(img ? '' : '🚗')+'</div>' +
+      '<div class="bk-body">' +
+        '<span class="bk-id">'+(b.bookingId||id||"—")+'</span>' +
+        tag +
+      '</div>' +
+    '</div>';
+  }).join("") + '</div>';
 }
 
 async function renderKycApprovals(isLocal, c){
@@ -5182,7 +5091,7 @@ filterBookingTable = function(){
     return true;
   });
   var wrap = document.getElementById("bk-table-wrap");
-  if(wrap) wrap.innerHTML = buildTable(filtered, true);
+  if(wrap) wrap.innerHTML = buildBookingCards(filtered);
 };
 
 // ── EMPLOYEES ────────────────────────────────────────────────────────────────

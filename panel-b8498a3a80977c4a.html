@@ -3204,8 +3204,8 @@ async function openBkDetailsModal(id){
       '</div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Customer</div><div style="font-weight:700">'+custName+'</div></div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Phone</div><div>'+phone+'</div></div>' +
-      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Pickup</div><div>'+(pickup?new Date(pickup).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
-      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Drop</div><div>'+(drop?new Date(drop).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Pickup</div><div>'+(pickup?new Date(pickup).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div>'+((b.pickup&&b.pickup.location)?'<div style="font-size:.78rem;color:var(--ts);margin-top:2px">📍 '+b.pickup.location+'</div>':'')+'</div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Drop</div><div>'+(drop?new Date(drop).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div>'+((b.drop&&b.drop.location)?'<div style="font-size:.78rem;color:var(--ts);margin-top:2px">📍 '+b.drop.location+'</div>':'')+'</div>' +
     '</div>' +
     priceBreakdownHtml +
     (currentRole === "admin" ? depositSectionHtml(b) : '') +

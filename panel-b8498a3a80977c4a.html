@@ -114,14 +114,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .v-body{padding:16px 18px}
 .v-status{position:absolute;top:10px;right:10px}
 
-/* ── BOOKING CARDS ── */
-.bk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
-.bk-card{border-radius:14px;overflow:hidden;background:var(--w);border:1px solid var(--b);box-shadow:0 2px 8px rgba(0,0,0,.04);cursor:pointer;transition:transform .15s,box-shadow .15s}
-.bk-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08);border-color:#fde68a}
-.bk-img{height:110px;background:var(--ow);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-size:2.2rem}
-.bk-body{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.bk-id{font-family:monospace;font-weight:800;font-size:.8rem;color:var(--yd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bk-tag{font-size:.6rem;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;letter-spacing:.3px;flex-shrink:0}
+/* ── BOOKING TYPE TAG ── */
+.bk-tag{font-size:.6rem;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;letter-spacing:.3px}
 .bk-tag-pickup{background:#eef2ff;color:#4338ca}
 .bk-tag-delivery{background:#e0f2fe;color:#0369a1}
 
@@ -1861,7 +1855,6 @@ async function renderBookings(statusFilter, isLocal, c){
   if(!isLocal){
     try {
       if(!allBookings.length) allBookings = await cachedFetch("/admin/bookings");
-      if(!allCars.length){ allCars = await cachedFetch("/admin/fleet"); window._allCarsCache = allCars; }
       updateBadges();
       bks = statusFilter === null ? allBookings :
         Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
@@ -1871,7 +1864,6 @@ async function renderBookings(statusFilter, isLocal, c){
 
   if(isLocal){
     allBookings = DEMO_BOOKINGS.slice();
-    allCars = DEMO_FLEET.slice();
     updateBadges();
     bks = statusFilter === null ? allBookings :
       Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
@@ -1920,7 +1912,7 @@ async function renderBookings(statusFilter, isLocal, c){
         '</div>' +
       '</div>' +
     '</div>' +
-    '<div id="bk-table-wrap">' + buildBookingCards(bks) + '</div>';
+    '<div class="card"><div class="table-wrap" id="bk-table-wrap">' + buildBookingTable(bks) + '</div></div>';
   window._curBks = bks;
 }
 
@@ -1929,7 +1921,7 @@ function filterBookingStatus(status, btn){
   btn.classList.add("on");
   var src = window._curBks || [];
   var filtered = status ? src.filter(function(b){ return b.status===status; }) : src;
-  document.getElementById("bk-table-wrap").innerHTML = buildBookingCards(filtered);
+  document.getElementById("bk-table-wrap").innerHTML = buildBookingTable(filtered);
 }
 
 function filterBookingTable(){
@@ -1944,35 +1936,28 @@ function filterBookingTable(){
       custName.toLowerCase().includes(q) ||
       phone.includes(q);
   });
-  document.getElementById("bk-table-wrap").innerHTML = buildBookingCards(filtered);
+  document.getElementById("bk-table-wrap").innerHTML = buildBookingTable(filtered);
 }
 
 window._bkDetailsMap = window._bkDetailsMap || {};
-function bkCardImage(b){
-  var carId   = b.carId || (b.car && (b.car._id||b.car.id)) || "";
-  var carName = b.carName || (b.car && b.car.name) || "";
-  var car = (allCars||[]).find(function(c){ return carId && (c._id||c.id)===carId; }) ||
-            (allCars||[]).find(function(c){ return carName && c.name===carName; });
-  return (car && (car.imageUrl || car.coverPhoto)) || "";
-}
-function buildBookingCards(bks){
+function buildBookingTable(bks){
   if(!bks.length) return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-msg">No bookings found.</div></div>';
-  return '<div class="bk-grid">' + bks.map(function(b){
+  var rows = bks.map(function(b){
     var id = b._id || b.bookingId;
     window._bkDetailsMap[id] = b;
-    var img = bkCardImage(b);
     var bk = calcBreakdown(b);
     var tag = bk.deliveryFee > 0
       ? '<span class="bk-tag bk-tag-delivery">🚚 Delivery</span>'
       : '<span class="bk-tag bk-tag-pickup">🏬 Self Pickup</span>';
-    return '<div class="bk-card" onclick="openBkDetailsModal(\''+id+'\')">' +
-      '<div class="bk-img" style="'+(img ? 'background-image:url(\''+img+'\')' : '')+'">'+(img ? '' : '🚗')+'</div>' +
-      '<div class="bk-body">' +
-        '<span class="bk-id">'+(b.bookingId||id||"—")+'</span>' +
-        tag +
-      '</div>' +
-    '</div>';
-  }).join("") + '</div>';
+    var pickup = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
+    return '<tr>' +
+      '<td style="font-weight:700;color:var(--yd);font-family:monospace">'+(b.bookingId||id||"—")+'</td>' +
+      '<td>'+tag+'</td>' +
+      '<td style="font-size:.8rem;color:var(--ts);white-space:nowrap">'+(pickup ? new Date(pickup).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}) : "—")+'</td>' +
+      '<td><button class="btn btn-y btn-sm" style="font-weight:700;padding:6px 14px" onclick="openBkDetailsModal(\''+id+'\')">View Booking</button></td>' +
+    '</tr>';
+  }).join("");
+  return '<table class="adm-table"><thead><tr><th>Booking ID</th><th>Pickup Type</th><th>Booking Date</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 async function renderKycApprovals(isLocal, c){
@@ -5091,7 +5076,7 @@ filterBookingTable = function(){
     return true;
   });
   var wrap = document.getElementById("bk-table-wrap");
-  if(wrap) wrap.innerHTML = buildBookingCards(filtered);
+  if(wrap) wrap.innerHTML = buildBookingTable(filtered);
 };
 
 // ── EMPLOYEES ────────────────────────────────────────────────────────────────

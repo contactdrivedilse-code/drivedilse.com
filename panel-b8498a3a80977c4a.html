@@ -1485,7 +1485,8 @@ async function renderDashboard(isLocal, c){
   expiryWarnings.sort(function(a,b){ return a.diff-b.diff; });
   var expiryHtml = "";
   if(expiryWarnings.length){
-    expiryHtml = '<div style="margin-bottom:16px">' +
+    expiryHtml = '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">🚨 Document Expiry Alerts ('+expiryWarnings.length+')</div>' +
+      '<div style="margin-bottom:16px">' +
       expiryWarnings.map(function(w){
         var expired = w.diff < 0;
         var urgent  = !expired && w.diff <= 3;

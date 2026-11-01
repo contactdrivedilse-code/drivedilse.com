@@ -1390,7 +1390,22 @@ async function renderTab(tab){
 }
 
 // ── Document expiry warnings (RC/Insurance/PUC/Fitness) ────────────────────
+var DISMISSED_ALERTS_KEY = "dds_dismissed_expiry_alerts";
+function getDismissedAlerts(){
+  try { return JSON.parse(localStorage.getItem(DISMISSED_ALERTS_KEY) || "[]"); } catch(e){ return []; }
+}
+function dismissExpiryAlert(id){
+  var dismissed = getDismissedAlerts();
+  if(dismissed.indexOf(id) === -1){
+    dismissed.push(id);
+    try { localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify(dismissed)); } catch(e){}
+  }
+  toast("Alert dismissed.", "success");
+  renderExpiryAlertsPage(adminToken==="local", document.getElementById("content"));
+}
+
 function computeExpiryWarnings(){
+  var dismissed = getDismissedAlerts();
   var warnings = [];
   var today = new Date(); today.setHours(0,0,0,0);
   var docLabels = { rcExpiry:"RC", insuranceExpiry:"Insurance", pucExpiry:"PUC", fitnessExpiry:"Fitness Cert" };
@@ -1398,10 +1413,12 @@ function computeExpiryWarnings(){
     Object.keys(docLabels).forEach(function(key){
       var val = car[key];
       if(!val) return;
+      var id = String(car._id||car.id||car.name)+"|"+key+"|"+val;
+      if(dismissed.indexOf(id) > -1) return;
       var exp = new Date(val); exp.setHours(0,0,0,0);
       var diff = Math.round((exp-today)/(1000*60*60*24));
       if(diff <= 10){
-        warnings.push({ car: car.name, doc: docLabels[key], diff: diff, exp: exp.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) });
+        warnings.push({ id: id, car: car.name, doc: docLabels[key], diff: diff, exp: exp.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) });
       }
     });
   });
@@ -1422,6 +1439,7 @@ function expiryWarningRowHtml(w){
     '<span style="font-size:1.2rem">'+icon+'</span>' +
     '<div style="flex:1"><strong style="color:'+color+'">'+esc(w.car)+' — '+esc(w.doc)+'</strong> <span style="color:'+color+'">'+msg+'</span></div>' +
     '<div style="font-size:.75rem;color:var(--ts)">'+w.exp+'</div>' +
+    '<button onclick="dismissExpiryAlert(\''+w.id.replace(/'/g,"\\'")+'\')" title="Dismiss this alert" style="background:none;border:none;color:'+color+';font-size:1.05rem;font-weight:700;cursor:pointer;padding:0 0 0 8px;line-height:1;opacity:.55" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.55">✕</button>' +
   '</div>';
 }
 

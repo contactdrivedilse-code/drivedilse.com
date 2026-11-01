@@ -1152,21 +1152,12 @@ async function doLogin(){
     localStorage.setItem("dds_role", currentRole);
     enterAdmin();
   } catch(e){
-    // Network fallback only — wrong password shows the real error
     var msg = (e && e.message) ? e.message : String(e);
     var netErr = msg.includes("fetch") || msg.includes("Failed") ||
                  msg.includes("NetworkError") || msg.includes("Load failed");
-    if(netErr){
-      adminToken  = "local";
-      currentRole = selectedLoginRole;
-      localStorage.setItem("dds_admin_token", "local");
-      localStorage.setItem("dds_role", currentRole);
-      enterAdmin();
-    } else {
-      err.innerHTML = msg || "Invalid password";
-      err.style.display = "block";
-      btn.textContent = "Sign In →"; btn.disabled = false;
-    }
+    err.innerHTML = netErr ? "Could not reach the server. Check your connection and try again." : (msg || "Invalid password");
+    err.style.display = "block";
+    btn.textContent = "Sign In →"; btn.disabled = false;
   }
 }
 
@@ -4905,6 +4896,14 @@ async function updateSettlementsBadge(){
 window.addEventListener("DOMContentLoaded", function(){
   // Auto-select role tab from URL param (?role=fleet or ?role=admin)
   selectRole(selectedLoginRole);
+
+  // "local" was a dev-only demo-mode sentinel that older builds could grant
+  // on a failed login; never honor it as a persisted session — always
+  // require a real password for anyone still carrying that stale token.
+  if(adminToken === "local"){
+    adminToken = "";
+    localStorage.removeItem("dds_admin_token");
+  }
 
   if(adminToken){
     document.getElementById("login-page").style.display = "none";

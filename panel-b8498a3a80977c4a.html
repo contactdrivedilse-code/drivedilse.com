@@ -57,7 +57,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:.85rem;font-weight:500;color:#555;cursor:pointer;border-left:3px solid transparent;transition:all .12s}
 .nav-item:hover{background:var(--ow);color:var(--t)}
 .nav-item.on{background:var(--wg);color:var(--yd);font-weight:700;border-left-color:var(--yd)}
-.nav-icon{font-size:1rem;width:22px;text-align:center}
+.nav-icon{font-size:1rem;width:22px;text-align:center;filter:grayscale(1);opacity:.75}
+.nav-item.on .nav-icon,.nav-item:hover .nav-icon{opacity:1}
 .nav-badge{margin-left:auto;background:var(--y);color:var(--t);font-size:.6rem;font-weight:800;padding:2px 7px;border-radius:20px;min-width:20px;text-align:center}
 
 .content-area{flex:1;padding:28px 32px;min-width:0}
@@ -69,7 +70,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
 .stat-card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04);user-select:none;transition:box-shadow .15s,border-color .15s}
 .stat-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06);border-color:#fde68a}
-.stat-icon{font-size:1.5rem;margin-bottom:8px}
+.stat-icon{font-size:1.5rem;margin-bottom:8px;filter:grayscale(1);opacity:.8}
 .stat-num{font-family:'Inter',sans-serif;font-size:1.6rem;font-weight:800;color:var(--yd);margin-bottom:4px;letter-spacing:-.02em}
 .stat-lbl{font-size:.7rem;color:var(--ts);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
 
@@ -114,7 +115,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .drp-wrap{position:relative;display:inline-block}
 .drp-btn{display:flex;align-items:center;gap:8px;padding:8px 14px;font-size:.82rem;border-radius:10px;border:1.5px solid var(--b);background:var(--w);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;color:#555;transition:all .15s;white-space:nowrap}
 .drp-btn:hover,.drp-btn.active{border-color:var(--yd);background:rgba(245,197,24,.07);color:var(--t)}
-.drp-btn .drp-icon{font-size:1rem}
+.drp-btn .drp-icon{font-size:1rem;filter:grayscale(1);opacity:.8}
 .drp-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:500;background:#fff;border:1px solid var(--b);border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.15);display:none;flex-direction:row;overflow:hidden;min-width:720px}
 .drp-panel.open{display:flex}
 .drp-presets{width:170px;border-right:1px solid var(--b);padding:16px 0;flex-shrink:0;background:var(--ow)}
@@ -159,7 +160,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 
 /* ── EMPTY STATE ── */
 .empty{padding:48px;text-align:center;color:var(--ts)}
-.empty-icon{font-size:2.5rem;margin-bottom:12px}
+.empty-icon{font-size:2.5rem;margin-bottom:12px;filter:grayscale(1);opacity:.5}
 .empty-msg{font-size:.9rem;font-weight:500}
 
 /* ── MODAL ── */

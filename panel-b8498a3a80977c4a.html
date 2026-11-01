@@ -164,6 +164,10 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .toast.success{border-left:4px solid #1a7a3c}
 .toast.error{border-left:4px solid #e74c3c}
 
+/* ── SELECT STATUS ── */
+.status-sel{font-size:.75rem;border:1.5px solid var(--b);border-radius:8px;padding:4px 8px;background:var(--w);font-family:'Inter',sans-serif;cursor:pointer;outline:none}
+.status-sel:focus{border-color:var(--yd)}
+
 /* ── CHECK-IN OTP ── */
 .adm-table td { max-width: 260px; }
 .otp-reveal { animation: pulse-border 1.5s ease-in-out infinite; }
@@ -3197,7 +3201,16 @@ async function openBkDetailsModal(id){
     pendingBanner +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;font-size:.85rem">' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Car</div><div style="font-weight:700">'+carName+'</div></div>' +
-      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Status</div><div>'+badge(b.status)+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Status</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          badge(b.status) +
+          '<select class="status-sel" onchange="changeBookingStatus(\''+id+'\',this.value,this)">' +
+            ['pending','confirmed','active','completed','cancelled','no_show'].map(function(s){
+              return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s.replace('_',' ')+'</option>';
+            }).join('') +
+          '</select>' +
+        '</div>' +
+      '</div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Customer</div><div style="font-weight:700">'+custName+'</div></div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Phone</div><div>'+phone+'</div></div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Pickup</div><div>'+(pickup?new Date(pickup).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):"—")+'</div></div>' +
@@ -3282,6 +3295,42 @@ async function openBkDetailsModal(id){
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+async function changeBookingStatus(id, status, selEl){
+  var b = window._bkDetailsMap[id] || allBookings.find(function(bk){ return (bk._id||bk.bookingId)===id; });
+  var prevStatus = b ? b.status : null;
+  if(!confirm('Change this booking\'s status to "'+status.replace('_',' ')+'"?')){
+    if(selEl && prevStatus) selEl.value = prevStatus;
+    return;
+  }
+  function applyLocally(){
+    var idx = allBookings.findIndex(function(bk){ return (bk._id||bk.bookingId)===id; });
+    if(idx>=0) allBookings[idx].status = status;
+    if(window._bkDetailsMap[id]) window._bkDetailsMap[id].status = status;
+  }
+  if(adminToken === "local"){
+    applyLocally();
+    toast("Status updated to " + status, "success");
+    updateBadges();
+    openBkDetailsModal(id);
+    return;
+  }
+  try {
+    await adminFetch("/admin/bookings/"+id+"/status", {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ status: status })
+    });
+    applyLocally();
+    invalidateCache("/admin/bookings"); invalidateCache("/admin/dashboard");
+    toast("Status updated to " + status, "success");
+    updateBadges();
+    openBkDetailsModal(id);
+  } catch(e){
+    toast("Failed: " + e.message, "error");
+    if(selEl && prevStatus) selEl.value = prevStatus;
+  }
+}
 
 function calcExtension(id, pricePerDay){
   var b = window._bkDetailsMap[id];

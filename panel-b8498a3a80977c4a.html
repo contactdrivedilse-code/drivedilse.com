@@ -87,6 +87,10 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .adm-table tr:last-child td{border-bottom:none}
 .adm-table tr:hover td{background:#fafafa}
 .table-wrap{overflow-x:auto}
+.table-wrap::-webkit-scrollbar{height:9px}
+.table-wrap::-webkit-scrollbar-track{background:var(--ow)}
+.table-wrap::-webkit-scrollbar-thumb{background:#e8d27a;border-radius:5px}
+.table-wrap::-webkit-scrollbar-thumb:hover{background:var(--yd)}
 
 /* ── BADGES ── */
 .sbadge{font-size:.62rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 10px;border-radius:20px;white-space:nowrap}
@@ -1990,16 +1994,10 @@ function buildTable(bks, showActions){
       : '';
     var isFleet = currentRole === "fleet";
     var bk = calcBreakdown(b);
-    var totalCell = '<td style="white-space:nowrap">' +
+    var totalCell = '<td style="white-space:nowrap;cursor:pointer" onclick="openBkDetailsModal(\''+(b._id||b.bookingId)+'\')" title="Click for full price breakdown">' +
       '<div style="font-weight:800;font-size:.92rem">'+inr(bk.total)+'</div>' +
-      '<div style="font-size:.68rem;color:var(--ts);margin-top:3px;line-height:1.55">' +
-        'Base <strong>'+inr(bk.baseFare)+'</strong>' +
-        (bk.deliveryFee ? ' · Del <strong style="color:#2563eb">'+inr(bk.deliveryFee)+'</strong>' : '') +
-        ' · GST <strong>'+inr(bk.gst)+'</strong>' +
-        (bk.couponDiscount ? ' · Coupon <strong style="color:#15803d">-'+inr(bk.couponDiscount)+'</strong>' : '') +
-      '</div>' +
-      (bk.depositAmount ? '<div style="font-size:.68rem;margin-top:2px;color:'+(bk.depositPaid?'#15803d':'#92400e')+'">' +
-        '🔒 Deposit '+inr(bk.depositAmount)+' — '+(bk.depositNow ? 'paid at booking' : (bk.depositPaid ? 'paid separately' : '⏳ unpaid')) +
+      (bk.depositAmount ? '<div style="font-size:.66rem;margin-top:3px;font-weight:600;color:'+(bk.depositPaid?'#15803d':'#92400e')+'">' +
+        '🔒 '+(bk.depositPaid ? 'Deposit paid' : 'Deposit due')+
       '</div>' : '') +
     '</td>';
     var depCell = '<td style="white-space:nowrap;font-size:.78rem">' +

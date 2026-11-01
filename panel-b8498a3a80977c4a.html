@@ -1260,7 +1260,7 @@ function navTo(tab, el){
     toast("Use a booking's checkout checklist to record deductions — refunds are admin-only.", "error");
     return;
   }
-  if(["fleet","pricing","blog","customers","tickets","employees"].indexOf(tab) > -1 && currentRole === "fleet"){
+  if(["fleet","pricing","blog","customers","tickets","employees","fleetanalytics"].indexOf(tab) > -1 && currentRole === "fleet"){
     toast("This section isn't available for Fleet Manager.", "error");
     return;
   }
@@ -1370,6 +1370,8 @@ async function renderTab(tab){
     await renderSchedule(isLocal, c);
   } else if(tab === "fleet"){
     await renderFleet(isLocal, c);
+  } else if(tab === "fleetanalytics"){
+    await renderFleetAnalyticsMenu(isLocal, c);
   } else if(tab === "pricing"){
     await renderPricing(isLocal, c);
   } else if(tab === "coupons"){
@@ -1601,6 +1603,7 @@ async function renderDashboard(isLocal, c){
     dutyHtml +
     '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">📊 Overview</div>' +
     '<div class="stat-grid">' + statHtml + '</div>' +
+    (currentRole !== "fleet" ? fleetAnalyticsCardHtml() : "") +
     expiryHtml +
     (currentRole !== "fleet" ? revHtml : "") +
     carsOutHtml +
@@ -2269,6 +2272,362 @@ async function renderRevenue(isLocal, c){
   }
   if(isLocal){ _revBookings = DEMO_BOOKINGS.slice(); }
   try { _revRender(c); } catch(e){ c.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-msg">Error: '+esc(e.message)+'</div></div>'; }
+}
+
+// ═══════════════════ FLEET ANALYTICS ═══════════════════════════════════════
+
+function fleetAnalyticsCardHtml(){
+  return '<div onclick="navTo(\'fleetanalytics\',null)" style="cursor:pointer;background:linear-gradient(135deg,var(--w),var(--s));border:2px solid var(--b);border-radius:16px;padding:20px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:transform .15s,box-shadow .15s" ' +
+    'onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 24px rgba(200,160,0,.18)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">' +
+    '<div style="display:flex;align-items:center;gap:14px">' +
+      '<div style="font-size:1.8rem">📊</div>' +
+      '<div><div style="font-weight:900;font-size:1.02rem">Fleet Analytics</div><div style="font-size:.78rem;color:var(--ts);margin-top:2px">Utilization, idle cars &amp; per-car revenue breakdown</div></div>' +
+    '</div>' +
+    '<div style="font-size:1.3rem;color:var(--ts)">→</div>' +
+  '</div>';
+}
+
+async function _faEnsureData(){
+  if(adminToken === "local"){
+    if(!allBookings.length) allBookings = DEMO_BOOKINGS.slice();
+    if(!allCars.length) allCars = DEMO_FLEET.slice();
+    return;
+  }
+  try {
+    if(!allBookings.length) allBookings = await cachedFetch("/admin/bookings");
+    if(!allCars.length){ allCars = await cachedFetch("/admin/fleet"); window._allCarsCache = allCars; }
+  } catch(e){
+    allBookings = DEMO_BOOKINGS.slice();
+    allCars = DEMO_FLEET.slice();
+  }
+}
+
+function faBackBtn(label, fn){
+  return '<button onclick="'+fn+'" style="background:none;border:none;color:var(--ts);font-size:.82rem;font-weight:600;cursor:pointer;padding:0;margin-bottom:10px">← '+label+'</button>';
+}
+
+function faCategoryCard(icon, title, sub, onclickFn){
+  return '<div onclick="'+onclickFn+'" style="cursor:pointer;background:var(--w);border:2px solid var(--b);border-radius:16px;padding:30px 24px;text-align:center;transition:transform .15s,box-shadow .15s" ' +
+    'onmouseover="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 10px 28px rgba(200,160,0,.18)\';this.style.borderColor=\'var(--yd)\'" ' +
+    'onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\';this.style.borderColor=\'var(--b)\'">' +
+    '<div style="font-size:2.4rem;margin-bottom:12px">'+icon+'</div>' +
+    '<div style="font-weight:900;font-size:1.08rem;margin-bottom:6px">'+title+'</div>' +
+    '<div style="font-size:.82rem;color:var(--ts);line-height:1.4">'+sub+'</div>' +
+  '</div>';
+}
+
+async function renderFleetAnalyticsMenu(isLocal, c){
+  c.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-msg">Loading...</div></div>';
+  await _faEnsureData();
+  c.innerHTML =
+    faBackBtn("Back to Dashboard", "navTo('dashboard',document.querySelector('[data-tab=dashboard]'))") +
+    '<div class="page-title" style="margin-bottom:0">📊 Fleet Analytics</div>' +
+    '<div class="page-sub" style="margin-top:2px">Choose a category to dive into.</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:24px;max-width:700px">' +
+      faCategoryCard("🔍","Deep Analysis","Utilization rate &amp; idle car data","renderFleetUtilization()") +
+      faCategoryCard("💰","Revenue","Per-car revenue, date-wise, with GST collected","renderFleetRevenueByCar()") +
+    '</div>';
+}
+
+// ── Deep Analysis: utilization rate + idle cars ─────────────────────────────
+var _faUtilPeriod = "30d";
+
+function _faPeriodRange(period){
+  var today = new Date(); today.setHours(0,0,0,0);
+  var end = new Date(today.getTime() + 86400000); // exclusive end = tomorrow 00:00
+  if(period === "all"){
+    var earliest = null;
+    allBookings.forEach(function(b){
+      var d = b.pickup && b.pickup.date ? new Date(b.pickup.date) : null;
+      if(d && (!earliest || d < earliest)) earliest = d;
+    });
+    var start = earliest ? new Date(earliest.getFullYear(), earliest.getMonth(), earliest.getDate()) : today;
+    return { start: start, end: end };
+  }
+  var days = period === "7d" ? 7 : period === "90d" ? 90 : 30;
+  return { start: new Date(today.getTime() - (days-1)*86400000), end: end };
+}
+
+async function renderFleetUtilization(){
+  var c = document.getElementById("content");
+  c.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-msg">Loading...</div></div>';
+  await _faEnsureData();
+  _faUtilRenderPage(c);
+}
+
+function _faUtilSetPeriod(p){ _faUtilPeriod = p; _faUtilRenderPage(document.getElementById("content")); }
+
+function _faUtilRenderPage(c){
+  var range = _faPeriodRange(_faUtilPeriod);
+  var periodDays = Math.max(1, Math.round((range.end - range.start) / 86400000));
+
+  var stats = allCars.map(function(car){
+    var bookedMs = 0, bookingCount = 0, lastDrop = null;
+    allBookings.forEach(function(b){
+      var carName = b.carName || (b.car && b.car.name) || "";
+      if(carName !== car.name) return;
+      if(b.status !== "cancelled" && b.status !== "no_show"){
+        var dropD = b.drop && b.drop.date ? new Date(b.drop.date) : null;
+        if(dropD && (!lastDrop || dropD > lastDrop)) lastDrop = dropD;
+      }
+      if(b.status !== "completed" && b.status !== "active") return;
+      var bs = b.pickup && b.pickup.date ? new Date(b.pickup.date) : null;
+      var be = b.drop && b.drop.date ? new Date(b.drop.date) : null;
+      if(!bs || !be) return;
+      var os = bs > range.start ? bs : range.start;
+      var oe = be < range.end ? be : range.end;
+      if(oe > os){ bookedMs += (oe - os); bookingCount++; }
+    });
+    var bookedDays = bookedMs / 86400000;
+    var pct = Math.min(100, Math.round(bookedDays / periodDays * 100));
+    var idleDays = lastDrop ? Math.max(0, Math.floor((new Date() - lastDrop) / 86400000)) : null;
+    var isOutNow = allBookings.some(function(b){
+      var carName = b.carName || (b.car && b.car.name) || "";
+      return carName === car.name && b.status === "active";
+    });
+    return { car: car, bookingCount: bookingCount, bookedDays: bookedDays, pct: pct, idleDays: idleDays, isOutNow: isOutNow };
+  });
+
+  var utilRows = stats.slice().sort(function(a,b){ return b.pct - a.pct; }).map(function(s){
+    var barColor = s.pct >= 60 ? "#15803d" : (s.pct >= 30 ? "var(--yd)" : "#c0392b");
+    return '<tr>' +
+      '<td style="font-weight:700;font-size:.86rem">'+esc(s.car.name)+(s.car.active?'':' <span style="font-size:.68rem;color:var(--ts);font-weight:600">(inactive)</span>')+'</td>' +
+      '<td style="text-align:center;font-weight:600">'+s.bookingCount+'</td>' +
+      '<td style="text-align:center">'+s.bookedDays.toFixed(1)+' / '+periodDays+' days</td>' +
+      '<td style="min-width:160px">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="flex:1;background:var(--b);border-radius:100px;height:9px;overflow:hidden"><div style="height:100%;width:'+s.pct+'%;background:'+barColor+';border-radius:100px"></div></div>' +
+          '<span style="font-weight:800;font-size:.82rem;color:'+barColor+';min-width:36px;text-align:right">'+s.pct+'%</span>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join("");
+
+  var idleList = stats.filter(function(s){ return s.car.active && !s.isOutNow; })
+    .sort(function(a,b){
+      var ad = a.idleDays==null ? Infinity : a.idleDays;
+      var bd = b.idleDays==null ? Infinity : b.idleDays;
+      return bd - ad;
+    });
+
+  var idleRows = idleList.map(function(s){
+    var urgent = s.idleDays == null || s.idleDays >= 7;
+    var warn   = !urgent && s.idleDays >= 3;
+    var color  = urgent ? "#c0392b" : (warn ? "#a16207" : "#15803d");
+    var bg     = urgent ? "#fef2f2" : (warn ? "#fff8d0" : "#f0fdf4");
+    var border = urgent ? "#fca5a5" : (warn ? "var(--yd)" : "#bbf7d0");
+    var label  = s.idleDays == null ? "Never booked" : (s.idleDays===0 ? "Idle since today" : s.idleDays+" day"+(s.idleDays!==1?"s":"")+" idle");
+    return '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">' +
+      '<span style="font-weight:700;font-size:.86rem">'+esc(s.car.name)+'</span>' +
+      '<span style="font-weight:800;font-size:.8rem;color:'+color+'">'+label+'</span>' +
+    '</div>';
+  }).join("");
+
+  var periodBtns = [
+    {k:"7d",lbl:"Last 7 Days"},{k:"30d",lbl:"Last 30 Days"},{k:"90d",lbl:"Last 90 Days"},{k:"all",lbl:"All Time"},
+  ].map(function(p){
+    var on = _faUtilPeriod === p.k ? "background:var(--y);border-color:var(--yd);color:var(--t);" : "";
+    return '<button onclick="_faUtilSetPeriod(\''+p.k+'\')" style="font-size:.78rem;font-weight:700;padding:7px 16px;border-radius:20px;border:1.5px solid var(--b);background:var(--w);color:#666;cursor:pointer;'+on+'">'+p.lbl+'</button>';
+  }).join("");
+
+  c.innerHTML =
+    faBackBtn("Back to Fleet Analytics", "renderFleetAnalyticsMenu(adminToken==='local',document.getElementById('content'))") +
+    '<div class="page-title" style="margin-bottom:0">🔍 Deep Analysis</div>' +
+    '<div class="page-sub" style="margin-top:2px">Utilization rate and idle car data across the fleet.</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;margin-bottom:4px">'+periodBtns+'</div>' +
+    '<div class="card" style="margin-top:18px">' +
+      '<div class="card-hdr"><span class="card-title">Utilization Rate</span></div>' +
+      (utilRows
+        ? '<div class="table-wrap"><table class="adm-table"><thead><tr><th>Car</th><th style="text-align:center">Bookings</th><th style="text-align:center">Days Booked</th><th>Utilization</th></tr></thead><tbody>'+utilRows+'</tbody></table></div>'
+        : '<div class="empty"><div class="empty-icon">🚗</div><div class="empty-msg">No cars in fleet.</div></div>') +
+    '</div>' +
+    '<div class="card" style="margin-top:18px">' +
+      '<div class="card-hdr"><span class="card-title">Idle Cars</span><span style="font-size:.72rem;color:var(--ts);font-weight:500">Active cars not currently out</span></div>' +
+      '<div style="padding:14px 18px">' +
+        (idleRows || '<div class="empty" style="padding:20px"><div class="empty-icon">✅</div><div class="empty-msg">No active cars — nothing to show.</div></div>') +
+      '</div>' +
+    '</div>';
+}
+
+// ── Revenue: per-car, date-wise, with GST ───────────────────────────────────
+var _faRevBookings = [], _faRevFilter = "all", _faRevFrom = "", _faRevTo = "", _faRevCar = null;
+
+async function renderFleetRevenueByCar(){
+  var c = document.getElementById("content");
+  c.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-msg">Loading...</div></div>';
+  await _faEnsureData();
+  _faRevBookings = allBookings;
+  _faRevCar = null;
+  _faRevRenderList(c);
+}
+
+function _faRevFilteredBookings(){
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return _faRevBookings.filter(function(b){
+    if(!b.total || b.total <= 0 || b.status === "cancelled") return false;
+    var d = new Date(b.createdAt || (b.pickup && b.pickup.date) || 0);
+    if(_faRevFilter === "today") return d >= today;
+    if(_faRevFilter === "7d")  return d >= new Date(today.getTime() - 6*86400000);
+    if(_faRevFilter === "30d") return d >= new Date(today.getTime() - 29*86400000);
+    if(_faRevFilter === "custom"){
+      var from = _faRevFrom ? new Date(_faRevFrom) : null;
+      var to   = _faRevTo   ? new Date(new Date(_faRevTo).getTime() + 86400000) : null;
+      if(from && d < from) return false;
+      if(to   && d >= to)  return false;
+      return true;
+    }
+    return true;
+  });
+}
+
+function _faRevFilterBtns(){
+  var btns = [
+    {k:"all",lbl:"All Time"},{k:"today",lbl:"Today"},{k:"7d",lbl:"Last 7 Days"},{k:"30d",lbl:"Last 30 Days"},{k:"custom",lbl:"Custom"},
+  ].map(function(f){
+    var on = _faRevFilter === f.k ? "background:var(--y);border-color:var(--yd);color:var(--t);" : "";
+    return '<button onclick="_faRevSetFilter(\''+f.k+'\')" style="font-size:.78rem;font-weight:700;padding:7px 16px;border-radius:20px;border:1.5px solid var(--b);background:var(--w);color:#666;cursor:pointer;'+on+'">'+f.lbl+'</button>';
+  }).join("");
+  var customHtml = _faRevFilter === "custom"
+    ? '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;width:100%">'+
+        '<label style="font-size:.78rem;font-weight:600;color:var(--ts)">From</label>'+
+        '<input type="date" value="'+_faRevFrom+'" onchange="_faRevFrom=this.value;_faRevRerender()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--b);font-size:.82rem">'+
+        '<label style="font-size:.78rem;font-weight:600;color:var(--ts)">To</label>'+
+        '<input type="date" value="'+_faRevTo+'" onchange="_faRevTo=this.value;_faRevRerender()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--b);font-size:.82rem">'+
+      '</div>'
+    : "";
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;margin-bottom:4px">'+btns+customHtml+'</div>';
+}
+
+function _faRevSetFilter(k){ _faRevFilter = k; _faRevRerender(); }
+function _faRevRerender(){
+  var c = document.getElementById("content");
+  if(_faRevCar) _faRevRenderDetail(c); else _faRevRenderList(c);
+}
+
+function _faRevRenderList(c){
+  var bks = _faRevFilteredBookings();
+  var carMap = {};
+  bks.forEach(function(b){
+    var car = b.carName || (b.car && b.car.name) || "Unknown";
+    if(!carMap[car]) carMap[car] = {bookings:0, total:0, gst:0};
+    var bd = calcBreakdown(b);
+    carMap[car].bookings++;
+    carMap[car].total += (b.total||0);
+    carMap[car].gst += bd.gst;
+  });
+
+  var grandTotal=0, grandGst=0, grandFee=0, grandBks=0;
+  var carNames = Object.keys(carMap).sort(function(a,b){ return carMap[b].total - carMap[a].total; });
+  var rows = carNames.map(function(car){
+    var d = carMap[car];
+    var fee = d.total - d.gst;
+    grandTotal += d.total; grandGst += d.gst; grandFee += fee; grandBks += d.bookings;
+    return '<tr style="cursor:pointer" onclick="_faRevSelectCar(\''+car.replace(/'/g,"\\'")+'\')">' +
+      '<td style="font-weight:700;color:var(--t);font-size:.88rem">'+esc(car)+' <span style="color:var(--ts);font-weight:500">→</span></td>' +
+      '<td style="text-align:center;font-weight:600">'+d.bookings+'</td>' +
+      '<td style="font-weight:700;color:var(--t)">'+inr(fee)+'</td>' +
+      '<td style="font-weight:700;color:#c0392b">'+inr(d.gst)+'</td>' +
+      '<td style="font-weight:900;color:var(--yd);font-size:.95rem">'+inr(d.total)+'</td>' +
+    '</tr>';
+  }).join("");
+
+  var summaryHtml = [
+    {icon:"💰", val:inr(grandFee),   lbl:"Revenue (excl. GST)"},
+    {icon:"🧾", val:inr(grandGst),   lbl:"GST Collected"},
+    {icon:"📈", val:inr(grandTotal), lbl:"Total Revenue"},
+  ].map(function(s){
+    return '<div class="stat-card" style="flex:1;min-width:180px">'+
+      '<div class="stat-icon">'+statIcon(s.icon)+'</div>'+
+      '<div class="stat-num">'+s.val+'</div>'+
+      '<div class="stat-lbl">'+s.lbl+'</div>'+
+    '</div>';
+  }).join("");
+
+  c.innerHTML =
+    faBackBtn("Back to Fleet Analytics", "renderFleetAnalyticsMenu(adminToken==='local',document.getElementById('content'))") +
+    '<div class="page-title" style="margin-bottom:0">💰 Revenue by Car</div>' +
+    '<div class="page-sub" style="margin-top:2px">Click a car to see its revenue date-wise with GST collected.</div>' +
+    _faRevFilterBtns() +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:20px 0 24px">'+summaryHtml+'</div>' +
+    '<div class="card">' +
+      '<div class="card-hdr"><span class="card-title">Revenue by Car</span><span style="font-size:.72rem;color:var(--ts);font-weight:500">Click a row for date-wise detail</span></div>' +
+      (rows
+        ? '<div class="table-wrap"><table class="adm-table"><thead><tr><th>Car</th><th style="text-align:center">Bookings</th><th>Revenue (excl. GST)</th><th>GST Collected</th><th>Total Revenue</th></tr></thead><tbody>'+rows+
+            '<tr style="background:linear-gradient(135deg,#fffde8,#fff9d0)">'+
+              '<td style="font-weight:900;font-size:.88rem">Grand Total</td>'+
+              '<td style="text-align:center;font-weight:900">'+grandBks+'</td>'+
+              '<td style="font-weight:900;color:var(--t)">'+inr(grandFee)+'</td>'+
+              '<td style="font-weight:900;color:#c0392b">'+inr(grandGst)+'</td>'+
+              '<td style="font-weight:900;color:var(--yd);font-size:1rem">'+inr(grandTotal)+'</td>'+
+            '</tr>'+
+          '</tbody></table></div>'
+        : '<div class="empty"><div class="empty-icon">📊</div><div class="empty-msg">No bookings in this period.</div></div>') +
+    '</div>';
+}
+
+function _faRevSelectCar(car){
+  _faRevCar = car;
+  _faRevRenderDetail(document.getElementById("content"));
+}
+function _faRevBackToCarList(){
+  _faRevCar = null;
+  _faRevRenderList(document.getElementById("content"));
+}
+
+function _faRevRenderDetail(c){
+  var bks = _faRevFilteredBookings().filter(function(b){
+    var car = b.carName || (b.car && b.car.name) || "Unknown";
+    return car === _faRevCar;
+  });
+
+  var dayMap = {};
+  bks.forEach(function(b){
+    var d = new Date(b.createdAt || (b.pickup && b.pickup.date) || 0);
+    var key = d.toISOString().slice(0,10);
+    if(!dayMap[key]) dayMap[key] = { bookings:[], total:0, gst:0 };
+    var bd = calcBreakdown(b);
+    dayMap[key].bookings.push(b);
+    dayMap[key].total += (b.total||0);
+    dayMap[key].gst += bd.gst;
+  });
+
+  var dayKeys = Object.keys(dayMap).sort().reverse();
+  var grandTotal=0, grandGst=0, grandFee=0;
+  var rows = dayKeys.map(function(key){
+    var d = dayMap[key];
+    var fee = d.total - d.gst;
+    grandTotal += d.total; grandGst += d.gst; grandFee += fee;
+    var dateStr = new Date(key+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+    var bookingIds = d.bookings.map(function(b){ return esc(b.bookingId||b._id||""); }).join(", ");
+    return '<tr>' +
+      '<td style="font-weight:700;font-size:.86rem">'+dateStr+'</td>' +
+      '<td style="text-align:center;font-weight:600">'+d.bookings.length+'</td>' +
+      '<td style="font-size:.76rem;color:var(--ts)">'+bookingIds+'</td>' +
+      '<td style="font-weight:700;color:var(--t)">'+inr(fee)+'</td>' +
+      '<td style="font-weight:700;color:#c0392b">'+inr(d.gst)+'</td>' +
+      '<td style="font-weight:900;color:var(--yd)">'+inr(d.total)+'</td>' +
+    '</tr>';
+  }).join("");
+
+  c.innerHTML =
+    faBackBtn("Back to all cars", "_faRevBackToCarList()") +
+    '<div class="page-title" style="margin-bottom:0">💰 '+esc(_faRevCar)+'</div>' +
+    '<div class="page-sub" style="margin-top:2px">Revenue date-wise, with GST collected.</div>' +
+    _faRevFilterBtns() +
+    '<div class="card" style="margin-top:18px">' +
+      '<div class="card-hdr"><span class="card-title">Date-wise Revenue</span><span style="font-size:.72rem;color:var(--ts);font-weight:500">'+dayKeys.length+' day'+(dayKeys.length!==1?'s':'')+' with revenue</span></div>' +
+      (rows
+        ? '<div class="table-wrap"><table class="adm-table"><thead><tr><th>Date</th><th style="text-align:center">Bookings</th><th>Booking ID(s)</th><th>Revenue (excl. GST)</th><th>GST Collected</th><th>Total</th></tr></thead><tbody>'+rows+
+            '<tr style="background:linear-gradient(135deg,#fffde8,#fff9d0)">'+
+              '<td style="font-weight:900;font-size:.88rem" colspan="3">Grand Total</td>'+
+              '<td style="font-weight:900;color:var(--t)">'+inr(grandFee)+'</td>'+
+              '<td style="font-weight:900;color:#c0392b">'+inr(grandGst)+'</td>'+
+              '<td style="font-weight:900;color:var(--yd);font-size:1rem">'+inr(grandTotal)+'</td>'+
+            '</tr>'+
+          '</tbody></table></div>'
+        : '<div class="empty"><div class="empty-icon">📊</div><div class="empty-msg">No bookings in this period.</div></div>') +
+    '</div>';
 }
 
 async function renderFleet(isLocal, c){

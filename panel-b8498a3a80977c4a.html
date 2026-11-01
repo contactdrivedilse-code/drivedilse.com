@@ -1993,7 +1993,7 @@ function buildTable(bks, showActions){
     }
 
     var actCell = showActions
-      ? '<td><select class="status-sel" onchange="updateStatus(\''+b._id+'\',this.value)">' +
+      ? '<td><select class="status-sel" onchange="updateStatus(\''+b._id+'\',this.value,this)">' +
           ['pending','confirmed','active','completed','cancelled','no_show'].map(function(s){
             return '<option value="'+s+'"'+(b.status===s?' selected':'')+'>'+s.replace('_',' ')+'</option>';
           }).join('') + '</select></td>'
@@ -2038,9 +2038,14 @@ function buildTable(bks, showActions){
     '</tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
-async function updateStatus(id, status){
+async function updateStatus(id, status, selEl){
+  var b = allBookings.find(function(b){ return b._id===id; });
+  var prevStatus = b ? b.status : null;
+  if(!confirm('Change this booking\'s status to "'+status.replace('_',' ')+'"?')){
+    if(selEl && prevStatus) selEl.value = prevStatus;
+    return;
+  }
   if(adminToken === "local"){
-    var b = allBookings.find(function(b){ return b._id===id; });
     if(b) b.status = status;
     toast("Status updated to " + status, "success");
     updateBadges();
@@ -2052,11 +2057,13 @@ async function updateStatus(id, status){
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ status: status })
     });
-    var b = allBookings.find(function(b){ return b._id===id; });
     if(b) b.status = status;
     invalidateCache("/admin/bookings"); invalidateCache("/admin/dashboard"); toast("Status updated to " + status, "success");
     updateBadges();
-  } catch(e){ toast("Failed: " + e.message, "error"); }
+  } catch(e){
+    toast("Failed: " + e.message, "error");
+    if(selEl && prevStatus) selEl.value = prevStatus;
+  }
 }
 
 async function renderKycApprovals(isLocal, c){

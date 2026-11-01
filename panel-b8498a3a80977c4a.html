@@ -70,7 +70,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .stat-card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04);user-select:none;transition:box-shadow .15s,border-color .15s}
 .stat-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06);border-color:#fde68a}
 .stat-icon{font-size:1.5rem;margin-bottom:8px;filter:grayscale(1);opacity:.8}
-.stat-num{font-family:'Inter',sans-serif;font-size:1.6rem;font-weight:600;color:var(--yd);margin-bottom:4px}
+.stat-num{font-family:'Inter',sans-serif;font-size:1.35rem;font-weight:600;color:var(--yd);margin-bottom:4px}
 .stat-lbl{font-size:.7rem;color:var(--ts);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
 
 /* ── CARD ── */
@@ -1467,7 +1467,7 @@ async function renderDashboard(isLocal, c){
   function revCard(icon, label, value, sub, color){
     return '<div style="background:var(--w);border:1.5px solid var(--b);border-radius:14px;padding:16px 18px;flex:1;min-width:140px">' +
       '<div style="font-size:1.3rem;margin-bottom:4px">'+icon+'</div>' +
-      '<div style="font-size:1.35rem;font-weight:600;color:'+(color||"var(--t)")+'">'+inr(value)+'</div>' +
+      '<div style="font-size:1.15rem;font-weight:600;color:'+(color||"var(--t)")+'">'+inr(value)+'</div>' +
       '<div style="font-size:.75rem;font-weight:600;color:var(--ts);margin-top:2px">'+label+'</div>' +
       (sub ? '<div style="font-size:.7rem;color:#aaa;margin-top:2px">'+sub+'</div>' : '') +
     '</div>';

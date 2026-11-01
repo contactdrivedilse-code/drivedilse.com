@@ -277,6 +277,7 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
       <span class="top-badge" id="top-role-badge">ADMIN</span>
     </div>
     <div class="top-bar-right">
+      <span id="backend-status-dot" title="Checking backend connection..." style="width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0;transition:background .2s"></span>
       <span class="admin-name" id="top-role-name">Admin</span>
       <button class="logout-btn" onclick="doLogout()">Sign Out</button>
       <a href="/" style="font-size:.75rem;color:#aaa;text-decoration:none;margin-left:4px">← Site</a>
@@ -986,6 +987,13 @@ var STAT_ICON_SVG = {
   "📈": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-8"/><path d="M15 7h5v5"/></svg>',
 };
 function statIcon(emoji){ return STAT_ICON_SVG[emoji] || emoji; }
+
+function setBackendStatus(connected){
+  var dot = document.getElementById("backend-status-dot");
+  if(!dot) return;
+  dot.style.background = connected ? "#4ade80" : "#fca5a5";
+  dot.title = connected ? "Backend connected — showing live data" : "Backend unreachable — showing demo data";
+}
 var allBookings = [], allCars = [], allCustomers = [];
 
 var DEMO_BOOKINGS = [
@@ -1539,13 +1547,11 @@ async function renderDashboard(isLocal, c){
     scheduleHtml += '</div>';
   }
 
+  setBackendStatus(!isLocal);
+
   c.innerHTML =
     '<div class="page-title">Dashboard</div>' +
     '<div class="page-sub">Overview of DriveDilSe operations.</div>' +
-    (isLocal
-      ? '<div style="background:#fff3cd;border:1px solid #e8b800;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#856404;display:flex;align-items:center;gap:8px">⚠️ <strong>Demo mode</strong> — backend unreachable. Showing sample data.</div>'
-      : '<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.82rem;color:#15803d;display:flex;align-items:center;gap:8px">✅ <strong>Live Backend Connected</strong> — showing real data from database.</div>'
-    ) +
     dutyHtml +
     '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">📊 Overview</div>' +
     '<div class="stat-grid">' + statHtml + '</div>' +

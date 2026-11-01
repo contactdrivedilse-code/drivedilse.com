@@ -1947,7 +1947,7 @@ function buildBookingTable(bks){
     window._bkDetailsMap[id] = b;
     var bk = calcBreakdown(b);
     var tag = bk.deliveryFee > 0
-      ? '<span class="bk-tag bk-tag-delivery">🚚 Delivery</span>'
+      ? '<span class="bk-tag bk-tag-delivery">🚚 Doorstep Delivery</span>'
       : '<span class="bk-tag bk-tag-pickup">🏬 Self Pickup</span>';
     var pickup = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
     return '<tr>' +

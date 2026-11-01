@@ -1384,7 +1384,81 @@ async function renderTab(tab){
     await renderTickets(isLocal, c);
   } else if(tab === "employees"){
     await renderEmployees(isLocal, c);
+  } else if(tab === "expiryalerts"){
+    await renderExpiryAlertsPage(isLocal, c);
   }
+}
+
+// ── Document expiry warnings (RC/Insurance/PUC/Fitness) ────────────────────
+function computeExpiryWarnings(){
+  var warnings = [];
+  var today = new Date(); today.setHours(0,0,0,0);
+  var docLabels = { rcExpiry:"RC", insuranceExpiry:"Insurance", pucExpiry:"PUC", fitnessExpiry:"Fitness Cert" };
+  (allCars||[]).forEach(function(car){
+    Object.keys(docLabels).forEach(function(key){
+      var val = car[key];
+      if(!val) return;
+      var exp = new Date(val); exp.setHours(0,0,0,0);
+      var diff = Math.round((exp-today)/(1000*60*60*24));
+      if(diff <= 10){
+        warnings.push({ car: car.name, doc: docLabels[key], diff: diff, exp: exp.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) });
+      }
+    });
+  });
+  warnings.sort(function(a,b){ return a.diff-b.diff; });
+  return warnings;
+}
+
+function expiryWarningRowHtml(w){
+  var expired = w.diff < 0;
+  var urgent  = !expired && w.diff <= 3;
+  var bg     = expired ? "#fef2f2" : (urgent ? "#fff0e6" : "#fff8d0");
+  var border = expired ? "#fca5a5" : (urgent ? "#fb923c" : "#f5c518");
+  var color  = expired ? "#c0392b" : (urgent ? "#c2410c" : "#a16207");
+  var icon   = expired ? "🚨" : (urgent ? "🔴" : "⚠️");
+  var msg    = expired ? "EXPIRED "+Math.abs(w.diff)+" day"+(Math.abs(w.diff)!==1?"s":"")+" ago"
+                       : (w.diff===0?"Expires TODAY":"Expires in "+w.diff+" day"+(w.diff!==1?"s":""));
+  return '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:.83rem">' +
+    '<span style="font-size:1.2rem">'+icon+'</span>' +
+    '<div style="flex:1"><strong style="color:'+color+'">'+esc(w.car)+' — '+esc(w.doc)+'</strong> <span style="color:'+color+'">'+msg+'</span></div>' +
+    '<div style="font-size:.75rem;color:var(--ts)">'+w.exp+'</div>' +
+  '</div>';
+}
+
+function expiryAlertsCardHtml(warnings){
+  if(!warnings.length) return "";
+  var expiredCount = warnings.filter(function(w){ return w.diff < 0; }).length;
+  var soonCount = warnings.length - expiredCount;
+  var sub = (expiredCount ? expiredCount+" expired" : "") + (expiredCount && soonCount ? ", " : "") + (soonCount ? soonCount+" expiring soon" : "");
+  var tone = expiredCount ? {bg:"#fef2f2",border:"#fca5a5",color:"#c0392b"} : {bg:"#fff8d0",border:"var(--yd)",color:"#a16207"};
+  return '<div onclick="navTo(\'expiryalerts\',null)" style="cursor:pointer;background:'+tone.bg+';border:2px solid '+tone.border+';border-radius:16px;padding:20px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;transition:transform .15s,box-shadow .15s" ' +
+    'onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'\'">' +
+    '<div style="display:flex;align-items:center;gap:14px">' +
+      '<div style="font-size:1.8rem">🚨</div>' +
+      '<div><div style="font-weight:900;font-size:1.02rem;color:'+tone.color+'">Document Expiry Alerts ('+warnings.length+')</div><div style="font-size:.78rem;color:'+tone.color+';margin-top:2px">'+sub+' — click to view all</div></div>' +
+    '</div>' +
+    '<div style="font-size:1.3rem;color:'+tone.color+'">→</div>' +
+  '</div>';
+}
+
+async function renderExpiryAlertsPage(isLocal, c){
+  c.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-msg">Loading...</div></div>';
+  if(isLocal){
+    allCars = DEMO_FLEET.slice();
+  } else {
+    try { if(!allCars.length){ allCars = await cachedFetch("/admin/fleet"); window._allCarsCache = allCars; } }
+    catch(e){ allCars = DEMO_FLEET.slice(); }
+  }
+  var warnings = computeExpiryWarnings();
+  c.innerHTML =
+    faBackBtn("Back to Dashboard", "navTo('dashboard',document.querySelector('[data-tab=dashboard]'))") +
+    '<div class="page-title" style="margin-bottom:0">🚨 Document Expiry Alerts</div>' +
+    '<div class="page-sub" style="margin-top:2px">'+warnings.length+' document'+(warnings.length!==1?'s':'')+' expired or expiring within 10 days.</div>' +
+    '<div style="margin-top:18px">' +
+      (warnings.length
+        ? warnings.map(expiryWarningRowHtml).join("")
+        : '<div class="empty"><div class="empty-icon">✅</div><div class="empty-msg">No document expiries to worry about.</div></div>') +
+    '</div>';
 }
 
 async function renderDashboard(isLocal, c){
@@ -1470,42 +1544,8 @@ async function renderDashboard(isLocal, c){
 
   // ── Document expiry warnings ───────────────────────────────────────────────
   allCars = isLocal ? DEMO_FLEET : (allCars.length ? allCars : (window._allCarsCache || []));
-  var expiryWarnings = [];
-  var today = new Date(); today.setHours(0,0,0,0);
-  var docLabels = { rcExpiry:"RC", insuranceExpiry:"Insurance", pucExpiry:"PUC", fitnessExpiry:"Fitness Cert" };
-  allCars.forEach(function(car){
-    Object.keys(docLabels).forEach(function(key){
-      var val = car[key];
-      if(!val) return;
-      var exp = new Date(val); exp.setHours(0,0,0,0);
-      var diff = Math.round((exp-today)/(1000*60*60*24));
-      if(diff <= 10){
-        expiryWarnings.push({ car: car.name, doc: docLabels[key], diff: diff, exp: exp.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) });
-      }
-    });
-  });
-  expiryWarnings.sort(function(a,b){ return a.diff-b.diff; });
-  var expiryHtml = "";
-  if(expiryWarnings.length){
-    expiryHtml = '<div style="margin-bottom:8px;font-weight:800;font-size:.95rem">🚨 Document Expiry Alerts ('+expiryWarnings.length+')</div>' +
-      '<div style="margin-bottom:16px">' +
-      expiryWarnings.map(function(w){
-        var expired = w.diff < 0;
-        var urgent  = !expired && w.diff <= 3;
-        var bg     = expired ? "#fef2f2" : (urgent ? "#fff0e6" : "#fff8d0");
-        var border = expired ? "#fca5a5" : (urgent ? "#fb923c" : "#f5c518");
-        var color  = expired ? "#c0392b" : (urgent ? "#c2410c" : "#a16207");
-        var icon   = expired ? "🚨" : (urgent ? "🔴" : "⚠️");
-        var msg    = expired ? "EXPIRED "+Math.abs(w.diff)+" day"+(Math.abs(w.diff)!==1?"s":"")+" ago"
-                             : (w.diff===0?"Expires TODAY":"Expires in "+w.diff+" day"+(w.diff!==1?"s":""));
-        return '<div style="background:'+bg+';border:1.5px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:.83rem">' +
-          '<span style="font-size:1.2rem">'+icon+'</span>' +
-          '<div style="flex:1"><strong style="color:'+color+'">'+w.car+' — '+w.doc+'</strong> <span style="color:'+color+'">'+msg+'</span></div>' +
-          '<div style="font-size:.75rem;color:var(--ts)">'+w.exp+'</div>' +
-        '</div>';
-      }).join("") +
-    '</div>';
-  }
+  var expiryWarnings = computeExpiryWarnings();
+  var expiryHtml = expiryAlertsCardHtml(expiryWarnings);
 
   // ── Revenue breakdown ──────────────────────────────────────────────────────
   var todayStr  = new Date().toISOString().slice(0,10);

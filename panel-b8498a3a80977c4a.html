@@ -1218,18 +1218,20 @@ function applyRoleUI(){
   document.getElementById("top-role-badge").textContent = isFleet ? "FLEET MGR" : "ADMIN";
   document.getElementById("top-role-badge").style.background = isFleet ? "#4a7c59" : "";
   document.getElementById("top-role-name").textContent = isFleet ? "Fleet Manager" : "Admin";
-  // Sidebar: hide Finance section for fleet manager
+  // Sidebar: hide Finance and Team sections for fleet manager
   document.querySelectorAll(".sidebar-section, .nav-item[data-tab='revenue']").forEach(function(el){
-    if(el.classList.contains("sidebar-section") && el.textContent.trim() === "Finance"){
+    if(el.classList.contains("sidebar-section") && (el.textContent.trim() === "Finance" || el.textContent.trim() === "Team")){
       el.style.display = isFleet ? "none" : "";
     }
     if(el.dataset && el.dataset.tab === "revenue"){
       el.style.display = isFleet ? "none" : "";
     }
   });
-  // Hide Coupons tab for fleet manager
-  var couponsNav = document.querySelector(".nav-item[data-tab='coupons']");
-  if(couponsNav) couponsNav.style.display = isFleet ? "none" : "";
+  // Hide Coupons, Fleet, Smart Pricing, Blog, Customers, Support Tickets and Employees for fleet manager
+  ["coupons","fleet","pricing","blog","customers","tickets","employees"].forEach(function(tab){
+    var navEl = document.querySelector(".nav-item[data-tab='"+tab+"']");
+    if(navEl) navEl.style.display = isFleet ? "none" : "";
+  });
 }
 
 function enterAdmin(){
@@ -1252,6 +1254,10 @@ function navTo(tab, el){
   }
   if(tab === "settlements" && currentRole === "fleet"){
     toast("Use a booking's checkout checklist to record deductions — refunds are admin-only.", "error");
+    return;
+  }
+  if(["fleet","pricing","blog","customers","tickets","employees"].indexOf(tab) > -1 && currentRole === "fleet"){
+    toast("This section isn't available for Fleet Manager.", "error");
     return;
   }
   document.querySelectorAll(".nav-item").forEach(function(n){ n.classList.remove("on"); });

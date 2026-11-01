@@ -713,6 +713,12 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
           <input class="inp" id="mb-drop-loc" type="text" placeholder="e.g. Pune">
         </div>
       </div>
+      <div style="margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:600;color:var(--t);cursor:pointer">
+          <input type="checkbox" id="mb-is-delivery" style="width:16px;height:16px;accent-color:var(--yd)">
+          🚚 This is a doorstep delivery booking
+        </label>
+      </div>
 
       <!-- Date-range picker popup -->
       <div id="mb-dp-backdrop" onclick="mbDpClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100"></div>
@@ -812,6 +818,12 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
         <label class="lbl">📍 Drop Location</label>
         <input class="inp" id="ebm-drop-loc" type="text" placeholder="e.g. Pune Airport">
       </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:600;color:var(--t);cursor:pointer">
+        <input type="checkbox" id="ebm-is-delivery" style="width:16px;height:16px;accent-color:var(--yd)">
+        🚚 This is a doorstep delivery booking
+      </label>
     </div>
 
     <!-- Auto price preview -->
@@ -1091,6 +1103,22 @@ function calcBreakdown(b){
   var baseFare = Math.max(0, taxable - deliveryFee);
   var gst      = Math.max(0, total - depositNow + couponDiscount - taxable);
   return { baseFare:baseFare, deliveryFee:deliveryFee, gst:gst, depositNow:depositNow, depositAmount:depositAmount, depositPaid:depositPaid, couponDiscount:couponDiscount, total:total };
+}
+
+// A booking counts as doorstep delivery if it was charged a delivery fee,
+// or its location carries the "(Doorstep)" tag the public site appends —
+// there's no dedicated flag, so this is the best signal available. Staff
+// can correct mislabeled bookings via the checkbox in Edit Booking.
+function isDeliveryBooking(b){
+  if((Number(b.deliveryFee) || 0) > 0) return true;
+  var pLoc = (b.pickup && b.pickup.location) || "";
+  var dLoc = (b.drop && b.drop.location) || "";
+  return /\(doorstep\)/i.test(pLoc) || /\(doorstep\)/i.test(dLoc);
+}
+function setDeliverySuffix(text, isDelivery){
+  var base = String(text||"").replace(/\s*\(doorstep\)\s*$/i, "").trim();
+  if(!base) return "";
+  return isDelivery ? base + " (Doorstep)" : base;
 }
 
 function toast(msg, type){
@@ -1940,8 +1968,7 @@ function buildBookingTable(bks){
   var rows = bks.map(function(b){
     var id = b._id || b.bookingId;
     window._bkDetailsMap[id] = b;
-    var bk = calcBreakdown(b);
-    var tag = bk.deliveryFee > 0
+    var tag = isDeliveryBooking(b)
       ? '<span class="bk-tag bk-tag-delivery">🚚 Doorstep Delivery</span>'
       : '<span class="bk-tag bk-tag-pickup">🏬 Self Pickup</span>';
     var pickup = b.pickup && b.pickup.date ? b.pickup.date : b.pickup;
@@ -3422,6 +3449,7 @@ function openEditBookingModal(id){
   document.getElementById("ebm-drop").value   = drop   ? new Date(drop).toISOString().slice(0,16)   : "";
   document.getElementById("ebm-pickup-loc").value = (b.pickup && b.pickup.location) || "";
   document.getElementById("ebm-drop-loc").value   = (b.drop   && b.drop.location)   || "";
+  document.getElementById("ebm-is-delivery").checked = isDeliveryBooking(b);
   document.getElementById("ebm-total").value = b.total != null ? b.total : "";
   document.getElementById("ebm-amount-collected").value = b.amountCollected != null ? b.amountCollected : "";
   document.getElementById("ebm-status").value = b.status || "confirmed";
@@ -3525,8 +3553,9 @@ async function submitEditBooking(){
   }
   if(pickup)  payload.pickupDate = new Date(pickup).toISOString();
   if(drop)    payload.dropDate   = new Date(drop).toISOString();
-  var pLoc = document.getElementById("ebm-pickup-loc").value.trim();
-  var dLoc = document.getElementById("ebm-drop-loc").value.trim();
+  var isDelivery = document.getElementById("ebm-is-delivery").checked;
+  var pLoc = setDeliverySuffix(document.getElementById("ebm-pickup-loc").value.trim(), isDelivery);
+  var dLoc = setDeliverySuffix(document.getElementById("ebm-drop-loc").value.trim(), isDelivery);
   if(pLoc) payload.pickupLocation = pLoc;
   if(dLoc) payload.dropLocation   = dLoc;
   if(totalRaw !== "")  payload.total = parseFloat(totalRaw);
@@ -3579,6 +3608,7 @@ async function openManualBookingModal(){
   });
   // Reset form
   ["mb-cust-phone","mb-name","mb-email","mb-pickup-loc","mb-drop-loc","mb-delivery","mb-custom-fare","mb-notes"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
+  document.getElementById("mb-is-delivery").checked = false;
   document.getElementById("mb-deposit").value = "later";
   document.getElementById("mb-price-preview").style.display = "none";
   document.getElementById("mb-error").style.display = "none";
@@ -3819,8 +3849,9 @@ async function submitManualBooking(){
   var carId     = document.getElementById("mb-car").value;
   var pickup    = document.getElementById("mb-pickup").value;
   var drop      = document.getElementById("mb-drop").value;
-  var pickupLoc = document.getElementById("mb-pickup-loc").value.trim();
-  var dropLoc   = document.getElementById("mb-drop-loc").value.trim();
+  var isDelivery = document.getElementById("mb-is-delivery").checked;
+  var pickupLoc = setDeliverySuffix(document.getElementById("mb-pickup-loc").value.trim() || "Pune", isDelivery);
+  var dropLoc   = setDeliverySuffix(document.getElementById("mb-drop-loc").value.trim() || "Pune", isDelivery);
   var delivery   = parseFloat(document.getElementById("mb-delivery").value) || 0;
   var customFare = document.getElementById("mb-custom-fare").value.trim();
   var depChoice  = document.getElementById("mb-deposit").value;
@@ -3831,7 +3862,7 @@ async function submitManualBooking(){
   if(new Date(drop) <= new Date(pickup)){ errEl.textContent="Drop must be after pickup."; errEl.style.display="block"; return; }
   btn.disabled = true; btn.textContent = "Creating…";
   var payload = { phone, name, email, carId, pickupDate: new Date(pickup).toISOString(), dropDate: new Date(drop).toISOString(),
-    pickupLocation: pickupLoc||"Pune", dropLocation: dropLoc||"Pune",
+    pickupLocation: pickupLoc, dropLocation: dropLoc,
     deliveryFee: delivery, depositChoice: depChoice, notes };
   if(customFare !== "" && !isNaN(parseFloat(customFare))) payload.baseFare = Math.round(parseFloat(customFare) / 1.18);
   try {

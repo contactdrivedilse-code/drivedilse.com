@@ -2309,7 +2309,13 @@ async function renderFleet(isLocal, c){
         '</div>' +
         (function(){ var now=Date.now(); var fp=(car.pauses||[]).filter(function(p){return new Date(p.to).getTime()>now;}); return fp.length?'<div style="margin-bottom:10px;font-size:.75rem;color:var(--ts)">'+fp.map(function(p){return '<div style="background:var(--wg);border:1px solid var(--b);border-radius:8px;padding:6px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">⏸ '+new Date(p.from).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"numeric",minute:"2-digit"})+ ' → '+new Date(p.to).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"numeric",minute:"2-digit"})+(p.note?' — '+p.note:'')+' <button onclick="removePause(\''+car._id+'\',\''+p._id+'\')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-weight:700;font-size:.85rem">✕</button></div>';}).join('')+'</div>':'';})() +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
-          '<button class="btn '+(car.active?"btn-g":"btn-y")+' btn-sm" style="flex:1" onclick="toggleCar(\''+car._id+'\')">'+(car.active?"Deactivate":"Activate")+'</button>' +
+          (car.active
+            ? '<button class="btn btn-g btn-sm" style="flex:1" onclick="toggleCar(\''+car._id+'\')">Deactivate</button>'
+            : (isFleetRole
+                ? '<button class="btn btn-sm" style="flex:1" disabled>Inactive</button>'
+                : '<button class="btn btn-red btn-sm" style="flex:1" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="deleteCar(this.dataset.carid,this.dataset.carname)">🗑 Delete</button>'
+              )
+          ) +
           '<button class="btn btn-g btn-sm" style="flex:1" onclick="openPauseModal(\''+car._id+'\',\''+car.name+'\')">⏸ Pause</button>' +
         '</div>' +
         (isFleetRole ? '<button class="btn btn-y btn-sm" style="width:100%;margin-bottom:8px" onclick="openManualBookingModal(\''+car._id+'\',\''+car.name+'\')">📋 Book Elsewhere (Zoomcar etc.)</button>' : '') +
@@ -2318,7 +2324,6 @@ async function renderFleet(isLocal, c){
           '<button class="btn btn-y btn-sm" style="flex:1" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="openCarDocsModal(this.dataset.carid,this.dataset.carname)">📄 Docs</button>' +
           '<button class="btn btn-y btn-sm" style="flex:1" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="openCarShareModal(this.dataset.carid,this.dataset.carname)">🔗 Share / QR</button>' +
         '</div>' +
-        (isFleetRole ? '' : '<button class="btn btn-red btn-sm" style="width:100%;margin-top:8px" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="deleteCar(this.dataset.carid,this.dataset.carname)">🗑 Delete Car</button>') +
       '</div>' +
     '</div>';
   }).join("");

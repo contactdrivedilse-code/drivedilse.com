@@ -1394,9 +1394,11 @@ async function renderDashboard(isLocal, c){
       var _results = await Promise.all([
         cachedFetch("/admin/dashboard"),
         cachedFetch("/admin/bookings"),
+        cachedFetch("/admin/fleet"),
       ]);
       var dash = _results[0];
       allBookings = _results[1];
+      allCars = _results[2]; window._allCarsCache = allCars;
       updateBadges();
       var paidBks = allBookings.filter(function(b){ return b.payment&&b.payment.status==="paid"; });
       var rev = paidBks.reduce(function(s,b){ return s+b.total; },0);

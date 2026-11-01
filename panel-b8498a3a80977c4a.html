@@ -69,7 +69,8 @@ body{font-family:'Inter',sans-serif;background:var(--ow);color:var(--t);min-heig
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
 .stat-card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04);user-select:none;transition:box-shadow .15s,border-color .15s}
 .stat-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06);border-color:#fde68a}
-.stat-icon{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;font-size:1.25rem;margin-bottom:10px;background:var(--wg);border-radius:12px}
+.stat-icon{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;margin-bottom:10px;background:var(--wg);border-radius:12px;color:var(--yd)}
+.stat-icon svg{width:20px;height:20px}
 .stat-num{font-family:'Inter',sans-serif;font-size:1.35rem;font-weight:600;color:var(--yd);margin-bottom:4px}
 .stat-lbl{font-size:.7rem;color:var(--ts);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
 
@@ -967,6 +968,24 @@ var adminToken  = localStorage.getItem("dds_admin_token") || "";
 var currentRole = localStorage.getItem("dds_role") || "admin"; // "admin" | "fleet"
 var selectedLoginRole = new URLSearchParams(location.search).get("role") || "admin";
 var pauseCarId  = null;
+
+// Stat-card icons -- consistent line-style SVGs (one accent colour, set via
+// .stat-icon{color}) instead of raw emoji, which render inconsistently
+// across platforms and don't share a single visual style.
+var STAT_ICON_SVG = {
+  "🚗": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"/><rect x="3" y="13" width="18" height="5" rx="1.5"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/></svg>',
+  "📋": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h6"/></svg>',
+  "🟢": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>',
+  "🟡": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+  "👥": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.2c2.3.4 3.8 2 3.8 4.3"/></svg>',
+  "💰": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M15 13h3"/></svg>',
+  "🚚": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="11" height="8" rx="1"/><path d="M13 11h4l3 3v2h-7z"/><circle cx="6.5" cy="18.5" r="1.5"/><circle cx="17" cy="18.5" r="1.5"/></svg>',
+  "🧾": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5z"/><path d="M9 8h6M9 12h6"/></svg>',
+  "🔒": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  "↩️": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-5-5 5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v1"/></svg>',
+  "📈": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-8"/><path d="M15 7h5v5"/></svg>',
+};
+function statIcon(emoji){ return STAT_ICON_SVG[emoji] || emoji; }
 var allBookings = [], allCars = [], allCustomers = [];
 
 var DEMO_BOOKINGS = [
@@ -1379,7 +1398,7 @@ async function renderDashboard(isLocal, c){
     var clickable = s.fn
       ? ' onclick="'+s.fn+'"'+hoverStyle
       : (s.tab ? ' onclick="navTo(\''+s.tab+'\',document.querySelector(\'[data-tab='+s.tab+']\'))"'+hoverStyle : '');
-    return '<div class="stat-card"'+clickable+'><div class="stat-icon">'+s.icon+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
+    return '<div class="stat-card"'+clickable+'><div class="stat-icon">'+statIcon(s.icon)+'</div><div class="stat-num">'+s.num+'</div><div class="stat-lbl">'+s.lbl+'</div></div>';
   }).join("");
 
   // Load duty status for fleet managers
@@ -2230,7 +2249,7 @@ function _revRender(c){
     {icon:"📈", val:inr(grandTotal), lbl:"Total Revenue",  sub:"Booking Fee + GST"},
   ].map(function(s){
     return '<div class="stat-card" style="flex:1;min-width:180px">'+
-      '<div class="stat-icon">'+s.icon+'</div>'+
+      '<div class="stat-icon">'+statIcon(s.icon)+'</div>'+
       '<div class="stat-num">'+s.val+'</div>'+
       '<div class="stat-lbl">'+s.lbl+'</div>'+
       '<div style="font-size:.68rem;color:var(--ts);margin-top:4px">'+s.sub+'</div>'+

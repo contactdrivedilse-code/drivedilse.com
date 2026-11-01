@@ -2318,6 +2318,7 @@ async function renderFleet(isLocal, c){
           '<button class="btn btn-y btn-sm" style="flex:1" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="openCarDocsModal(this.dataset.carid,this.dataset.carname)">📄 Docs</button>' +
           '<button class="btn btn-y btn-sm" style="flex:1" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="openCarShareModal(this.dataset.carid,this.dataset.carname)">🔗 Share / QR</button>' +
         '</div>' +
+        (isFleetRole ? '' : '<button class="btn btn-red btn-sm" style="width:100%;margin-top:8px" data-carid="'+car._id+'" data-carname="'+car.name.replace(/"/g,"&quot;")+'" onclick="deleteCar(this.dataset.carid,this.dataset.carname)">🗑 Delete Car</button>') +
       '</div>' +
     '</div>';
   }).join("");
@@ -2342,6 +2343,22 @@ async function toggleCar(id){
   try {
     await adminFetch("/admin/fleet/"+id+"/toggle", { method: "PUT" });
     toast("Car status updated.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+  } catch(e){ toast("Failed: "+e.message, "error"); }
+}
+
+async function deleteCar(id, name){
+  if(!confirm('Permanently delete "'+name+'"? This can\'t be undone.\n\nCars with any booking history can\'t be deleted — deactivate them instead.')) return;
+  if(adminToken === "local"){
+    var idx = DEMO_FLEET.findIndex(function(c){ return c._id===id; });
+    if(idx > -1) DEMO_FLEET.splice(idx, 1);
+    toast("Car deleted.", "success");
+    navTo("fleet", document.querySelector('[data-tab="fleet"]'));
+    return;
+  }
+  try {
+    await adminFetch("/admin/fleet/"+id, { method: "DELETE" });
+    toast("Car deleted.", "success");
     navTo("fleet", document.querySelector('[data-tab="fleet"]'));
   } catch(e){ toast("Failed: "+e.message, "error"); }
 }

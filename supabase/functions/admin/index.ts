@@ -1176,6 +1176,24 @@ Deno.serve(async (req) => {
       return json(mapCar(data as Record<string, unknown>));
     }
 
+    // DELETE /fleet/:id — Admin only. Permanently removes a car, but only
+    // if it has no booking history — a car that's ever been booked must be
+    // deactivated instead, so past bookings never end up pointing at a car
+    // row that no longer exists.
+    if (req.method === "DELETE" && carEditMatch) {
+      if (!isAdmin) return json({ error: "Admin access required" }, 403);
+      const carId = carEditMatch[1];
+      const { count, error: countErr } = await sb.from("bookings")
+        .select("*", { count: "exact", head: true }).eq("car_id", carId);
+      if (countErr) throw countErr;
+      if ((count ?? 0) > 0) {
+        return json({ error: "This car has booking history and can't be deleted — deactivate it instead." }, 409);
+      }
+      const { error } = await sb.from("cars").delete().eq("id", carId);
+      if (error) throw error;
+      return json({ success: true });
+    }
+
     // POST /fleet/:id/pause — Admin or Fleet Manager can pause a car
     const pauseMatch = path.match(/^\/fleet\/([^/]+)\/pause$/);
     if (req.method === "POST" && pauseMatch) {

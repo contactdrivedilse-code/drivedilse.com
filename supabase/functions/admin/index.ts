@@ -1176,19 +1176,13 @@ Deno.serve(async (req) => {
       return json(mapCar(data as Record<string, unknown>));
     }
 
-    // DELETE /fleet/:id — Admin only. Permanently removes a car, but only
-    // if it has no booking history — a car that's ever been booked must be
-    // deactivated instead, so past bookings never end up pointing at a car
-    // row that no longer exists.
+    // DELETE /fleet/:id — Admin only. Permanently removes a car. Bookings
+    // store their own car name/price at booking time rather than joining
+    // live, so historical booking records keep displaying correctly after
+    // the car row is gone; only that car's reviews are cascade-deleted.
     if (req.method === "DELETE" && carEditMatch) {
       if (!isAdmin) return json({ error: "Admin access required" }, 403);
       const carId = carEditMatch[1];
-      const { count, error: countErr } = await sb.from("bookings")
-        .select("*", { count: "exact", head: true }).eq("car_id", carId);
-      if (countErr) throw countErr;
-      if ((count ?? 0) > 0) {
-        return json({ error: "This car has booking history and can't be deleted — deactivate it instead." }, 409);
-      }
       const { error } = await sb.from("cars").delete().eq("id", carId);
       if (error) throw error;
       return json({ success: true });

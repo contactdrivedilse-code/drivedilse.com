@@ -2353,7 +2353,7 @@ async function toggleCar(id){
 }
 
 async function deleteCar(id, name){
-  if(!confirm('Permanently delete "'+name+'"? This can\'t be undone.\n\nCars with any booking history can\'t be deleted — deactivate them instead.')) return;
+  if(!confirm('Permanently delete "'+name+'"? This can\'t be undone. Past bookings for this car will still display correctly, but its reviews will be deleted along with it.')) return;
   if(adminToken === "local"){
     var idx = DEMO_FLEET.findIndex(function(c){ return c._id===id; });
     if(idx > -1) DEMO_FLEET.splice(idx, 1);

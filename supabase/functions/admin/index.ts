@@ -488,6 +488,14 @@ Deno.serve(async (req) => {
         const { data: cur } = await sb.from("bookings").select("checkin_otp").eq("id", bkStatusMatch[1]).maybeSingle();
         if (!(cur as Record<string, unknown> | null)?.checkin_otp) updates.checkin_otp = generateOtp();
       }
+      if (status === "active") {
+        // Booking moved to active outside the customer's normal digital
+        // check-in flow (e.g. staff correcting status for a manual/offline
+        // booking) — that flow is what normally mints the checkout OTP, so
+        // make sure one exists here too, or end-trip checkout has no OTP.
+        const { data: cur } = await sb.from("bookings").select("checkout_otp").eq("id", bkStatusMatch[1]).maybeSingle();
+        if (!(cur as Record<string, unknown> | null)?.checkout_otp) updates.checkout_otp = generateOtp();
+      }
       if (status === "no_show") {
         updates.cancelled_at    = new Date().toISOString();
         updates.refund_amount   = 0;

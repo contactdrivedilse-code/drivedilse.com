@@ -1231,8 +1231,8 @@ function applyRoleUI(){
       el.style.display = isFleet ? "none" : "";
     }
   });
-  // Hide Coupons, Fleet, Smart Pricing, Blog, Customers, Support Tickets and Employees for fleet manager
-  ["coupons","fleet","pricing","blog","customers","tickets","employees"].forEach(function(tab){
+  // Hide Coupons, Smart Pricing, Blog, Customers, Support Tickets and Employees for fleet manager
+  ["coupons","pricing","blog","customers","tickets","employees"].forEach(function(tab){
     var navEl = document.querySelector(".nav-item[data-tab='"+tab+"']");
     if(navEl) navEl.style.display = isFleet ? "none" : "";
   });
@@ -1260,7 +1260,7 @@ function navTo(tab, el){
     toast("Use a booking's checkout checklist to record deductions — refunds are admin-only.", "error");
     return;
   }
-  if(["fleet","pricing","blog","customers","tickets","employees","fleetanalytics"].indexOf(tab) > -1 && currentRole === "fleet"){
+  if(["pricing","blog","customers","tickets","employees","fleetanalytics"].indexOf(tab) > -1 && currentRole === "fleet"){
     toast("This section isn't available for Fleet Manager.", "error");
     return;
   }
@@ -1500,7 +1500,7 @@ async function renderDashboard(isLocal, c){
       var gst = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
       var bookingFee = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
       stats = [
-        {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab: currentRole === "fleet" ? null : "fleet"},
+        {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab:"fleet"},
         {icon:"📋", num: allBookings.length,   lbl: "Total Bookings",   tab:"bookings"},
         {icon:"🟢", num: allBookings.filter(function(b){ return b.status==="active"; }).length,    lbl: "Active Drives", tab:"active"},
         {icon:"🟡", num: allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length, lbl: "Upcoming", tab:"upcoming"},
@@ -1528,7 +1528,7 @@ async function renderDashboard(isLocal, c){
     var demoGst = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
     var demoFee = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
     stats = [
-      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles", tab: currentRole === "fleet" ? null : "fleet"},
+      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles", tab:"fleet"},
       {icon:"📋",num:DEMO_BOOKINGS.length,lbl:"Total Bookings",  tab:"bookings"},
       {icon:"🟢",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="active"; }).length,lbl:"Active Drives", tab:"active"},
       {icon:"🟡",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length,lbl:"Upcoming", tab:"upcoming"},

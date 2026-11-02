@@ -1500,7 +1500,7 @@ async function renderDashboard(isLocal, c){
       var gst = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
       var bookingFee = paidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
       stats = [
-        {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab:"fleet"},
+        {icon:"🚗", num: dash.totalCars,      lbl: "Active Vehicles",  tab: currentRole === "fleet" ? null : "fleet"},
         {icon:"📋", num: allBookings.length,   lbl: "Total Bookings",   tab:"bookings"},
         {icon:"🟢", num: allBookings.filter(function(b){ return b.status==="active"; }).length,    lbl: "Active Drives", tab:"active"},
         {icon:"🟡", num: allBookings.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length, lbl: "Upcoming", tab:"upcoming"},
@@ -1528,7 +1528,7 @@ async function renderDashboard(isLocal, c){
     var demoGst = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.gst; },0);
     var demoFee = demoPaidBks.reduce(function(s,b){ var bd=calcBreakdown(b); return s+bd.baseFare+bd.deliveryFee; },0);
     stats = [
-      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles", tab:"fleet"},
+      {icon:"🚗",num:DEMO_FLEET.filter(function(c){ return c.active; }).length,lbl:"Active Vehicles", tab: currentRole === "fleet" ? null : "fleet"},
       {icon:"📋",num:DEMO_BOOKINGS.length,lbl:"Total Bookings",  tab:"bookings"},
       {icon:"🟢",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="active"; }).length,lbl:"Active Drives", tab:"active"},
       {icon:"🟡",num:DEMO_BOOKINGS.filter(function(b){ return b.status==="confirmed"||b.status==="pending"||b.status==="pending_kyc"; }).length,lbl:"Upcoming", tab:"upcoming"},

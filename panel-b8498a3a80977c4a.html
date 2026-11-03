@@ -2830,6 +2830,7 @@ function openCarDocsModal(carId, carName) {
       '<div style="display:flex;gap:8px;align-items:center">' +
         '<input type="file" id="doc-file-' + d.type + '" accept=".pdf,.jpg,.jpeg,.png,.webp" style="flex:1;font-size:.8rem">' +
         '<button class="btn btn-y btn-sm" onclick="uploadCarDoc(\'' + carId + '\',\'' + d.type + '\')">Upload</button>' +
+        (hasDoc ? '<a class="btn btn-sm" style="background:#dbeafe;color:#1d4ed8;border:none;text-decoration:none" href="' + hasDoc + '" target="_blank" rel="noopener" download>⬇ Download</a>' : '') +
         (hasDoc ? '<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteCarDoc(\'' + carId + '\',\'' + d.type + '\',\'' + carName.replace(/'/g,"\\'") + '\')">Remove</button>' : '') +
       '</div>' +
     '</div>';

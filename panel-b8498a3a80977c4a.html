@@ -1955,7 +1955,7 @@ async function renderBookings(statusFilter, isLocal, c){
     try {
       if(!allBookings.length) allBookings = await cachedFetch("/admin/bookings");
       updateBadges();
-      bks = statusFilter === null ? allBookings :
+      bks = statusFilter === null ? allBookings.filter(function(b){ return b.status!=="cancelled"; }) :
         Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
         allBookings.filter(function(b){ return b.status===statusFilter; });
     } catch(e){ isLocal = true; }
@@ -1964,7 +1964,7 @@ async function renderBookings(statusFilter, isLocal, c){
   if(isLocal){
     allBookings = DEMO_BOOKINGS.slice();
     updateBadges();
-    bks = statusFilter === null ? allBookings :
+    bks = statusFilter === null ? allBookings.filter(function(b){ return b.status!=="cancelled"; }) :
       Array.isArray(statusFilter) ? allBookings.filter(function(b){ return statusFilter.indexOf(b.status)>-1; }) :
       allBookings.filter(function(b){ return b.status===statusFilter; });
   }

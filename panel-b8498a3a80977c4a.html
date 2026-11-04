@@ -3598,6 +3598,12 @@ async function openBkDetailsModal(id){
     var fresh = await adminFetch("/admin/bookings/"+id);
     if(fresh){ window._bkDetailsMap[id] = fresh; b = fresh; }
   }catch(e){ /* fall back to cached (unsigned photo) data if this fails */ }
+  if(!(allCars && allCars.length)){
+    try{
+      var fleetData = await adminFetch("/admin/fleet");
+      allCars = Array.isArray(fleetData) ? fleetData : (fleetData.cars || []);
+    }catch(e){ /* car switcher just shows the current car */ }
+  }
   document.getElementById("bkdm-id").textContent = b.bookingId || id;
 
   var carName  = b.carName || (b.car&&b.car.name) || "—";
@@ -3709,7 +3715,12 @@ async function openBkDetailsModal(id){
     selfieHtml +
     pendingBanner +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;font-size:.85rem">' +
-      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Car</div><div style="font-weight:700">'+carName+'</div></div>' +
+      '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Car</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<span style="font-weight:700">'+esc(carName)+'</span>' +
+          bkCarSelectHtml(id, b) +
+        '</div>' +
+      '</div>' +
       '<div><div style="color:var(--ts);font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Status</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
           badge(b.status) +
@@ -3812,6 +3823,65 @@ async function openBkDetailsModal(id){
   document.getElementById("bk-details-modal").classList.add("open");
 }
 function closeBkDetailsModal(){ document.getElementById("bk-details-modal").classList.remove("open"); }
+
+function bkCarSelectHtml(id, b){
+  var curId = b.carId || (b.car && (b.car._id || b.car.id)) || "";
+  var curName = b.carName || (b.car && b.car.name) || "";
+  var cars = (allCars || []).filter(function(c){ return c.active !== false || (c._id||c.id) === curId; });
+  if(!cars.length) return "";
+  return '<select class="status-sel" onchange="changeBookingCar(\''+id+'\',this.value,this)">' +
+    cars.map(function(c){
+      var cid = c._id || c.id;
+      var sel = (cid === curId || (!curId && c.name === curName)) ? ' selected' : '';
+      return '<option value="'+esc(cid)+'"'+sel+'>'+esc(c.name)+'</option>';
+    }).join('') +
+  '</select>';
+}
+
+async function changeBookingCar(id, newCarId, selEl){
+  var b = window._bkDetailsMap[id] || allBookings.find(function(bk){ return (bk._id||bk.bookingId)===id; });
+  if(!b) return;
+  var prevId = b.carId || (b.car && (b.car._id || b.car.id)) || "";
+  function revert(){ if(selEl && prevId) selEl.value = prevId; }
+  var car = (allCars || []).find(function(c){ return (c._id||c.id) === newCarId; });
+  if(!car || newCarId === prevId){ revert(); return; }
+  var pS = new Date((b.pickup && b.pickup.date) || b.pickup).getTime();
+  var dS = new Date((b.drop && b.drop.date) || b.drop).getTime();
+  var clash = allBookings.filter(function(o){
+    if((o._id||o.bookingId) === (b._id||b.bookingId)) return false;
+    if(["confirmed","active"].indexOf(o.status) < 0) return false;
+    if((o.carId || (o.car && (o.car._id||o.car.id))) !== newCarId) return false;
+    var op = new Date((o.pickup && o.pickup.date) || o.pickup).getTime();
+    var od = new Date((o.drop && o.drop.date) || o.drop).getTime();
+    return op < dS && od > pS;
+  });
+  var msg = 'Move this booking to "'+car.name+'"?\nThe price will not change.';
+  if(clash.length) msg = '⚠ "'+car.name+'" already has '+clash.length+' confirmed/active booking(s) overlapping these dates ('+clash.map(function(o){return o.bookingId;}).join(", ")+').\n\n' + msg;
+  if(!confirm(msg)){ revert(); return; }
+  function applyLocally(){
+    [window._bkDetailsMap[id], allBookings.find(function(bk){ return (bk._id||bk.bookingId)===id; })].forEach(function(x){
+      if(!x) return;
+      x.carId = newCarId; x.carName = car.name; x.car = { _id:newCarId, id:newCarId, name:car.name };
+    });
+  }
+  if(adminToken === "local"){
+    applyLocally(); toast("Car changed to " + car.name, "success"); openBkDetailsModal(id); return;
+  }
+  try {
+    await adminFetch("/admin/bookings/"+id, {
+      method: "PATCH",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ carId: newCarId, carName: car.name })
+    });
+    applyLocally();
+    invalidateCache("/admin/bookings"); invalidateCache("/admin/dashboard");
+    toast("Car changed to " + car.name, "success");
+    openBkDetailsModal(id);
+  } catch(e){
+    toast("Failed: " + e.message, "error");
+    revert();
+  }
+}
 
 async function changeBookingStatus(id, status, selEl){
   var b = window._bkDetailsMap[id] || allBookings.find(function(bk){ return (bk._id||bk.bookingId)===id; });

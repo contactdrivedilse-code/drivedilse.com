@@ -2652,12 +2652,12 @@ function _faRevRenderDetail(c){
   var tGross=0, tFee=0, tDel=0, tGst=0;
   var rows = bks.map(function(b){
     var bd = calcBreakdown(b);
-    tGross += bd.total; tFee += bd.baseFare; tDel += bd.deliveryFee; tGst += bd.gst;
+    var gross = bd.total - bd.depositNow; tGross += gross; tFee += bd.baseFare; tDel += bd.deliveryFee; tGst += bd.gst;
     return '<tr>' +
       '<td style="font-weight:700;font-size:.86rem">'+fmtD(b.pickup && b.pickup.date)+'</td>' +
       '<td style="font-weight:700;font-size:.86rem">'+fmtD(b.drop && b.drop.date)+'</td>' +
       '<td style="font-size:.76rem;color:var(--ts)">'+esc(b.invoiceId||b.bookingId||b._id||"—")+'</td>' +
-      '<td style="font-weight:900;color:var(--yd)">'+inr(bd.total)+'</td>' +
+      '<td style="font-weight:900;color:var(--yd)">'+inr(gross)+'</td>' +
       '<td style="font-weight:700;color:var(--t)">'+inr(bd.baseFare)+'</td>' +
       '<td style="font-weight:700;color:var(--t)">'+inr(bd.deliveryFee)+'</td>' +
       '<td style="font-weight:700;color:#c0392b">'+inr(bd.gst)+'</td>' +
